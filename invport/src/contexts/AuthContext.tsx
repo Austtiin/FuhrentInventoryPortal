@@ -15,9 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithOAuth: (provider: 'microsoft' | 'google') => Promise<void>;
   signOut: () => Promise<void>;
-  refreshToken: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,11 +65,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkAuth();
-  }, [mockUser]);  const signIn = async (email: string) => {
+  }, [mockUser]);  const signIn = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual OAuth sign-in
-      console.log('Signing in with:', email);
+      // TODO: Implement actual authentication
+      console.log('Signing in with:', email, password);
       
       // Mock successful login
       const token = 'mock_jwt_token';
@@ -87,22 +85,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signInWithOAuth = async (provider: 'microsoft' | 'google') => {
-    setIsLoading(true);
-    try {
-      // OAuth not configured yet - disable for now
-      console.log(`OAuth with ${provider} is not configured yet`);
-      throw new Error('OAuth authentication is not configured yet');
-    } catch (error) {
-      console.error('OAuth sign-in error:', error);
-      setIsLoading(false);
-      throw error;
-    }
-  };
-
   const signOut = async () => {
     try {
-      // TODO: Revoke tokens with OAuth provider
+      // TODO: Revoke tokens with backend
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
       }
@@ -113,32 +98,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const refreshToken = async () => {
-    try {
-      // TODO: Refresh OAuth token
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          // TODO: Call refresh endpoint
-          console.log('Token refreshed');
-        }
-      }
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      // If refresh fails, sign out the user
-      await signOut();
-      throw error;
-    }
-  };
-
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
     signIn,
-    signInWithOAuth,
     signOut,
-    refreshToken,
   };
 
   return (
