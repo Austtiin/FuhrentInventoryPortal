@@ -16,6 +16,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Fuhr Enterprise Dealer Inventory - Admin Dashboard",
   description: "Professional inventory management system for Fuhr Enterprise automotive dealers",
+  icons: {
+    icon: '/logo/FELogo.png',
+    apple: '/logo/FELogo.png',
+  },
 };
 
 export default function RootLayout({
@@ -35,3 +39,4 @@ export default function RootLayout({
     </html>
   );
 }
+

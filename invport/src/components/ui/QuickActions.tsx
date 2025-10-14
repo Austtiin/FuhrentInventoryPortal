@@ -1,0 +1,120 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { 
+  CubeIcon, 
+  ArrowTrendingUpIcon,
+  ChevronDownIcon,
+  PlusIcon
+} from '@heroicons/react/24/outline';
+
+interface QuickAction {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  route: string;
+  primary?: boolean;
+}
+
+const quickActions: QuickAction[] = [
+  {
+    id: 'add-vehicle',
+    label: 'Add New Vehicle',
+    icon: PlusIcon,
+    route: '/inventory/add',
+    primary: true
+  },
+  {
+    id: 'view-inventory',
+    label: 'View Inventory',
+    icon: CubeIcon,
+    route: '/inventory'
+  },
+  {
+    id: 'generate-report',
+    label: 'Generate Report',
+    icon: ArrowTrendingUpIcon,
+    route: '/reports'
+  }
+];
+
+export const QuickActions: React.FC = () => {
+  const router = useRouter();
+  const [showAll, setShowAll] = useState(false);
+  
+  const primaryAction = quickActions.find(action => action.primary);
+  const secondaryActions = quickActions.filter(action => !action.primary);
+  
+  const handleActionClick = (route: string) => {
+    router.push(route);
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-4 sm:p-6">
+      <h3 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h3>
+      
+      {/* Mobile: Stack layout with expandable secondary actions */}
+      <div className="block lg:hidden space-y-3">
+        {/* Primary Action - Always visible */}
+        {primaryAction && (
+          <button
+            onClick={() => handleActionClick(primaryAction.route)}
+            className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 cursor-pointer"
+          >
+            <primaryAction.icon className="w-5 h-5" />
+            <span className="font-medium">{primaryAction.label}</span>
+          </button>
+        )}
+        
+        {/* Secondary Actions - Collapsible */}
+        {secondaryActions.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="w-full flex items-center justify-center gap-2 p-3 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition-colors cursor-pointer"
+            >
+              <span className="font-medium">More Actions</span>
+              <ChevronDownIcon className={`w-4 h-4 transition-transform ${showAll ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showAll && (
+              <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                {secondaryActions.map((action) => (
+                  <button
+                    key={action.id}
+                    onClick={() => handleActionClick(action.route)}
+                    className="w-full flex items-center gap-3 p-3 bg-slate-50 text-slate-700 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <action.icon className="w-4 h-4" />
+                    <span className="font-medium text-sm">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      
+      {/* Desktop: Grid layout */}
+      <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+        {quickActions.map((action) => (
+          <button
+            key={action.id}
+            onClick={() => handleActionClick(action.route)}
+            className={`
+              flex items-center gap-3 p-4 rounded-md transition-all duration-200 cursor-pointer
+              ${action.primary 
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }
+            `}
+          >
+            <action.icon className="w-5 h-5" />
+            <span className="font-medium">{action.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};

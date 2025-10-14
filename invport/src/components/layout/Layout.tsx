@@ -27,7 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
       <Header onMenuClick={toggleSidebar} />
       <div className="flex flex-1">
         <Sidebar 
@@ -38,11 +38,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         />
         <main className={`
           flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out
-          pt-16
         `}>
-          <div className="flex-1 pl-2 pr-4 py-4 lg:pl-3 lg:pr-6 lg:py-6 max-w-none">
+          <div className="flex-1 pl-2 pr-4 py-2 lg:pl-3 lg:pr-6 lg:py-3 max-w-none">
             <Breadcrumb />
-            <div className="mt-2">
+            <div className="mt-1">
               {children}
             </div>
           </div>
@@ -54,3 +53,4 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 };
 
 export default Layout;
+
