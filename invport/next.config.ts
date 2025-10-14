@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  // Note: Removed 'output: export' to support API routes
-  // Azure Static Web Apps supports standalone Next.js apps
+  // Static export for Azure Static Web Apps
+  output: 'export',
   trailingSlash: true,
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),

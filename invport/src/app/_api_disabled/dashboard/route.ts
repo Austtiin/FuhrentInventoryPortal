@@ -1,4 +1,6 @@
 // API route for dashboard data
+// NOTE: This file is disabled for static export builds
+// To enable, remove 'output: export' from next.config.ts and deploy with Azure Functions
 import { NextResponse } from 'next/server';
 import { dbManager } from '@/lib/database';
 

@@ -34,25 +34,25 @@ export function useDashboard() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/dashboard');
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: DashboardResponse = await response.json();
-
-      if (data.error) {
-        setError(data.error);
-      }
+      // For static export, use mock data directly
+      // TODO: Replace with actual API call when using Azure Functions
+      const mockData: DashboardResponse = {
+        totalInventory: 156,
+        totalValue: '$2.8M',
+        availableUnits: 142,
+        systemStatus: {
+          database: 'online',
+          message: 'Using mock data for static export'
+        }
+      };
 
       setStats({
-        totalInventory: data.totalInventory,
-        totalValue: data.totalValue,
-        availableUnits: data.availableUnits
+        totalInventory: mockData.totalInventory,
+        totalValue: mockData.totalValue,
+        availableUnits: mockData.availableUnits
       });
 
-      setSystemStatus(data.systemStatus);
+      setSystemStatus(mockData.systemStatus);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
