@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
-  // Remove 'export' output for dynamic features like API routes
-  // output: 'export',
+  // Note: Removed 'output: export' to support API routes
+  // Azure Static Web Apps supports standalone Next.js apps
   trailingSlash: true,
+  // Set the workspace root to silence the multiple lockfiles warning
+  outputFileTracingRoot: path.join(__dirname, '..'),
   images: {
     unoptimized: true,
   },
@@ -32,3 +35,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
