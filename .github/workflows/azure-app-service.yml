@@ -1,0 +1,39 @@
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: './invport/package-lock.json'
+
+    - name: Install dependencies
+      run: |
+        cd ./invport
+        npm ci
+
+    - name: Build application
+      run: |
+        cd ./invport
+        npm run build
+
+    - name: 'Deploy to Azure App Service'
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'your-app-service-name' # Replace with your Azure App Service name
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: './invport'
