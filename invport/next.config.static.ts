@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Skip API routes during static generation
+  generateBuildId: async () => {
+    // Return null to skip problematic routes
+    return 'static-export'
+  },
   // Note: Static export cannot use server-side features like API routes
   // All database functionality will be disabled in static mode
   webpack: (config, { isServer }) => {

@@ -21,8 +21,9 @@ For static-only deployment without server-side functionality.
 
 ### Setup:
 1. The existing workflow will automatically deploy to Static Web Apps
-2. Uses the `next.config.static.ts` configuration
+2. Uses the `scripts/build-static.js` to temporarily remove API routes
 3. Generates static files in the `out` folder
+4. Automatically restores API routes after build
 
 ### Features Available:
 ❌ No database connections
