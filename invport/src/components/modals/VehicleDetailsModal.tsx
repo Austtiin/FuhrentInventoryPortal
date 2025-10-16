@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Vehicle } from '@/types';
 import VehicleImage from '@/components/ui/VehicleImage';
@@ -16,6 +17,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   isOpen,
   onClose
 }) => {
+  const router = useRouter();
+  
   if (!isOpen) return null;
 
   const formatPrice = (price: number) => {
@@ -113,7 +116,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 
                 {/* Basic Vehicle Information */}
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Vehicle Information</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Unit Information</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Year:</span>
@@ -257,12 +260,12 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
             </button>
             <button
               onClick={() => {
-                // TODO: Handle edit action
-                console.log('Edit vehicle:', vehicle);
+                router.push(`/inventory/edit/${vehicle.id}`);
+                onClose();
               }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
             >
-              Edit Vehicle
+              Edit Unit
             </button>
           </div>
         </div>

@@ -1,6 +1,0 @@
-node_modules/
-.next/
-out/
-scripts/
-*.config.js
-*.config.ts

@@ -30,7 +30,7 @@ const quickActions: QuickAction[] = [
     id: 'search-inventory',
     label: 'Search Inventory',
     icon: MagnifyingGlassIcon,
-    route: '/inventory/search'
+    route: '/inventory' // Fixed: Changed from /inventory/search to /inventory
   },
   {
     id: 'view-inventory',
@@ -42,13 +42,13 @@ const quickActions: QuickAction[] = [
     id: 'export-data',
     label: 'Export Data',
     icon: DocumentArrowDownIcon,
-    route: '/reports/export'
+    route: '/reports' // Fixed: Changed from /reports/export to /reports
   },
   {
     id: 'generate-report',
     label: 'Generate Report',
     icon: ArrowTrendingUpIcon,
-    route: '/reports'
+    route: '/reports' // Already correct
   }
 ];
 

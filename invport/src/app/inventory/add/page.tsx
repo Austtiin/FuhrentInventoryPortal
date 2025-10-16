@@ -1,14 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowLeftIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Layout } from '@/components/layout';
 import Link from 'next/link';
-
-interface VehicleData {
-  VIN?: string;
-  [key: string]: unknown;
-}
 
 const AddInventoryPage: React.FC = () => {
   const [itemType, setItemType] = useState<'FishHouse' | 'Vehicle' | 'Trailer'>('Vehicle');
@@ -40,14 +35,18 @@ const AddInventoryPage: React.FC = () => {
 
   const checkVINExists = async (vin: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/inventory?search=${encodeURIComponent(vin)}`);
+      const response = await fetch('/api/vehicles/check-vin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ vin: vin.toUpperCase() })
+      });
+      
       if (!response.ok) return false;
       
       const data = await response.json();
-      // Check if any vehicles have matching VIN
-      return data.vehicles?.some((vehicle: VehicleData) => 
-        vehicle.VIN?.toUpperCase() === vin.toUpperCase()
-      ) || false;
+      return data.exists || false;
     } catch (error) {
       console.error('Error checking VIN:', error);
       return false;
@@ -64,7 +63,7 @@ const AddInventoryPage: React.FC = () => {
       const vinExists = await checkVINExists(formData.vin);
       
       if (vinExists) {
-        setError('This VIN Already EXISTS');
+        setError('This VIN Already EXISTS in the database');
         setIsSubmitting(false);
         return;
       }
@@ -78,17 +77,28 @@ const AddInventoryPage: React.FC = () => {
         itemType
       };
       
-      console.log('Form submitted:', submissionData);
-      // TODO: Implement API submission logic
+      // Submit to API
+      const response = await fetch('/api/vehicles/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData)
+      });
+
+      const result = await response.json();
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setIsSubmitting(false);
-      // TODO: Redirect or show success message
-    } catch {
+      if (result.success) {
+        // Success! Redirect to inventory page
+        window.location.href = '/inventory';
+      } else {
+        setError(result.error || 'Failed to add vehicle');
+        setIsSubmitting(false);
+      }
+    } catch (err) {
       setError('An error occurred while submitting the form');
       setIsSubmitting(false);
+      console.error('Submit error:', err);
     }
   };
 
@@ -299,20 +309,25 @@ const AddInventoryPage: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Category - Optional */}
+                {/* Category - Required */}
                 <div>
                   <label htmlFor="category" className="block text-sm font-medium text-gray-900 mb-2">
-                    Category (Optional)
+                    Category <span className="text-red-600">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     id="category"
                     name="category"
                     value={formData.category}
                     onChange={handleInputChange}
+                    required
                     className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                    placeholder="e.g., Sedan, Utility, etc."
-                  />
+                  >
+                    <option value="">Select a category</option>
+                    <option value="RV">RV</option>
+                    <option value="No Water">No Water</option>
+                    <option value="Toy Hauler">Toy Hauler</option>
+                    <option value="Snowmobile Trailer">Snowmobile Trailer</option>
+                  </select>
                 </div>
 
                 {/* Width - Optional */}
@@ -349,26 +364,49 @@ const AddInventoryPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Photo Upload */}
+            {/* Photo Upload Information */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">3. Photos (Optional)</h2>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-600 transition-colors bg-gray-50">
-                <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-700 mb-2 font-medium">Click to upload photos or drag and drop</p>
-                <p className="text-sm text-gray-600">PNG, JPG, GIF up to 10MB each</p>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  className="hidden"
-                  id="photo-upload"
-                />
-                <label
-                  htmlFor="photo-upload"
-                  className="inline-block mt-4 px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md hover:bg-gray-100 cursor-pointer transition-colors font-medium"
-                >
-                  Choose Files
-                </label>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">3. Photos</h2>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 className="font-semibold text-blue-900 mb-1">📸 Upload Photos After Creating Unit</h3>
+                    <p className="text-sm text-blue-800 mb-3">
+                      Photos can be added and managed after you create the inventory item. 
+                      Once you click <strong>&quot;Add Inventory Item&quot;</strong> below, you&apos;ll be redirected to the inventory list. 
+                      From there, click <strong>&quot;Edit&quot;</strong> on your newly created item to upload and organize photos.
+                    </p>
+                    <div className="bg-white rounded p-3 space-y-1.5 text-sm text-gray-700">
+                      <p className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Upload multiple images at once
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Drag and drop to reorder images
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Images automatically numbered (1, 2, 3...)
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        JPG, PNG, GIF, WEBP (max 10MB each)
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

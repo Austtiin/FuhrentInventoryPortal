@@ -7,11 +7,45 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),
+  
+  // DISABLE ALL CACHING - Force dynamic rendering
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
+  },
+  
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'flattstorage.blob.core.windows.net',
+        port: '',
+        pathname: '/invpics/**',
+      },
+    ],
   },
   // Exclude server-side packages from client bundle
-  serverExternalPackages: ['mssql'],
+  serverExternalPackages: ['mssql', '@azure/storage-blob'],
+  
+  // Turbopack configuration (for dev mode)
+  turbopack: {
+    resolveAlias: {
+      // Turbopack alias configuration
+      '@': './src',
+    },
+    resolveExtensions: [
+      '.tsx',
+      '.ts',
+      '.jsx',
+      '.js',
+      '.json',
+    ],
+  },
+  
+  // Webpack configuration (for production builds)
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Exclude Node.js modules from client-side bundle
@@ -29,4 +63,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-

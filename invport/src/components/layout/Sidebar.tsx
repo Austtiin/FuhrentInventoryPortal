@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -10,7 +10,9 @@ import {
   ChartBarIcon,
   XMarkIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  ChevronDownIcon,
+  ListBulletIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -24,6 +26,7 @@ interface NavigationItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  subItems?: NavigationItem[];
 }
 
 const navigationItems: NavigationItem[] = [
@@ -36,11 +39,18 @@ const navigationItems: NavigationItem[] = [
     name: 'Inventory',
     href: '/inventory',
     icon: CubeIcon,
-  },
-  {
-    name: 'Add Item',
-    href: '/inventory/add',
-    icon: PlusCircleIcon,
+    subItems: [
+      {
+        name: 'Current Inventory',
+        href: '/inventory',
+        icon: ListBulletIcon,
+      },
+      {
+        name: 'Add Item',
+        href: '/inventory/add',
+        icon: PlusCircleIcon,
+      }
+    ]
   },
   {
     name: 'Reports',
@@ -51,6 +61,22 @@ const navigationItems: NavigationItem[] = [
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggleCollapse }) => {
   const pathname = usePathname();
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
+  const toggleExpand = (itemName: string) => {
+    setExpandedItems(prev => 
+      prev.includes(itemName) 
+        ? prev.filter(name => name !== itemName)
+        : [...prev, itemName]
+    );
+  };
+
+  // Auto-expand Inventory when on any inventory page
+  React.useEffect(() => {
+    if (pathname.startsWith('/inventory') && !expandedItems.includes('Inventory')) {
+      setExpandedItems(prev => [...prev, 'Inventory']);
+    }
+  }, [pathname, expandedItems]);
 
   return (
     <>
@@ -101,56 +127,134 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
         <nav className="flex-1 py-2 overflow-y-auto scrollbar-thin">
           <ul className="list-none m-0 p-0 space-y-1">
             {navigationItems.map((item) => {
-              // More precise active state logic to handle overlapping routes
+              // Check if this is a parent item with sub-items
+              const hasSubItems = item.subItems && item.subItems.length > 0;
+              const isExpanded = expandedItems.includes(item.name);
+              
+              // More precise active state logic
               let isActive = false;
+              let isSubItemActive = false;
               
               if (item.href === pathname) {
-                // Exact match
                 isActive = true;
-              } else if (item.href === '/inventory/add' && pathname === '/inventory/add') {
-                // Specific case for Add Item
+              } else if (item.href === '/inventory' && pathname === '/inventory') {
                 isActive = true;
-              } else if (item.href === '/inventory' && pathname.startsWith('/inventory') && pathname !== '/inventory/add') {
-                // Inventory but not Add Item
-                isActive = true;
+              } else if (item.href === '/inventory' && pathname.startsWith('/inventory/')) {
+                // Parent is highlighted when on sub-routes but not the exact sub-item
+                const subItemPaths = item.subItems?.map(sub => sub.href) || [];
+                isSubItemActive = subItemPaths.some(path => pathname === path);
+                if (!isSubItemActive) {
+                  isActive = pathname.startsWith('/inventory/edit');
+                }
               } else if (item.href === '/reports' && pathname.startsWith('/reports')) {
-                // Reports and sub-routes
                 isActive = true;
               } else if (item.href === '/' && pathname === '/') {
-                // Dashboard only
                 isActive = true;
               }
               
               return (
                 <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={`
-                      group relative flex items-center transition-all duration-200 cursor-pointer
-                      ${isCollapsed ? 'justify-center px-3 py-3 mx-2' : 'gap-3 px-4 py-3 mx-3'}
-                      rounded-md
-                      ${
-                        isActive 
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
-                          : 'text-blue-100 hover:bg-white/10 hover:text-white'
-                      }
-                    `}
-                    onClick={onClose}
-                    title={isCollapsed ? item.name : undefined}
-                  >
-                    <item.icon className={`flex-shrink-0 transition-colors ${
-                      isCollapsed ? 'w-6 h-6' : 'w-5 h-5'
-                    }`} />
-                    {!isCollapsed && (
-                      <span className="font-medium text-sm tracking-wide">{item.name}</span>
+                  {/* Main Navigation Item */}
+                  <div className="relative">
+                    <Link
+                      href={item.href}
+                      className={`
+                        group relative flex items-center transition-all duration-300 cursor-pointer
+                        ${isCollapsed ? 'justify-center px-3 py-3 mx-2' : 'gap-3 px-4 py-3 mx-3'}
+                        rounded-md
+                        ${
+                          isActive 
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
+                            : isSubItemActive
+                            ? 'bg-white/5 text-blue-100'
+                            : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                        }
+                      `}
+                      onClick={(e) => {
+                        if (hasSubItems && !isCollapsed) {
+                          e.preventDefault();
+                          toggleExpand(item.name);
+                        } else {
+                          onClose();
+                        }
+                      }}
+                      title={isCollapsed ? item.name : undefined}
+                    >
+                      <item.icon className={`flex-shrink-0 transition-colors ${
+                        isCollapsed ? 'w-6 h-6' : 'w-5 h-5'
+                      }`} />
+                      {!isCollapsed && (
+                        <>
+                          <span className="font-medium text-sm tracking-wide flex-1">{item.name}</span>
+                          {hasSubItems && (
+                            <ChevronDownIcon 
+                              className={`w-4 h-4 transition-transform duration-300 ${
+                                isExpanded ? 'rotate-180' : ''
+                              }`}
+                            />
+                          )}
+                        </>
+                      )}
+                      {isCollapsed && (
+                        <div className="absolute left-full ml-3 px-3 py-2 bg-slate-800 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-50">
+                          {item.name}
+                          <div className="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45"></div>
+                        </div>
+                      )}
+                    </Link>
+
+                    {/* Animated white indicator bar */}
+                    {(isActive || isSubItemActive) && !isCollapsed && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full shadow-lg shadow-white/50"></div>
                     )}
-                    {isCollapsed && (
-                      <div className="absolute left-full ml-3 px-3 py-2 bg-slate-800 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-50">
-                        {item.name}
-                        <div className="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45"></div>
-                      </div>
-                    )}
-                  </Link>
+                  </div>
+
+                  {/* Sub Items - Animated Dropdown */}
+                  {hasSubItems && !isCollapsed && (
+                    <div 
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        isExpanded ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      <ul className="mt-1 space-y-1 ml-3">
+                        {item.subItems?.map((subItem) => {
+                          const isSubActive = pathname === subItem.href;
+                          
+                          return (
+                            <li key={subItem.name} className="relative">
+                              <Link
+                                href={subItem.href}
+                                className={`
+                                  group relative flex items-center gap-3 px-4 py-2.5 mx-3 rounded-lg
+                                  transition-all duration-200 cursor-pointer border-2
+                                  ${
+                                    isSubActive
+                                      ? 'bg-white text-blue-700 shadow-xl border-white font-bold scale-105'
+                                      : 'text-blue-100 hover:bg-white/10 hover:text-white hover:translate-x-1 border-transparent'
+                                  }
+                                `}
+                                onClick={onClose}
+                              >
+                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isSubActive ? 'bg-blue-600 ring-2 ring-blue-300' : 'bg-blue-300'}`}></div>
+                                <subItem.icon className={`w-5 h-5 flex-shrink-0 ${isSubActive ? 'text-blue-600' : ''}`} />
+                                <span className={`text-sm tracking-wide ${isSubActive ? 'text-blue-900' : ''}`}>{subItem.name}</span>
+                                {isSubActive && (
+                                  <div className="ml-auto">
+                                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
+                                  </div>
+                                )}
+                              </Link>
+
+                              {/* Animated white indicator for sub-item */}
+                              {isSubActive && (
+                                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-600 rounded-r-full shadow-lg shadow-blue-500/50 animate-slideIn"></div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
                 </li>
               );
             })}

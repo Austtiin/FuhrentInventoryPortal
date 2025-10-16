@@ -13,7 +13,7 @@ import CompactInventoryCard from './CompactInventoryCard';
 import SkeletonCard from '@/components/ui/SkeletonCard';
 import LoadingOverlay from '@/components/ui/LoadingOverlay';
 import { Vehicle, VehicleStatus } from '@/types';
-import { statusOptions } from '@/data/mockData';
+import { STATUS_OPTIONS } from '@/constants/inventory';
 import { useInventoryDirect } from '@/hooks/useInventoryAPI';
 
 interface InventoryListProps {
@@ -116,7 +116,7 @@ const InventoryList: React.FC<InventoryListProps> = ({ onAdd, onView, onEdit }) 
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="all">All Status</option>
-                {statusOptions.map(option => (
+                {STATUS_OPTIONS.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

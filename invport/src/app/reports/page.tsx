@@ -8,7 +8,6 @@ import {
   CurrencyDollarIcon,
   CubeIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   BuildingStorefrontIcon
 } from '@heroicons/react/24/outline';
 
@@ -31,45 +30,37 @@ const ReportsPage: React.FC = () => {
     if (!reportsData || !reportsData.totalStats) return [];
     
     const totalStats = reportsData.totalStats;
-    const statusBreakdown = reportsData.statusBreakdown || [];
-    
-    const pendingCount = statusBreakdown.find((s) => s.status.toLowerCase() === 'pending')?.count || 0;
     
     return [
       {
         title: 'Total Inventory Value',
         value: formatCurrency(totalStats.totalValue || 0),
-        change: '+12.5%',
-        changeType: 'positive' as const,
         icon: CurrencyDollarIcon,
       },
       {
         title: 'Total Vehicles',
         value: (totalStats.totalVehicles || 0).toString(),
-        change: `+${Math.round(((totalStats.totalVehicles || 0) * 0.05))}`,
-        changeType: 'positive' as const,
         icon: CubeIcon,
       },
       {
-        title: 'Average Price',
-        value: formatCurrency(totalStats.avgPrice || 0),
-        change: '+3.2%',
-        changeType: 'positive' as const,
-        icon: ArrowTrendingUpIcon,
+        title: 'Total Fish Houses',
+        value: (totalStats.totalFishHouses || 0).toString(),
+        icon: BuildingStorefrontIcon,
+      },
+      {
+        title: 'Total Trailers',
+        value: (totalStats.totalTrailers || 0).toString(),
+        icon: CubeIcon,
       },
       {
         title: 'Unique Makes',
         value: (totalStats.uniqueMakes || 0).toString(),
-        change: '0',
-        changeType: 'neutral' as const,
         icon: BuildingStorefrontIcon,
       },
       {
         title: 'Pending Sales',
-        value: pendingCount.toString(),
-        change: '-2',
-        changeType: 'negative' as const,
-        icon: ArrowTrendingDownIcon,
+        value: (totalStats.pendingSales || 0).toString(),
+        icon: ArrowTrendingUpIcon,
       },
     ];
   };
@@ -185,15 +176,11 @@ const ReportsPage: React.FC = () => {
         {/* Stats Overview - Made Smaller */}
         {!isLoading && reportsData && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {statsData.map((stat, index) => (
                 <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-2">
-                    <div className={`p-1.5 rounded-lg ${
-                      stat.changeType === 'positive' ? 'bg-green-100 text-green-600' :
-                      stat.changeType === 'negative' ? 'bg-red-100 text-red-600' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
+                    <div className="p-1.5 rounded-lg bg-blue-100 text-blue-600">
                       <stat.icon className="w-4 h-4" />
                     </div>
                   </div>
@@ -235,15 +222,35 @@ const ReportsPage: React.FC = () => {
                 <div className="space-y-2">
                   {reportsData.totalStats && (
                     <>
-                      <div className="flex items-center justify-between py-1">
+                      <div className="flex items-center justify-between py-1 border-b border-gray-100">
                         <span className="text-sm font-medium text-gray-700">Total Units</span>
                         <span className="text-sm font-semibold text-gray-900">
+                          {(reportsData.totalStats.totalVehicles || 0) + 
+                           (reportsData.totalStats.totalFishHouses || 0) + 
+                           (reportsData.totalStats.totalTrailers || 0)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-sm text-gray-600 pl-4">• Vehicles (TypeID 2)</span>
+                        <span className="text-sm text-gray-900">
                           {reportsData.totalStats.totalVehicles || 0}
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-1">
+                        <span className="text-sm text-gray-600 pl-4">• Fish Houses (TypeID 1)</span>
+                        <span className="text-sm text-gray-900">
+                          {reportsData.totalStats.totalFishHouses || 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 pb-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600 pl-4">• Trailers (TypeID 3)</span>
+                        <span className="text-sm text-gray-900">
+                          {reportsData.totalStats.totalTrailers || 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 mt-2">
                         <span className="text-sm font-medium text-gray-700">Total Value</span>
-                        <span className="text-sm font-semibold text-gray-900">
+                        <span className="text-sm font-semibold text-green-600">
                           {formatCurrency(reportsData.totalStats.totalValue || 0)}
                         </span>
                       </div>
@@ -254,9 +261,21 @@ const ReportsPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-1">
-                        <span className="text-sm font-medium text-gray-700">Unique Makes</span>
-                        <span className="text-sm font-semibold text-gray-900">
-                          {reportsData.totalStats.uniqueMakes || 0}
+                        <span className="text-sm font-medium text-gray-700">Price Range</span>
+                        <span className="text-sm text-gray-900">
+                          {formatCurrency(reportsData.totalStats.minPrice || 0)} - {formatCurrency(reportsData.totalStats.maxPrice || 0)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-sm font-medium text-gray-700">Average Year</span>
+                        <span className="text-sm text-gray-900">
+                          {Math.round(reportsData.totalStats.avgYear || 0)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-sm font-medium text-gray-700">Year Range</span>
+                        <span className="text-sm text-gray-900">
+                          {reportsData.totalStats.oldestYear || 'N/A'} - {reportsData.totalStats.newestYear || 'N/A'}
                         </span>
                       </div>
                     </>

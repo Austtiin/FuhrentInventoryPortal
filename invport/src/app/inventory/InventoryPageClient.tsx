@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useInventorySWR, VehicleData } from '@/hooks/useInventorySWR';
 import CompactInventoryCard from '@/components/inventory/CompactInventoryCard';
 import SkeletonCard from '@/components/ui/SkeletonCard';
@@ -9,6 +9,7 @@ import NotificationCard, { NotificationType } from '@/components/ui/Notification
 import { Layout } from '@/components/layout';
 import { Vehicle, VehicleStatus, TransmissionType, FuelType, VehicleCategory } from '@/types';
 import { ErrorBoundary } from '@/components/ui';
+import { useRouter } from 'next/navigation';
 
 // Function to convert VehicleData to Vehicle type
 const convertToVehicle = (vehicleData: VehicleData): Vehicle => ({
@@ -20,7 +21,7 @@ const convertToVehicle = (vehicleData: VehicleData): Vehicle => ({
   price: vehicleData.Price || 0,
   mileage: vehicleData.Odometer || 0,
   color: vehicleData.ExtColor || 'Unknown',
-  status: (vehicleData.Status?.toLowerCase() === 'available' ? 'available' : 'pending') as VehicleStatus,
+  status: (vehicleData.Status?.toLowerCase() || 'available') as VehicleStatus,
   images: [],
   vin: vehicleData.VIN || '',
   transmission: vehicleData.Transmission as TransmissionType || 'Automatic',
@@ -46,10 +47,14 @@ const convertToVehicle = (vehicleData: VehicleData): Vehicle => ({
 });
 
 export default function InventoryPageClient() {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'year' | 'price' | 'make' | 'status' | 'dateAdded'>('dateAdded');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'available' | 'pending' | 'sold'>('all');
   const [notification, setNotification] = useState<{
     type: NotificationType;
     title: string;
@@ -67,14 +72,47 @@ export default function InventoryPageClient() {
     error, 
     isLoading, 
     isValidating, 
+    mutate,
     refresh 
   } = useInventorySWR({ page: currentPage, limit: 10 });
+  
+  // Check for refresh flag on mount and when page becomes visible
+  useEffect(() => {
+    const checkRefreshFlag = async () => {
+      const shouldRefresh = sessionStorage.getItem('refreshInventory');
+      if (shouldRefresh === 'true') {
+        console.log('🔄 Forcing inventory list refresh after edit/delete...');
+        // Use mutate() to force revalidation and bypass cache
+        await mutate();
+        sessionStorage.removeItem('refreshInventory');
+      }
+    };
+
+    // Check on mount
+    checkRefreshFlag();
+
+    // Also check when page becomes visible (user returns from another tab/page)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkRefreshFlag();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [mutate]);
   
   // Convert VehicleData to Vehicle type
   const vehicles = vehicleDataList.map(convertToVehicle);
 
-  // Filter vehicles based on search query
+  // Filter vehicles based on search query and status
   const filteredVehicles = vehicles.filter(vehicle => {
+    // Status filter
+    if (filterStatus !== 'all' && vehicle.status !== filterStatus) {
+      return false;
+    }
+    
+    // Search filter
     if (!searchQuery.trim()) return true;
     
     const query = searchQuery.toLowerCase();
@@ -89,6 +127,31 @@ export default function InventoryPageClient() {
     );
   });
 
+  // Sort filtered vehicles
+  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
+    let comparison = 0;
+    
+    switch (sortBy) {
+      case 'year':
+        comparison = a.year - b.year;
+        break;
+      case 'price':
+        comparison = a.price - b.price;
+        break;
+      case 'make':
+        comparison = a.make.localeCompare(b.make);
+        break;
+      case 'status':
+        comparison = a.status.localeCompare(b.status);
+        break;
+      case 'dateAdded':
+        comparison = new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime();
+        break;
+    }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
   const handleViewVehicle = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setIsModalOpen(true);
@@ -100,8 +163,7 @@ export default function InventoryPageClient() {
   };
 
   const handleEditVehicle = (vehicle: Vehicle) => {
-    console.log('Edit vehicle:', vehicle);
-    // TODO: Open edit vehicle modal or navigate to edit page
+    router.push(`/inventory/edit/${vehicle.id}`);
   };
 
   const showNotification = (type: NotificationType, title: string, message: string) => {
@@ -135,13 +197,13 @@ export default function InventoryPageClient() {
       if (result.success) {
         // Refresh the cache to get updated data
         await refresh();
-        console.log('Vehicle marked as pending successfully');
+        showNotification('success', 'Status Updated', `${vehicle.year} ${vehicle.make} ${vehicle.model} marked as pending`);
       } else {
         throw new Error(result.error || 'Failed to update vehicle status');
       }
     } catch (error) {
       console.error('Error marking vehicle as pending:', error);
-      alert('Failed to mark vehicle as pending. Please try again.');
+      showNotification('error', 'Update Failed', 'Failed to mark vehicle as pending. Please try again.');
     }
   };
 
@@ -172,7 +234,7 @@ export default function InventoryPageClient() {
             <h1 className="text-3xl font-bold text-gray-900">Vehicle Inventory</h1>
             <div className="flex items-center gap-2 mt-2">
               <p className="text-gray-800">
-                {isLoading ? 'Loading...' : `${filteredVehicles.length} of ${total} vehicles`}
+                {isLoading ? 'Loading...' : `${sortedVehicles.length} of ${total} vehicles`}
               </p>
               {isValidating && !isLoading && (
                 <div className="flex items-center gap-1">
@@ -192,16 +254,104 @@ export default function InventoryPageClient() {
         </div>
 
         {/* Search Bar */}
-        <div className="flex justify-center">
-          <div className="w-full max-w-md">
-            <input
-              type="text"
-              placeholder="Search by VIN, year, make, model, stock, or status..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
-            />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Search Input */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search Inventory
+              </label>
+              <input
+                type="text"
+                placeholder="Search by VIN, year, make, model, stock..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status Filter
+              </label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'available' | 'pending' | 'sold')}
+                className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
+              >
+                <option value="all">All Status</option>
+                <option value="available">Available</option>
+                <option value="pending">Pending</option>
+                <option value="sold">Sold</option>
+              </select>
+            </div>
+
+            {/* Sort By */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sort By
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'year' | 'price' | 'make' | 'status' | 'dateAdded')}
+                  className="flex-1 px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
+                >
+                  <option value="dateAdded">Date Added</option>
+                  <option value="year">Year</option>
+                  <option value="price">Price</option>
+                  <option value="make">Make</option>
+                  <option value="status">Status</option>
+                </select>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                  title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                >
+                  {sortOrder === 'asc' ? '↑' : '↓'}
+                </button>
+              </div>
+            </div>
           </div>
+
+          {/* Active Filters Display */}
+          {(searchQuery || filterStatus !== 'all') && (
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-gray-600">Active filters:</span>
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm">
+                  Search: &ldquo;{searchQuery}&rdquo;
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="hover:text-blue-900"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {filterStatus !== 'all' && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm">
+                  Status: {filterStatus}
+                  <button
+                    onClick={() => setFilterStatus('all')}
+                    className="hover:text-blue-900"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterStatus('all');
+                }}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -215,7 +365,7 @@ export default function InventoryPageClient() {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredVehicles.map((vehicle) => (
+                {sortedVehicles.map((vehicle) => (
                   <CompactInventoryCard
                     key={vehicle.id}
                     item={vehicle}
@@ -281,14 +431,17 @@ export default function InventoryPageClient() {
           )}
 
           {/* Empty state */}
-          {!isLoading && filteredVehicles.length === 0 && vehicles.length > 0 && (
+          {!isLoading && sortedVehicles.length === 0 && vehicles.length > 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No vehicles match your search criteria.</p>
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterStatus('all');
+                }}
                 className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
               >
-                Clear Search
+                Clear Filters
               </button>
             </div>
           )}

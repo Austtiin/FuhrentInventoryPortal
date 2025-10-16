@@ -27,10 +27,14 @@ export async function GET() {
     const response = {
       success: true,
       data: {
-        totalStats: totalStatsResult.success ? totalStatsResult.data : null,
+        totalStats: totalStatsResult.success && totalStatsResult.data && totalStatsResult.data.length > 0 
+          ? totalStatsResult.data[0] 
+          : null,
         categoryBreakdown: categoryBreakdownResult.success ? categoryBreakdownResult.data : [],
         statusBreakdown: statusBreakdownResult.success ? statusBreakdownResult.data : [],
-        priceStats: priceStatsResult.success ? priceStatsResult.data : null,
+        priceStats: priceStatsResult.success && priceStatsResult.data && priceStatsResult.data.length > 0
+          ? priceStatsResult.data[0]
+          : null,
         yearDistribution: yearDistributionResult.success ? yearDistributionResult.data : [],
         makeDistribution: makeDistributionResult.success ? makeDistributionResult.data : [],
         trendData: trendDataResult.success ? trendDataResult.data : []
@@ -59,12 +63,28 @@ export async function GET() {
 async function getTotalStats() {
   const query = `
     SELECT 
-      COUNT(*) as totalVehicles,
+      -- Total Inventory Value (sum of all prices)
       SUM(CASE WHEN Price IS NOT NULL THEN Price ELSE 0 END) as totalValue,
+      
+      -- Total Vehicles (TypeID = 2)
+      COUNT(CASE WHEN TypeID = 2 THEN 1 END) as totalVehicles,
+      
+      -- Total Fish Houses (TypeID = 1)
+      COUNT(CASE WHEN TypeID = 1 THEN 1 END) as totalFishHouses,
+      
+      -- Total Trailers (TypeID = 3)
+      COUNT(CASE WHEN TypeID = 3 THEN 1 END) as totalTrailers,
+      
+      -- Unique Makes
+      COUNT(DISTINCT Make) as uniqueMakes,
+      
+      -- Pending Sales (Status = 'Pending')
+      COUNT(CASE WHEN Status = 'Pending' THEN 1 END) as pendingSales,
+      
+      -- Additional useful stats
       AVG(CASE WHEN Price IS NOT NULL AND Price > 0 THEN Price ELSE NULL END) as avgPrice,
       MIN(CASE WHEN Price IS NOT NULL AND Price > 0 THEN Price ELSE NULL END) as minPrice,
       MAX(CASE WHEN Price IS NOT NULL THEN Price ELSE NULL END) as maxPrice,
-      COUNT(DISTINCT Make) as uniqueMakes,
       COUNT(DISTINCT Category) as uniqueCategories,
       AVG(CASE WHEN Year IS NOT NULL THEN Year ELSE NULL END) as avgYear,
       MIN(Year) as oldestYear,

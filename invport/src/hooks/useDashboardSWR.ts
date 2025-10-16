@@ -45,16 +45,16 @@ const fetchDashboardStats = async (): Promise<DashboardData> => {
   return data;
 };
 
-// Custom hook for dashboard data with SWR caching
+// Custom hook for dashboard data with SWR - NO CACHING
 export function useDashboardSWR() {
   const { data, error, isLoading, isValidating, mutate, refresh } = useSWR(
     'dashboard-stats',
     fetchDashboardStats,
     {
-      refreshInterval: 60000, // Refresh every 60 seconds for dashboard
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      dedupingInterval: 5000, // 5 seconds deduplication
+      refreshInterval: 0, // Disable auto-refresh
+      revalidateOnFocus: false, // Disable revalidation on focus
+      revalidateOnReconnect: false, // Disable revalidation on reconnect
+      dedupingInterval: 0, // No deduplication - always fetch fresh
       errorRetryCount: 3,
       errorRetryInterval: 2000
     }

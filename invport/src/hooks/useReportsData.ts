@@ -4,12 +4,15 @@ import { useState, useEffect, useCallback } from 'react';
 
 export interface ReportsData {
   totalStats: {
-    totalVehicles: number;
     totalValue: number;
+    totalVehicles: number;
+    totalFishHouses: number;
+    totalTrailers: number;
+    uniqueMakes: number;
+    pendingSales: number;
     avgPrice: number;
     minPrice: number;
     maxPrice: number;
-    uniqueMakes: number;
     uniqueCategories: number;
     avgYear: number;
     oldestYear: number;

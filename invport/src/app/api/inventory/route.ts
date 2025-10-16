@@ -1,6 +1,10 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { executeQuery } from '@/lib/database/connection';
 
+// Force dynamic rendering - disable all caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🔄 API: Starting inventory fetch...');
@@ -67,10 +71,11 @@ export async function GET(request: NextRequest) {
         hasPrev: page > 1
       });
       
-      // Add stale-while-revalidate caching headers (5 minutes)
-      response.headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
-      response.headers.set('CDN-Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
-      response.headers.set('Vercel-CDN-Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+      // DISABLE ALL CACHING - Force fresh data on every request
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      response.headers.set('Surrogate-Control', 'no-store');
       
       return response;
     } else {

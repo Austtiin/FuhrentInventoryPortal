@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getInventoryCount, getInventoryValue, getAvailableUnitsCount, getDatabaseStatus } from '@/lib/database/inventory';
 
+// Force dynamic rendering - disable all caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     console.log('🔄 API: Loading dashboard stats from Azure SQL Database...');
@@ -30,7 +34,16 @@ export async function GET() {
     };
 
     console.log('✅ API: Dashboard stats loaded successfully');
-    return NextResponse.json(response);
+    
+    const jsonResponse = NextResponse.json(response);
+    
+    // DISABLE ALL CACHING - Force fresh data on every request
+    jsonResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    jsonResponse.headers.set('Pragma', 'no-cache');
+    jsonResponse.headers.set('Expires', '0');
+    jsonResponse.headers.set('Surrogate-Control', 'no-store');
+    
+    return jsonResponse;
 
   } catch (error) {
     console.error('❌ API: Failed to load dashboard stats:', error);

@@ -184,8 +184,8 @@ export async function executeQuery<T = Record<string, unknown>>(
     
     return {
       success: true,
-      data: result.recordset,
-      recordCount: result.recordset.length,
+      data: result.recordset || [],
+      recordCount: result.recordset ? result.recordset.length : result.rowsAffected[0] || 0,
     };
   } catch (error) {
     console.error('❌ Query execution failed:', error);

@@ -87,8 +87,9 @@ const CompactInventoryCard: React.FC<CompactInventoryCardProps> = ({
 }) => {
   const [isMarkingAsPending, setIsMarkingAsPending] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const isAvailable = item.status.toLowerCase() === 'available';
-  const statusConfig = getStatusConfig(item.status);
+  const [currentStatus, setCurrentStatus] = useState(item.status);
+  const isAvailable = currentStatus.toLowerCase() === 'available';
+  const statusConfig = getStatusConfig(currentStatus);
 
   const handleMarkAsPendingClick = () => {
     setShowConfirmation(true);
@@ -101,6 +102,8 @@ const CompactInventoryCard: React.FC<CompactInventoryCardProps> = ({
       setIsMarkingAsPending(true);
       setShowConfirmation(false);
       await onMarkAsSold(item);
+      // Update local state to reflect the change immediately
+      setCurrentStatus('pending');
       onShowNotification?.('success', 'Unit Updated', `${item.year} ${item.make} ${item.model} has been marked as pending.`);
     } catch (error) {
       console.error('Failed to mark as pending:', error);
