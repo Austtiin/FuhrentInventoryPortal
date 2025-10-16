@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   CubeIcon, 
   ArrowTrendingUpIcon,
-  ChevronDownIcon,
-  PlusIcon
+  PlusIcon,
+  MagnifyingGlassIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline';
 
 interface QuickAction {
@@ -26,10 +27,22 @@ const quickActions: QuickAction[] = [
     primary: true
   },
   {
+    id: 'search-inventory',
+    label: 'Search Inventory',
+    icon: MagnifyingGlassIcon,
+    route: '/inventory/search'
+  },
+  {
     id: 'view-inventory',
-    label: 'View Inventory',
+    label: 'View All Inventory',
     icon: CubeIcon,
     route: '/inventory'
+  },
+  {
+    id: 'export-data',
+    label: 'Export Data',
+    icon: DocumentArrowDownIcon,
+    route: '/reports/export'
   },
   {
     id: 'generate-report',
@@ -41,7 +54,6 @@ const quickActions: QuickAction[] = [
 
 export const QuickActions: React.FC = () => {
   const router = useRouter();
-  const [showAll, setShowAll] = useState(false);
   
   const primaryAction = quickActions.find(action => action.primary);
   const secondaryActions = quickActions.filter(action => !action.primary);
@@ -60,57 +72,43 @@ export const QuickActions: React.FC = () => {
         {primaryAction && (
           <button
             onClick={() => handleActionClick(primaryAction.route)}
-            className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 cursor-pointer"
+            className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 cursor-pointer"
           >
             <primaryAction.icon className="w-5 h-5" />
             <span className="font-medium">{primaryAction.label}</span>
           </button>
         )}
         
-        {/* Secondary Actions - Collapsible */}
-        {secondaryActions.length > 0 && (
-          <>
+        {/* Quick Access Actions - All visible on mobile now */}
+        <div className="grid grid-cols-2 gap-2">
+          {secondaryActions.map((action) => (
             <button
-              onClick={() => setShowAll(!showAll)}
-              className="w-full flex items-center justify-center gap-2 p-3 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition-colors cursor-pointer"
+              key={action.id}
+              onClick={() => handleActionClick(action.route)}
+              className="flex items-center gap-2 p-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
             >
-              <span className="font-medium">More Actions</span>
-              <ChevronDownIcon className={`w-4 h-4 transition-transform ${showAll ? 'rotate-180' : ''}`} />
+              <action.icon className="w-4 h-4" />
+              <span className="font-medium text-sm">{action.label}</span>
             </button>
-            
-            {showAll && (
-              <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                {secondaryActions.map((action) => (
-                  <button
-                    key={action.id}
-                    onClick={() => handleActionClick(action.route)}
-                    className="w-full flex items-center gap-3 p-3 bg-slate-50 text-slate-700 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
-                  >
-                    <action.icon className="w-4 h-4" />
-                    <span className="font-medium text-sm">{action.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+          ))}
+        </div>
       </div>
       
       {/* Desktop: Grid layout */}
-      <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+      <div className="hidden lg:grid lg:grid-cols-3 xl:grid-cols-5 gap-3">
         {quickActions.map((action) => (
           <button
             key={action.id}
             onClick={() => handleActionClick(action.route)}
             className={`
-              flex items-center gap-3 p-4 rounded-md transition-all duration-200 cursor-pointer
+              flex items-center gap-2 p-3 rounded-lg transition-all duration-200 cursor-pointer text-sm
               ${action.primary 
                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700' 
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }
             `}
           >
-            <action.icon className="w-5 h-5" />
+            <action.icon className="w-4 h-4" />
             <span className="font-medium">{action.label}</span>
           </button>
         ))}

@@ -27,9 +27,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <Header onMenuClick={toggleSidebar} />
-      <div className="flex flex-1">
+      <div className="flex flex-1 relative">
         <Sidebar 
           isOpen={sidebarOpen} 
           onClose={closeSidebar}
@@ -45,9 +45,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {children}
             </div>
           </div>
+          <Footer />
         </main>
       </div>
-      <Footer />
     </div>
   );
 };

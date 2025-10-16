@@ -6,6 +6,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 interface SystemStatusProps {
   status: 'online' | 'offline' | 'error';
   message?: string;
+  lastChecked?: Date;
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }
@@ -13,6 +14,7 @@ interface SystemStatusProps {
 export const SystemStatus: React.FC<SystemStatusProps> = ({
   status,
   message,
+  lastChecked,
   onRefresh,
   isRefreshing = false
 }) => {
@@ -62,6 +64,11 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({
           <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-md border-l-2 border-slate-200">
             <p className="font-medium text-slate-600 mb-1">Details:</p>
             <p>{message}</p>
+            {lastChecked && (
+              <p className="mt-2 text-slate-400">
+                Last checked: {lastChecked.toLocaleTimeString()}
+              </p>
+            )}
           </div>
         )}
       </div>

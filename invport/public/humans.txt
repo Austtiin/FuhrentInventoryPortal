@@ -1,0 +1,20 @@
+# This is a private business application
+# Automated access is not permitted
+# Please respect our robots.txt directives
+
+/* TEAM */
+Developer: Austin Stephens
+Contact: Austin@Fuhrent.com
+Location: Private Internal System
+
+/* THANKS */
+This application is for authorized personnel only.
+Crawling, scraping, or automated access is prohibited.
+
+/* SITE */
+Last update: 2025/10/15
+Language: English
+Doctype: HTML5
+Standards: W3C
+Components: Next.js, React, TypeScript
+Software: VS Code

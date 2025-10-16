@@ -1,0 +1,329 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useInventorySWR, VehicleData } from '@/hooks/useInventorySWR';
+import CompactInventoryCard from '@/components/inventory/CompactInventoryCard';
+import SkeletonCard from '@/components/ui/SkeletonCard';
+import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
+import NotificationCard, { NotificationType } from '@/components/ui/NotificationCard';
+import { Layout } from '@/components/layout';
+import { Vehicle, VehicleStatus, TransmissionType, FuelType, VehicleCategory } from '@/types';
+
+// Function to convert VehicleData to Vehicle type
+const convertToVehicle = (vehicleData: VehicleData): Vehicle => ({
+  id: vehicleData.UnitID.toString(),
+  name: `${vehicleData.Year} ${vehicleData.Make} ${vehicleData.Model}`,
+  model: vehicleData.Model,
+  year: vehicleData.Year,
+  make: vehicleData.Make,
+  price: vehicleData.Price || 0,
+  mileage: vehicleData.Odometer || 0,
+  color: vehicleData.ExtColor || 'Unknown',
+  status: (vehicleData.Status?.toLowerCase() === 'available' ? 'available' : 'pending') as VehicleStatus,
+  images: [],
+  vin: vehicleData.VIN || '',
+  transmission: vehicleData.Transmission as TransmissionType || 'Automatic',
+  fuelType: 'Gasoline' as FuelType,
+  category: (vehicleData.Category || 'Sedan') as VehicleCategory,
+  description: vehicleData.Description || `${vehicleData.Year} ${vehicleData.Make} ${vehicleData.Model}`,
+  location: vehicleData.Location || '',
+  dealer: 'Fuhrent Motors',
+  dateAdded: vehicleData.CreatedAt || vehicleData.DateInStock || new Date().toISOString(),
+  lastUpdated: vehicleData.UpdatedAt || new Date().toISOString(),
+  stock: vehicleData.StockNo,
+  // Add additional fields for extended information
+  condition: vehicleData.Condition,
+  typeId: vehicleData.TypeID,
+  widthCategory: vehicleData.WidthCategory,
+  sizeCategory: vehicleData.SizeCategory,
+  bodyStyle: vehicleData.BodyStyle,
+  engine: vehicleData.Engine,
+  drivetrain: vehicleData.Drivetrain,
+  intColor: vehicleData.IntColor,
+  extColor: vehicleData.ExtColor,
+  daysInStock: vehicleData.DaysInStock
+});
+
+export default function InventoryPageClient() {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [notification, setNotification] = useState<{
+    type: NotificationType;
+    title: string;
+    message: string;
+    isVisible: boolean;
+  } | null>(null);
+  
+  const { 
+    vehicles: vehicleDataList, 
+    total, 
+    page,
+    totalPages,
+    hasNext,
+    hasPrev,
+    error, 
+    isLoading, 
+    isValidating, 
+    refresh 
+  } = useInventorySWR({ page: currentPage, limit: 10 });
+  
+  // Convert VehicleData to Vehicle type
+  const vehicles = vehicleDataList.map(convertToVehicle);
+
+  // Filter vehicles based on search query
+  const filteredVehicles = vehicles.filter(vehicle => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      vehicle.vin?.toLowerCase().includes(query) ||
+      vehicle.year.toString().includes(query) ||
+      vehicle.make.toLowerCase().includes(query) ||
+      vehicle.model.toLowerCase().includes(query) ||
+      vehicle.stock?.toLowerCase().includes(query) ||
+      vehicle.status.toLowerCase().includes(query) ||
+      vehicle.price.toString().includes(query)
+    );
+  });
+
+  const handleViewVehicle = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedVehicle(null);
+  };
+
+  const handleEditVehicle = (vehicle: Vehicle) => {
+    console.log('Edit vehicle:', vehicle);
+    // TODO: Open edit vehicle modal or navigate to edit page
+  };
+
+  const showNotification = (type: NotificationType, title: string, message: string) => {
+    setNotification({
+      type,
+      title,
+      message,
+      isVisible: true
+    });
+  };
+
+  const hideNotification = () => {
+    setNotification(prev => prev ? { ...prev, isVisible: false } : null);
+  };
+
+  const handleMarkAsSold = async (vehicle: Vehicle) => {
+    try {
+      const response = await fetch(`/api/vehicles/${vehicle.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update vehicle status');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh the cache to get updated data
+        await refresh();
+        console.log('Vehicle marked as pending successfully');
+      } else {
+        throw new Error(result.error || 'Failed to update vehicle status');
+      }
+    } catch (error) {
+      console.error('Error marking vehicle as pending:', error);
+      alert('Failed to mark vehicle as pending. Please try again.');
+    }
+  };
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h2 className="text-red-800 font-semibold">Error Loading Inventory</h2>
+          <p className="text-red-600 text-sm mt-1">{error.message}</p>
+          <button 
+            onClick={() => refresh()}
+            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Vehicle Inventory</h1>
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-gray-800">
+                {isLoading ? 'Loading...' : `${filteredVehicles.length} of ${total} vehicles`}
+              </p>
+              {isValidating && !isLoading && (
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs text-blue-600">Refreshing</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <button 
+            onClick={() => refresh()}
+            disabled={isLoading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-md transition-colors cursor-pointer disabled:cursor-not-allowed"
+          >
+            Refresh
+          </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="flex justify-center">
+          <div className="w-full max-w-md">
+            <input
+              type="text"
+              placeholder="Search by VIN, year, make, model, stock, or status..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Content */}
+        <div>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredVehicles.map((vehicle) => (
+                  <CompactInventoryCard
+                    key={vehicle.id}
+                    item={vehicle}
+                    onView={() => handleViewVehicle(vehicle)}
+                    onEdit={() => handleEditVehicle(vehicle)}
+                    onMarkAsSold={() => handleMarkAsSold(vehicle)}
+                    onShowNotification={showNotification}
+                  />
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg">
+                  <div className="flex items-center text-sm text-gray-800">
+                    <span>
+                      Showing page {page} of {totalPages} ({total} total vehicles)
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={!hasPrev || isLoading}
+                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    
+                    {/* Page numbers */}
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                        if (pageNum > totalPages) return null;
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            disabled={isLoading}
+                            className={`px-3 py-2 text-sm font-medium rounded-md cursor-pointer ${
+                              pageNum === currentPage
+                                ? 'bg-blue-600 text-white border border-blue-600'
+                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-100'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={!hasNext || isLoading}
+                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Empty state */}
+          {!isLoading && filteredVehicles.length === 0 && vehicles.length > 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No vehicles match your search criteria.</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+              >
+                Clear Search
+              </button>
+            </div>
+          )}
+
+          {!isLoading && vehicles.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No vehicles found</p>
+              <button 
+                onClick={() => refresh()}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Refresh Inventory
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Vehicle Details Modal */}
+      {selectedVehicle && (
+        <VehicleDetailsModal
+          vehicle={selectedVehicle}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+        />
+      )}
+      
+      {/* Notification Component */}
+      {notification && (
+        <NotificationCard
+          type={notification.type}
+          title={notification.title}
+          message={notification.message}
+          isVisible={notification.isVisible}
+          onClose={hideNotification}
+        />
+      )}
+    </Layout>
+  );
+}

@@ -11,14 +11,7 @@ export interface DashboardStats {
 export interface SystemStatus {
   database: 'online' | 'offline' | 'error';
   message?: string;
-}
-
-interface DashboardResponse {
-  totalInventory: number;
-  totalValue: string;
-  availableUnits: number;
-  systemStatus: SystemStatus;
-  error?: string;
+  lastChecked?: Date;
 }
 
 export function useDashboard() {
@@ -34,31 +27,82 @@ export function useDashboard() {
       setIsLoading(true);
       setError(null);
 
-      // For static export, use mock data directly
-      // TODO: Replace with actual API call when using Azure Functions
-      const mockData: DashboardResponse = {
-        totalInventory: 156,
-        totalValue: '$2.8M',
-        availableUnits: 142,
-        systemStatus: {
-          database: 'online',
-          message: 'Using mock data for static export'
+      console.log('🔄 Loading dashboard data from API...');
+
+      // Call the API endpoint for dashboard stats
+      const response = await fetch('/api/dashboard/stats');
+      
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Format total value as currency
+        const totalValue = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format(result.data.totalValue);
+
+        // Set stats from API response
+        setStats({
+          totalInventory: result.data.totalInventory,
+          totalValue,
+          availableUnits: result.data.availableUnits
+        });
+
+        // Update system status based on database connection
+        const dbStatus = result.data.databaseStatus;
+        let systemStatus: SystemStatus;
+        
+        if (dbStatus.status === 'Connected') {
+          systemStatus = {
+            database: 'online',
+            message: dbStatus.message,
+            lastChecked: new Date(dbStatus.lastChecked)
+          };
+        } else if (dbStatus.status === 'Error') {
+          systemStatus = {
+            database: 'error',
+            message: dbStatus.message,
+            lastChecked: new Date(dbStatus.lastChecked)
+          };
+        } else {
+          systemStatus = {
+            database: 'offline',
+            message: dbStatus.message,
+            lastChecked: new Date(dbStatus.lastChecked)
+          };
         }
-      };
 
-      setStats({
-        totalInventory: mockData.totalInventory,
-        totalValue: mockData.totalValue,
-        availableUnits: mockData.availableUnits
-      });
+        setSystemStatus(systemStatus);
+        console.log('✅ Dashboard data loaded successfully from API');
 
-      setSystemStatus(mockData.systemStatus);
+        // Log any individual errors
+        if (result.errors) {
+          Object.entries(result.errors).forEach(([key, error]) => {
+            if (error) {
+              console.warn(`⚠️ ${key} error:`, error);
+            }
+          });
+        }
+
+      } else {
+        throw new Error(result.error || 'API returned unsuccessful response');
+      }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      console.error('❌ Failed to load dashboard data:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
+      setError(errorMessage);
+      
       setSystemStatus({
         database: 'error',
-        message: err instanceof Error ? err.message : 'Unknown error'
+        message: errorMessage,
+        lastChecked: new Date()
       });
       
       // Use fallback data on error

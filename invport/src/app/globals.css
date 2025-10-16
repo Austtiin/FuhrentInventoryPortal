@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Custom breakpoints for mobile-first design */
+@theme {
+  --breakpoint-xs: 480px;
+}
+
 :root {
   --background: #f8fafc;
   --foreground: #1e293b;

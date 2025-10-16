@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
         fixed top-20 left-0 h-[calc(100vh-5rem)] bg-gradient-to-b from-slate-900 to-blue-900 border-r border-blue-800/30
         transform transition-all duration-300 z-40 flex flex-col shadow-xl
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:top-0 lg:h-[calc(100vh-5rem)]
+        lg:translate-x-0 lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)]
         ${isCollapsed ? 'lg:w-16' : 'lg:w-64'}
         w-64
       `}>
@@ -101,7 +101,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
         <nav className="flex-1 py-2 overflow-y-auto scrollbar-thin">
           <ul className="list-none m-0 p-0 space-y-1">
             {navigationItems.map((item) => {
-              const isActive = pathname === item.href;
+              // More precise active state logic to handle overlapping routes
+              let isActive = false;
+              
+              if (item.href === pathname) {
+                // Exact match
+                isActive = true;
+              } else if (item.href === '/inventory/add' && pathname === '/inventory/add') {
+                // Specific case for Add Item
+                isActive = true;
+              } else if (item.href === '/inventory' && pathname.startsWith('/inventory') && pathname !== '/inventory/add') {
+                // Inventory but not Add Item
+                isActive = true;
+              } else if (item.href === '/reports' && pathname.startsWith('/reports')) {
+                // Reports and sub-routes
+                isActive = true;
+              } else if (item.href === '/' && pathname === '/') {
+                // Dashboard only
+                isActive = true;
+              }
+              
               return (
                 <li key={item.name}>
                   <Link

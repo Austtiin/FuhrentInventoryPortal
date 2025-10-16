@@ -10,7 +10,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   return (
-    <header className="bg-gradient-to-r from-slate-900 to-blue-900 backdrop-blur-lg border-b border-blue-800/30 shadow-lg sticky top-0 z-50 h-20">
+    <header className="bg-brand-black backdrop-blur-lg border-b border-brand-blue/30 shadow-lg sticky top-0 z-50 h-20">
       <div className="flex items-center justify-between h-full px-6 max-w-full">
         <div className="flex items-center gap-4">
           <button 
@@ -21,13 +21,13 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <Bars3Icon className="w-6 h-6 text-white" />
           </button>
           <div className="flex items-center">
-            <div className="flex-shrink-0 p-2">
+            <div className="flex-shrink-0">
               <Image
                 src="/logo/FELogo.png"
                 alt="Fuhr Enterprise logo"
                 width={200}
                 height={60}
-                className="rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="hover:opacity-90 transition-opacity duration-200"
                 priority
               />
             </div>

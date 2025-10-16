@@ -1,0 +1,11 @@
+# This is a private internal application
+# Automated scanning, crawling, or indexing is prohibited
+# Access is restricted to authorized personnel only
+
+Contact: Austin@Fuhrent.com
+Expires: Never
+Preferred-Languages: en
+Canonical: https://dealer.fuhrent.com/security.txt
+
+# Notice: This application contains proprietary business information
+# Unauthorized access, reproduction, or distribution is strictly prohibited

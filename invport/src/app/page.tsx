@@ -4,11 +4,11 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/layout';
 import { DashboardStats, QuickActions, SystemStatus } from '@/components/ui';
-import { useDashboard } from '@/hooks/useDashboard';
+import { useDashboardSWR } from '@/hooks/useDashboardSWR';
 
 export default function Dashboard() {
   const router = useRouter();
-  const { stats, systemStatus, isLoading, refreshData } = useDashboard();
+  const { stats, systemStatus, isLoading, refreshData } = useDashboardSWR();
 
   const handleStatClick = (statType: string) => {
     // Navigate to relevant page based on stat clicked
@@ -29,26 +29,27 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
-        {/* Dashboard Stats */}
+      <div className="space-y-4">
+        {/* Dashboard Stats - More compact */}
         <DashboardStats 
           stats={stats}
           isLoading={isLoading}
           onStatClick={handleStatClick}
         />
 
-        {/* Main Content Grid - Mobile First Responsive */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Quick Actions - Takes full width on mobile, 2/3 on desktop */}
-          <div className="lg:col-span-2">
+        {/* Main Content Grid - Improved responsive layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Quick Actions - Takes more space on desktop */}
+          <div className="lg:col-span-3">
             <QuickActions />
           </div>
 
-          {/* System Status - Full width on mobile, 1/3 on desktop */}
-          <div className="space-y-4 sm:space-y-6">
+          {/* System Status - Smaller on desktop */}
+          <div className="lg:col-span-1">
             <SystemStatus
               status={systemStatus.database}
               message={systemStatus.message}
+              lastChecked={systemStatus.lastChecked}
               onRefresh={refreshData}
               isRefreshing={isLoading}
             />

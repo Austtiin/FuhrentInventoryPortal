@@ -9,6 +9,7 @@ export interface Vehicle {
   price: number;
   status: VehicleStatus;
   color: string;
+  stock?: string;
   fuelType: FuelType;
   transmission: TransmissionType;
   category: VehicleCategory;
@@ -18,6 +19,17 @@ export interface Vehicle {
   lastUpdated: string;
   location: string;
   dealer: string;
+  // Extended database fields
+  condition?: string;
+  typeId?: number;
+  widthCategory?: string;
+  sizeCategory?: string;
+  bodyStyle?: string;
+  engine?: string;
+  drivetrain?: string;
+  intColor?: string;
+  extColor?: string;
+  daysInStock?: number;
 }
 
 export type VehicleStatus = 'available' | 'sold' | 'pending' | 'reserved' | 'maintenance';

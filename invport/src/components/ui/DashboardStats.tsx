@@ -28,8 +28,8 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   const statsConfig = [
     {
       id: 'total-inventory',
-      title: 'Total Inventory',
-      value: stats?.totalInventory || 0,
+      title: 'Total Items',
+      value: isLoading ? '-' : (stats?.totalInventory?.toString() || '-'),
       icon: CubeIcon,
       iconColor: 'bg-blue-500',
       route: '/inventory'
@@ -37,15 +37,15 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
     {
       id: 'total-value',
       title: 'Total Value',
-      value: stats?.totalValue || '$0',
+      value: isLoading ? '-' : (stats?.totalValue || '-'),
       icon: CurrencyDollarIcon,
       iconColor: 'bg-green-500',
       route: '/reports'
     },
     {
       id: 'available-units',
-      title: 'Available Units',
-      value: stats?.availableUnits || 0,
+      title: 'Available Items',
+      value: isLoading ? '-' : (stats?.availableUnits?.toString() || '-'),
       icon: ChartBarIcon,
       iconColor: 'bg-indigo-500',
       route: '/inventory?filter=available'
@@ -53,7 +53,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
       {statsConfig.map((stat) => (
         <StatCard
           key={stat.id}
