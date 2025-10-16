@@ -40,21 +40,22 @@ export const StatCard: React.FC<StatCardProps> = ({
         )}
       </div>
       <div>
-        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-0.5">
-          {isLoading ? (
-            <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
-          ) : (
-            value
-          )}
-        </h3>
-        <p className="text-slate-600 text-xs font-medium">
-          {isLoading ? (
-            <div className="h-3 bg-gray-200 rounded animate-pulse w-20"></div>
-          ) : (
-            title
-          )}
-        </p>
+        {isLoading ? (
+          <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mb-0.5"></div>
+        ) : (
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-0.5">
+            {value}
+          </h3>
+        )}
+        {isLoading ? (
+          <div className="h-3 bg-gray-200 rounded animate-pulse w-20"></div>
+        ) : (
+          <p className="text-slate-600 text-xs font-medium">
+            {title}
+          </p>
+        )}
       </div>
     </div>
   );
 };
+

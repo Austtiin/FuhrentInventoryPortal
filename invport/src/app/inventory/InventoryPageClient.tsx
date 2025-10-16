@@ -8,6 +8,7 @@ import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
 import NotificationCard, { NotificationType } from '@/components/ui/NotificationCard';
 import { Layout } from '@/components/layout';
 import { Vehicle, VehicleStatus, TransmissionType, FuelType, VehicleCategory } from '@/types';
+import { ErrorBoundary } from '@/components/ui';
 
 // Function to convert VehicleData to Vehicle type
 const convertToVehicle = (vehicleData: VehicleData): Vehicle => ({
@@ -163,7 +164,8 @@ export default function InventoryPageClient() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <ErrorBoundary>
+        <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -324,6 +326,8 @@ export default function InventoryPageClient() {
           onClose={hideNotification}
         />
       )}
+      </ErrorBoundary>
     </Layout>
   );
 }
+

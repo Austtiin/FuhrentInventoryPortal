@@ -4,9 +4,7 @@ import React, { useState } from 'react';
 import { Layout } from '@/components/layout';
 import { useReportsData } from '@/hooks/useReportsData';
 import { 
-  ChartBarIcon, 
   DocumentArrowDownIcon, 
-  CalendarIcon,
   CurrencyDollarIcon,
   CubeIcon,
   ArrowTrendingUpIcon,
@@ -138,8 +136,8 @@ const ReportsPage: React.FC = () => {
               disabled={isLoading}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-md transition-colors cursor-pointer disabled:cursor-not-allowed"
             >
-              <ArrowTrendingUpIcon className="w-4 h-4" />
-              {isLoading ? 'Loading...' : 'Refresh Data'}
+              <ArrowTrendingUpIcon className="w-5 h-5" />
+              <span className="text-white">{isLoading ? 'Loading...' : 'Refresh Data'}</span>
             </button>
             <select 
               value={dateRange} 
@@ -184,48 +182,41 @@ const ReportsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Stats Overview */}
+        {/* Stats Overview - Made Smaller */}
         {!isLoading && reportsData && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
               {statsData.map((stat, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`p-2 rounded-lg ${
+                <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`p-1.5 rounded-lg ${
                       stat.changeType === 'positive' ? 'bg-green-100 text-green-600' :
                       stat.changeType === 'negative' ? 'bg-red-100 text-red-600' :
                       'bg-gray-100 text-gray-600'
                     }`}>
-                      <stat.icon className="w-6 h-6" />
+                      <stat.icon className="w-4 h-4" />
                     </div>
-                    <span className={`text-sm font-medium ${
-                      stat.changeType === 'positive' ? 'text-green-600' :
-                      stat.changeType === 'negative' ? 'text-red-600' :
-                      'text-gray-600'
-                    }`}>
-                      {stat.change}
-                    </span>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                    <p className="text-sm text-gray-600">{stat.title}</p>
+                  <div className="space-y-0.5">
+                    <p className="text-xl font-bold text-gray-900">{stat.value}</p>
+                    <p className="text-xs text-gray-600">{stat.title}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Analytics Sections */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Analytics Sections - More Compact */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Category Breakdown */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Breakdown</h3>
-                <div className="space-y-3">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h3 className="text-base font-semibold text-gray-900 mb-3">Category Breakdown</h3>
+                <div className="space-y-2">
                   {reportsData.categoryBreakdown && reportsData.categoryBreakdown.length > 0 ? (
-                    reportsData.categoryBreakdown.slice(0, 6).map((category, index) => (
-                      <div key={index} className="flex items-center justify-between">
+                    reportsData.categoryBreakdown.slice(0, 5).map((category, index) => (
+                      <div key={index} className="flex items-center justify-between py-1">
                         <span className="text-sm font-medium text-gray-700">{category.category}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">{category.count} units</span>
+                          <span className="text-xs text-gray-600">{category.count} units</span>
                           <span className="text-sm font-semibold text-gray-900">
                             {formatCurrency(category.totalValue)}
                           </span>
@@ -238,71 +229,35 @@ const ReportsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Status Distribution */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Distribution</h3>
-                <div className="space-y-3">
-                  {reportsData.statusBreakdown && reportsData.statusBreakdown.length > 0 ? (
-                    reportsData.statusBreakdown.map((status, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700 capitalize">{status.status}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">{status.count} units</span>
-                          <span className="text-sm font-semibold text-blue-600">
-                            {status.percentage.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No status data available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Top Makes */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Vehicle Makes</h3>
-                <div className="space-y-3">
-                  {reportsData.makeDistribution && reportsData.makeDistribution.length > 0 ? (
-                    reportsData.makeDistribution.slice(0, 8).map((make, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">{make.make}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">{make.count} units</span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            Avg: {formatCurrency(make.avgPrice || 0)}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No make data available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Price Range Distribution */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Price Range Distribution</h3>
-                <div className="space-y-3">
-                  {reportsData.priceStats && (
+              {/* Inventory Summary */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h3 className="text-base font-semibold text-gray-900 mb-3">Inventory Summary</h3>
+                <div className="space-y-2">
+                  {reportsData.totalStats && (
                     <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Under $10,000</span>
-                        <span className="text-sm text-gray-600">{reportsData.priceStats.under10k} units</span>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-sm font-medium text-gray-700">Total Units</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {reportsData.totalStats.totalVehicles || 0}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">$10,000 - $25,000</span>
-                        <span className="text-sm text-gray-600">{reportsData.priceStats.range10k25k} units</span>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-sm font-medium text-gray-700">Total Value</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatCurrency(reportsData.totalStats.totalValue || 0)}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">$25,000 - $50,000</span>
-                        <span className="text-sm text-gray-600">{reportsData.priceStats.range25k50k} units</span>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-sm font-medium text-gray-700">Average Price</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatCurrency(reportsData.totalStats.avgPrice || 0)}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Over $50,000</span>
-                        <span className="text-sm text-gray-600">{reportsData.priceStats.over50k} units</span>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-sm font-medium text-gray-700">Unique Makes</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {reportsData.totalStats.uniqueMakes || 0}
+                        </span>
                       </div>
                     </>
                   )}
@@ -312,7 +267,7 @@ const ReportsPage: React.FC = () => {
           </>
         )}
 
-        {/* Available Reports Section */}
+        {/* Available Reports Section - Only Category Breakdown and Inventory Summary */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900">Available Reports</h2>
@@ -321,7 +276,7 @@ const ReportsPage: React.FC = () => {
 
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {reportTypes.map((report, index) => (
+              {reportTypes.slice(0, 2).map((report, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -344,41 +299,6 @@ const ReportsPage: React.FC = () => {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Quick Actions</h2>
-          </div>
-
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer">
-                <CalendarIcon className="w-5 h-5 text-blue-600" />
-                <div className="text-left">
-                  <div className="font-medium text-gray-900">Schedule Report</div>
-                  <div className="text-sm text-gray-600">Set up automated reports</div>
-                </div>
-              </button>
-
-              <button className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer">
-                <ChartBarIcon className="w-5 h-5 text-blue-600" />
-                <div className="text-left">
-                  <div className="font-medium text-gray-900">View Analytics</div>
-                  <div className="text-sm text-gray-600">Interactive data visualization</div>
-                </div>
-              </button>
-
-              <button className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer">
-                <DocumentArrowDownIcon className="w-5 h-5 text-blue-600" />
-                <div className="text-left">
-                  <div className="font-medium text-gray-900">Export Data</div>
-                  <div className="text-sm text-gray-600">Bulk data export options</div>
-                </div>
-              </button>
             </div>
           </div>
         </div>

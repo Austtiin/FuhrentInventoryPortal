@@ -18,7 +18,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             onClick={onMenuClick}
             aria-label="Toggle menu"
           >
-            <Bars3Icon className="w-6 h-6 text-white" />
+            <Bars3Icon className="w-6 h-6 text-black" />
           </button>
           <div className="flex items-center">
             <div className="flex-shrink-0">
