@@ -16,25 +16,38 @@ async function getMssql() {
 }
 
 // Azure SQL Database connection configuration following Azure best practices
-const getConfig = (): import('mssql').config => ({
-  server: process.env.DB_HOST || 'flattsqlserver.database.windows.net',
-  port: parseInt(process.env.DB_PORT || '1433'),
-  database: process.env.DB_NAME || 'flattinv',
-  user: process.env.DB_USER || 'FuhrentAdmin',
-  password: process.env.DB_PASSWORD || 'Pasty-Armed-Unbent6',
-  options: {
-    encrypt: true, // Required for Azure SQL Database
-    trustServerCertificate: false, // Security best practice
-    enableArithAbort: true,
-    requestTimeout: 30000,
-    connectTimeout: 30000,
-  },
-  pool: {
-    max: 10, // Maximum number of connections in pool
-    min: 0,  // Minimum number of connections in pool
-    idleTimeoutMillis: 30000, // Close connections after 30 seconds of inactivity
-  },
-});
+const getConfig = (): import('mssql').config | string => {
+  // Prefer connection string if available (best for production with Azure secrets)
+  // In production, use: secrets.AZURE_ADMIN_SQL_CONN_STRING
+  const connectionString = process.env.AZURE_SQL_CONNECTION_STRING || process.env.AZURE_ADMIN_SQL_CONN_STRING;
+  
+  if (connectionString) {
+    console.log('🔐 Using connection string for database configuration');
+    return connectionString;
+  }
+  
+  // Fallback to individual environment variables for local development
+  console.log('🔧 Using individual environment variables for database configuration');
+  return {
+    server: process.env.DB_HOST || 'flatt-db-server.database.windows.net',
+    port: parseInt(process.env.DB_PORT || '1433'),
+    database: process.env.DB_NAME || 'flatt-inv-sql',
+    user: process.env.DB_USER || 'admin_panel',
+    password: process.env.DB_PASSWORD || 'Jumping11!',
+    options: {
+      encrypt: true, // Required for Azure SQL Database
+      trustServerCertificate: false, // Security best practice
+      enableArithAbort: true,
+      requestTimeout: 30000,
+      connectTimeout: 30000,
+    },
+    pool: {
+      max: 10, // Maximum number of connections in pool
+      min: 0,  // Minimum number of connections in pool
+      idleTimeoutMillis: 30000, // Close connections after 30 seconds of inactivity
+    },
+  };
+};
 
 // Global connection pool instance
 let pool: import('mssql').ConnectionPool | null = null;
@@ -67,7 +80,14 @@ export async function getConnection(): Promise<import('mssql').ConnectionPool> {
         }
 
         console.log(`🔄 Initializing Azure SQL Database connection (attempt ${attempt}/${maxRetries})...`);
-        pool = new mssql.ConnectionPool(getConfig());
+        
+        const config = getConfig();
+        // TypeScript requires explicit handling of union types for ConnectionPool constructor
+        if (typeof config === 'string') {
+          pool = new mssql.ConnectionPool(config);
+        } else {
+          pool = new mssql.ConnectionPool(config);
+        }
         
         // Add error handlers
         pool.on('error', (err) => {
