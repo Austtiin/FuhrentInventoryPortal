@@ -115,14 +115,18 @@ export function useSWR<T>(
         setError(error);
         setIsLoading(false);
         
-        // Retry logic
+        // Retry logic with exponential backoff
         if (retryCountRef.current < errorRetryCount) {
           retryCountRef.current++;
-          console.log(`🔄 SWR: Retrying... (${retryCountRef.current}/${errorRetryCount})`);
+          const backoffDelay = errorRetryInterval * Math.pow(2, retryCountRef.current - 1);
+          console.log(`🔄 SWR: Retrying... (${retryCountRef.current}/${errorRetryCount}) in ${backoffDelay}ms`);
           
           setTimeout(() => {
             fetchData(key, isBackground);
-          }, errorRetryInterval * retryCountRef.current);
+          }, backoffDelay);
+        } else {
+          // Max retries reached - stop trying
+          console.error(`⏸️ SWR: Max retries (${errorRetryCount}) reached for key "${key}". Stopping retry attempts.`);
         }
       }
       

@@ -11,6 +11,7 @@
     "validate-auth": "node -e \"const { validateAuthConfig } = require('./src/lib/auth/config.ts'); const result = validateAuthConfig(); console.log(result.isValid ? 'OAuth configuration is valid' : 'OAuth configuration errors:', result.errors);\""
   },
   "dependencies": {
+    "20": "^1.0.0",
     "@azure/storage-blob": "^12.28.0",
     "@heroicons/react": "^2.2.0",
     "@types/uuid": "^10.0.0",

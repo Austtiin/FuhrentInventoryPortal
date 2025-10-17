@@ -71,12 +71,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
     );
   };
 
-  // Auto-expand Inventory when on any inventory page
+  // Auto-expand parent items when on any of their sub-pages
   React.useEffect(() => {
-    if (pathname.startsWith('/inventory') && !expandedItems.includes('Inventory')) {
-      setExpandedItems(prev => [...prev, 'Inventory']);
+    // Auto-expand Inventory when on any inventory page
+    if (pathname.startsWith('/inventory')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Inventory')) {
+          return [...prev, 'Inventory'];
+        }
+        return prev;
+      });
     }
-  }, [pathname, expandedItems]);
+    
+    // Auto-expand Reports when on any reports page
+    if (pathname.startsWith('/reports')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Reports')) {
+          return [...prev, 'Reports'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname]); // Only depend on pathname, not expandedItems
 
   return (
     <>
@@ -136,12 +152,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
               let isSubItemActive = false;
               
               if (hasSubItems) {
-                // For items with sub-items, check if we're on any sub-item page
+                // For items with sub-items, check if we're on any sub-item page exactly
                 const subItemPaths = item.subItems?.map(sub => sub.href) || [];
                 isSubItemActive = subItemPaths.some(path => pathname === path);
                 
-                // Highlight parent if we're on a related sub-route (like edit pages)
-                if (!isSubItemActive && pathname.startsWith(item.href + '/')) {
+                // Parent should ONLY be highlighted if on edit pages or other non-menu sub-routes
+                // NOT highlighted when on actual sub-item pages (Current Inventory, Add Item)
+                if (!isSubItemActive && pathname.startsWith(item.href + '/') && pathname !== item.href) {
+                  // On /inventory/edit/123 or similar non-menu pages
                   isActive = true;
                 }
               } else {
@@ -214,10 +232,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
                   {hasSubItems && !isCollapsed && (
                     <div 
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        isExpanded ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                        isExpanded ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0'
                       }`}
                     >
-                      <ul className="mt-1 space-y-1 ml-3">
+                      <ul className="space-y-2 ml-2">
                         {item.subItems?.map((subItem) => {
                           const isSubActive = pathname === subItem.href;
                           
@@ -226,29 +244,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
                               <Link
                                 href={subItem.href}
                                 className={`
-                                  group relative flex items-center gap-3 px-4 py-2.5 mx-3 rounded-lg
-                                  transition-all duration-200 cursor-pointer border-2
+                                  group relative flex items-center gap-3 px-4 py-3 mx-3 rounded-lg
+                                  transition-all duration-200 cursor-pointer
                                   ${
                                     isSubActive
-                                      ? 'bg-white text-blue-700 shadow-xl border-white font-bold scale-105'
-                                      : 'text-blue-100 hover:bg-white/10 hover:text-white hover:translate-x-1 border-transparent'
+                                      ? 'bg-gradient-to-r from-white to-blue-50 text-blue-900 shadow-2xl font-bold scale-105 border-2 border-blue-500'
+                                      : 'text-blue-100 hover:bg-white/10 hover:text-white hover:translate-x-1 border-2 border-transparent'
                                   }
                                 `}
                                 onClick={onClose}
                               >
-                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isSubActive ? 'bg-blue-600 ring-2 ring-blue-300' : 'bg-blue-300'}`}></div>
-                                <subItem.icon className={`w-5 h-5 flex-shrink-0 ${isSubActive ? 'text-blue-600' : ''}`} />
-                                <span className={`text-sm tracking-wide ${isSubActive ? 'text-blue-900' : ''}`}>{subItem.name}</span>
+                                {/* Active indicator dot */}
+                                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all ${
+                                  isSubActive 
+                                    ? 'bg-blue-600 ring-4 ring-blue-300 shadow-lg shadow-blue-500/50' 
+                                    : 'bg-blue-400/50'
+                                }`}></div>
+                                
+                                {/* Icon */}
+                                <subItem.icon className={`w-5 h-5 flex-shrink-0 transition-all ${
+                                  isSubActive ? 'text-blue-700 scale-110' : 'text-blue-300'
+                                }`} />
+                                
+                                {/* Label */}
+                                <span className={`text-sm tracking-wide flex-1 ${
+                                  isSubActive ? 'text-blue-900 font-bold' : 'font-medium'
+                                }`}>
+                                  {subItem.name}
+                                </span>
+                                
+                                {/* Active pulse indicator */}
                                 {isSubActive && (
-                                  <div className="ml-auto">
+                                  <div className="ml-auto flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: '150ms' }}></div>
                                   </div>
                                 )}
                               </Link>
 
-                              {/* Animated white indicator for sub-item */}
+                              {/* Animated vertical indicator bar for active sub-item */}
                               {isSubActive && (
-                                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-600 rounded-r-full shadow-lg shadow-blue-500/50 animate-slideIn"></div>
+                                <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-blue-600 to-blue-500 rounded-r-full shadow-lg shadow-blue-600/50"></div>
                               )}
                             </li>
                           );

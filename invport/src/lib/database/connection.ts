@@ -43,8 +43,9 @@ const getConfig = (): import('mssql').config | string => {
     },
     pool: {
       max: 10, // Maximum number of connections in pool
-      min: 0,  // Minimum number of connections in pool
-      idleTimeoutMillis: 30000, // Close connections after 30 seconds of inactivity
+      min: 2,  // Minimum number of connections kept alive (warm pool)
+      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+      acquireTimeoutMillis: 15000, // Maximum time to wait for a connection from the pool
     },
   };
 };
@@ -52,8 +53,14 @@ const getConfig = (): import('mssql').config | string => {
 // Global connection pool instance
 let pool: import('mssql').ConnectionPool | null = null;
 
+// Connection failure tracking for circuit breaker pattern
+let consecutiveFailures = 0;
+let lastFailureTime = 0;
+const CIRCUIT_BREAKER_THRESHOLD = 5; // After 5 consecutive failures
+const CIRCUIT_BREAKER_TIMEOUT = 60000; // Wait 60 seconds before trying again
+
 /**
- * Get database connection pool with retry logic
+ * Get database connection pool with retry logic and circuit breaker
  * Implements connection pooling as per Azure best practices
  */
 export async function getConnection(): Promise<import('mssql').ConnectionPool> {
@@ -61,8 +68,21 @@ export async function getConnection(): Promise<import('mssql').ConnectionPool> {
     throw new Error('Database connections are only available on the server side');
   }
 
+  // Circuit breaker: If too many consecutive failures, pause attempts
+  if (consecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD) {
+    const timeSinceLastFailure = Date.now() - lastFailureTime;
+    if (timeSinceLastFailure < CIRCUIT_BREAKER_TIMEOUT) {
+      const waitTime = Math.ceil((CIRCUIT_BREAKER_TIMEOUT - timeSinceLastFailure) / 1000);
+      throw new Error(`⏸️ Database connection circuit breaker active. Too many consecutive failures (${consecutiveFailures}). Please wait ${waitTime} seconds before retrying.`);
+    } else {
+      // Reset after timeout period
+      console.log('🔄 Circuit breaker timeout expired, resetting failure count...');
+      consecutiveFailures = 0;
+    }
+  }
+
   const maxRetries = 3;
-  const retryDelay = 1000; // 1 second
+  const retryDelay = 2000; // 2 seconds
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -95,30 +115,36 @@ export async function getConnection(): Promise<import('mssql').ConnectionPool> {
           pool = null; // Reset pool on error
         });
 
-        // Connect with timeout
+        // Connect with timeout (reduced to 10 seconds)
         await Promise.race([
           pool.connect(),
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Connection timeout')), 15000)
+            setTimeout(() => reject(new Error('Connection timeout after 10 seconds')), 10000)
           )
         ]);
         
         console.log('✅ Connected to Azure SQL Database successfully');
+        // Reset failure count on successful connection
+        consecutiveFailures = 0;
       }
       
       return pool;
     } catch (error) {
       console.error(`❌ Connection attempt ${attempt}/${maxRetries} failed:`, error);
       pool = null; // Reset pool on connection failure
+      consecutiveFailures++;
+      lastFailureTime = Date.now();
       
       if (attempt === maxRetries) {
-        throw new Error(`Database connection failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Database connection failed after ${maxRetries} attempts: ${errorMsg}. Total consecutive failures: ${consecutiveFailures}`);
       }
       
-      // Wait before retrying
+      // Wait before retrying with exponential backoff
       if (attempt < maxRetries) {
-        console.log(`⏳ Waiting ${retryDelay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        const backoffDelay = retryDelay * attempt;
+        console.log(`⏳ Waiting ${backoffDelay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
       }
     }
   }
@@ -307,4 +333,87 @@ export function getPoolStatus(): {
     connecting: pool.connecting,
     healthy: pool.healthy,
   };
+}
+
+/**
+ * Get detailed connection pool statistics
+ * Useful for monitoring and debugging connection pooling
+ */
+export function getPoolStats(): {
+  exists: boolean;
+  isConnected: boolean;
+  isConnecting: boolean;
+  isHealthy: boolean;
+  consecutiveFailures: number;
+  circuitBreakerActive: boolean;
+  secondsUntilReset?: number;
+} {
+  if (typeof window !== 'undefined') {
+    return {
+      exists: false,
+      isConnected: false,
+      isConnecting: false,
+      isHealthy: false,
+      consecutiveFailures: 0,
+      circuitBreakerActive: false,
+    };
+  }
+
+  const circuitBreakerActive = consecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD;
+  let secondsUntilReset: number | undefined;
+
+  if (circuitBreakerActive) {
+    const timeSinceLastFailure = Date.now() - lastFailureTime;
+    const timeRemaining = CIRCUIT_BREAKER_TIMEOUT - timeSinceLastFailure;
+    if (timeRemaining > 0) {
+      secondsUntilReset = Math.ceil(timeRemaining / 1000);
+    }
+  }
+
+  return {
+    exists: pool !== null,
+    isConnected: pool?.connected || false,
+    isConnecting: pool?.connecting || false,
+    isHealthy: pool?.healthy || false,
+    consecutiveFailures,
+    circuitBreakerActive,
+    secondsUntilReset,
+  };
+}
+
+/**
+ * Reset the circuit breaker manually
+ * Use this for administrative purposes or after resolving connectivity issues
+ */
+export function resetCircuitBreaker(): void {
+  if (typeof window !== 'undefined') {
+    return;
+  }
+
+  console.log('🔄 Manually resetting circuit breaker...');
+  consecutiveFailures = 0;
+  lastFailureTime = 0;
+  console.log('✅ Circuit breaker reset complete');
+}
+
+/**
+ * Log current pool statistics to console
+ * Useful for debugging and monitoring
+ */
+export function logPoolStats(): void {
+  if (typeof window !== 'undefined') {
+    console.warn('⚠️ Pool stats not available on client side');
+    return;
+  }
+
+  const stats = getPoolStats();
+  console.log('📊 Connection Pool Statistics:', {
+    'Pool Exists': stats.exists,
+    'Connected': stats.isConnected,
+    'Connecting': stats.isConnecting,
+    'Healthy': stats.isHealthy,
+    'Consecutive Failures': stats.consecutiveFailures,
+    'Circuit Breaker Active': stats.circuitBreakerActive,
+    'Seconds Until Reset': stats.secondsUntilReset || 'N/A',
+  });
 }
