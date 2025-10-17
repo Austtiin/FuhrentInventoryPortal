@@ -4,6 +4,10 @@ const { execSync } = require('child_process');
 
 const apiDir = path.join(__dirname, '..', 'src', 'app', 'api');
 const apiBackupDir = path.join(__dirname, '..', 'api-backup');
+const editDir = path.join(__dirname, '..', 'src', 'app', 'inventory', 'edit');
+const editBackupDir = path.join(__dirname, '..', 'edit-backup');
+const inventoryPageFile = path.join(__dirname, '..', 'src', 'app', 'inventory', 'page.tsx');
+const inventoryPageBackup = path.join(__dirname, '..', 'src', 'app', 'inventory', 'page.tsx.backup');
 const configFile = path.join(__dirname, '..', 'next.config.ts');
 const staticConfigFile = path.join(__dirname, '..', 'next.config.static.ts');
 const configBackupFile = path.join(__dirname, '..', 'next.config.original.ts');
@@ -31,6 +35,26 @@ try {
     console.log('✅ API routes backed up');
   }
 
+  // Backup edit route (dynamic route not compatible with static export)
+  if (fs.existsSync(editDir)) {
+    if (fs.existsSync(editBackupDir)) {
+      fs.rmSync(editBackupDir, { recursive: true, force: true });
+    }
+    fs.renameSync(editDir, editBackupDir);
+    console.log('✅ Edit routes backed up');
+  }
+
+  // Fix inventory page for static export (remove dynamic exports)
+  if (fs.existsSync(inventoryPageFile)) {
+    fs.copyFileSync(inventoryPageFile, inventoryPageBackup);
+    let content = fs.readFileSync(inventoryPageFile, 'utf8');
+    // Remove dynamic and revalidate exports
+    content = content.replace(/export const dynamic = ['"]force-dynamic['"];?\n?/g, '');
+    content = content.replace(/export const revalidate = 0;?\n?/g, '');
+    fs.writeFileSync(inventoryPageFile, content);
+    console.log('✅ Inventory page prepared for static export');
+  }
+
   // Run Next.js build
   console.log('🏗️  Building static export...');
   execSync('npx next build', { stdio: 'inherit' });
@@ -46,6 +70,22 @@ try {
     }
     fs.renameSync(apiBackupDir, apiDir);
     console.log('✅ API routes restored');
+  }
+
+  // Restore edit routes
+  if (fs.existsSync(editBackupDir)) {
+    if (fs.existsSync(editDir)) {
+      fs.rmSync(editDir, { recursive: true, force: true });
+    }
+    fs.renameSync(editBackupDir, editDir);
+    console.log('✅ Edit routes restored');
+  }
+
+  // Restore inventory page
+  if (fs.existsSync(inventoryPageBackup)) {
+    fs.copyFileSync(inventoryPageBackup, inventoryPageFile);
+    fs.unlinkSync(inventoryPageBackup);
+    console.log('✅ Inventory page restored');
   }
 
   // Restore original config

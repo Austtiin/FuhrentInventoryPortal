@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // Enable static export for Azure Static Web Apps
   output: 'export',
   trailingSlash: true,
+  // Output to 'out' directory for Azure Static Web Apps
   distDir: 'out',
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),

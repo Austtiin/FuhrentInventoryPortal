@@ -135,21 +135,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
               let isActive = false;
               let isSubItemActive = false;
               
-              if (item.href === pathname) {
-                isActive = true;
-              } else if (item.href === '/inventory' && pathname === '/inventory') {
-                isActive = true;
-              } else if (item.href === '/inventory' && pathname.startsWith('/inventory/')) {
-                // Parent is highlighted when on sub-routes but not the exact sub-item
+              if (hasSubItems) {
+                // For items with sub-items, check if we're on any sub-item page
                 const subItemPaths = item.subItems?.map(sub => sub.href) || [];
                 isSubItemActive = subItemPaths.some(path => pathname === path);
-                if (!isSubItemActive) {
-                  isActive = pathname.startsWith('/inventory/edit');
+                
+                // Highlight parent if we're on a related sub-route (like edit pages)
+                if (!isSubItemActive && pathname.startsWith(item.href + '/')) {
+                  isActive = true;
                 }
-              } else if (item.href === '/reports' && pathname.startsWith('/reports')) {
-                isActive = true;
-              } else if (item.href === '/' && pathname === '/') {
-                isActive = true;
+              } else {
+                // For simple items, exact match or startsWith for nested routes
+                if (item.href === '/') {
+                  isActive = pathname === '/';
+                } else {
+                  isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                }
               }
               
               return (
