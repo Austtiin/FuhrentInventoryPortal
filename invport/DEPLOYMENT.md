@@ -12,14 +12,27 @@ AZURE_SQL_CONNECTION_STRING=Server=tcp:flatt-db-server.database.windows.net,1433
 
 ### Production Deployment
 
-For production deployments to Azure, the application expects the connection string to be provided via Azure secrets management.
+For production deployments to Azure, the application expects the connection string to be provided via Azure environment variables.
 
-#### Azure App Service Configuration
+#### Azure Static Web Apps Configuration (RECOMMENDED)
+
+1. Navigate to your Azure Static Web App in the Azure Portal
+2. Go to **Configuration** > **Application settings**
+3. Add a new application setting:
+   - **Name**: `SQL_CONN_STRING`
+   - **Value**: Your production database connection string
+   
+Example:
+```
+Server=tcp:flatt-db-server.database.windows.net,1433;Initial Catalog=flatt-inv-sql;Persist Security Info=False;User ID=admin_panel;Password=YOUR_PASSWORD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+```
+
+#### Azure App Service Configuration (Alternative)
 
 1. Navigate to your Azure App Service in the Azure Portal
 2. Go to **Configuration** > **Application settings**
 3. Add a new application setting:
-   - **Name**: `AZURE_ADMIN_SQL_CONN_STRING`
+   - **Name**: `SQL_CONN_STRING` or `AZURE_ADMIN_SQL_CONN_STRING`
    - **Value**: Your production database connection string
    - Mark as **Slot setting** if using deployment slots
 
@@ -39,16 +52,17 @@ If using GitHub Actions for deployment:
 
 1. Go to your repository **Settings** > **Secrets and variables** > **Actions**
 2. Add a new repository secret:
-   - **Name**: `AZURE_ADMIN_SQL_CONN_STRING`
+   - **Name**: `SQL_CONN_STRING`
    - **Value**: Your production database connection string
 
 ### Connection String Priority
 
 The application checks for database configuration in the following order:
 
-1. **AZURE_ADMIN_SQL_CONN_STRING** (Production secret)
+1. **SQL_CONN_STRING** (Azure Static Web Apps - Production)
 2. **AZURE_SQL_CONNECTION_STRING** (Local development)
-3. Individual environment variables (DB_HOST, DB_USER, etc.) - Fallback
+3. **AZURE_ADMIN_SQL_CONN_STRING** (Alternative/legacy)
+4. Individual environment variables (DB_HOST, DB_USER, etc.) - Fallback
 
 ### Database Connection Details
 
@@ -81,7 +95,14 @@ npm run build
 
 Before deploying, ensure these environment variables are configured:
 
-- [ ] `AZURE_ADMIN_SQL_CONN_STRING` (Production)
+### Azure Static Web Apps
+- [ ] `SQL_CONN_STRING` (Production - Required)
+- [ ] `NODE_ENV=production`
+- [ ] `NEXT_PUBLIC_APP_NAME` (Optional)
+- [ ] `NEXT_TELEMETRY_DISABLED=1` (Optional)
+
+### Azure App Service (Alternative)
+- [ ] `SQL_CONN_STRING` or `AZURE_ADMIN_SQL_CONN_STRING` (Production - Required)
 - [ ] `NODE_ENV=production`
 - [ ] `NEXT_PUBLIC_APP_NAME` (Optional)
 

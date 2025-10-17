@@ -17,9 +17,14 @@ async function getMssql() {
 
 // Azure SQL Database connection configuration following Azure best practices
 const getConfig = (): import('mssql').config | string => {
-  // Prefer connection string if available (best for production with Azure secrets)
-  // In production, use: secrets.AZURE_ADMIN_SQL_CONN_STRING
-  const connectionString = process.env.AZURE_SQL_CONNECTION_STRING || process.env.AZURE_ADMIN_SQL_CONN_STRING;
+  // Priority order for connection strings:
+  // 1. SQL_CONN_STRING - Azure Static Web App environment variable (Production)
+  // 2. AZURE_SQL_CONNECTION_STRING - Local development
+  // 3. AZURE_ADMIN_SQL_CONN_STRING - Alternative/legacy
+  const connectionString = 
+    process.env.SQL_CONN_STRING || 
+    process.env.AZURE_SQL_CONNECTION_STRING || 
+    process.env.AZURE_ADMIN_SQL_CONN_STRING;
   
   if (connectionString) {
     console.log('🔐 Using connection string for database configuration');
