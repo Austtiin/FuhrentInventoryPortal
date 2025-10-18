@@ -6,9 +6,16 @@
  * - Production: /api (Azure Static Web App proxy)
  */
 
+import { safeResponseJson, safeJsonParse } from './safeJson';
+
 // Control debug output
 const DEBUG_ENABLED = true; // Set to false to disable all debug logs
 const DEBUG_RESPONSE_BODY = true; // Set to false to hide response body in logs
+
+// Retry configuration
+const DEFAULT_MAX_RETRIES = 3; // Default number of retry attempts
+const DEFAULT_RETRY_DELAY = 1000; // Default delay between retries (ms)
+const RETRY_STATUS_CODES = [408, 429, 500, 502, 503, 504]; // Status codes that trigger retry
 
 /**
  * Format console output with colors and styling
@@ -60,6 +67,15 @@ const debugLog = {
     console.log('%c⏰ Timestamp:', 'color: #888', new Date().toISOString());
     console.log('%c🚨 Error:', 'color: #F44336; font-weight: bold', error);
     console.groupEnd();
+  },
+  
+  retry: (attempt: number, maxRetries: number, url: string, delay: number) => {
+    if (!DEBUG_ENABLED) return;
+    
+    console.log(
+      `%c🔄 [API Retry] Attempt ${attempt}/${maxRetries} for ${url} (waiting ${delay}ms)`,
+      'color: #FF9800; font-weight: bold'
+    );
   }
 };
 
@@ -95,24 +111,30 @@ export function buildApiUrl(endpoint: string): string {
 }
 
 /**
- * Fetch wrapper that automatically uses correct API base URL
+ * Fetch wrapper that automatically uses correct API base URL with retry logic
  * @param endpoint - API endpoint (e.g., '/GrabInventoryAll')
- * @param options - Fetch options
+ * @param options - Fetch options with optional retry configuration
  * @returns Fetch response
  */
-export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
+export async function apiFetch(
+  endpoint: string, 
+  options?: RequestInit & { 
+    maxRetries?: number; 
+    retryDelay?: number;
+    skipRetry?: boolean;
+  }
+): Promise<Response> {
   const url = buildApiUrl(endpoint);
   const method = options?.method || 'GET';
-  const startTime = performance.now();
+  const maxRetries = options?.skipRetry ? 0 : (options?.maxRetries ?? DEFAULT_MAX_RETRIES);
+  const retryDelay = options?.retryDelay ?? DEFAULT_RETRY_DELAY;
   
-  // Parse request body if present
+  // Parse request body if present (safely)
   let requestBody: unknown = undefined;
   if (options?.body) {
-    try {
-      requestBody = typeof options.body === 'string' 
-        ? JSON.parse(options.body) 
-        : options.body;
-    } catch {
+    if (typeof options.body === 'string') {
+      requestBody = safeJsonParse(options.body, options.body);
+    } else {
       requestBody = options.body;
     }
   }
@@ -120,41 +142,73 @@ export async function apiFetch(endpoint: string, options?: RequestInit): Promise
   // Log the request
   debugLog.request(method, url, requestBody);
   
-  try {
-    const response = await fetch(url, options);
-    const duration = Math.round(performance.now() - startTime);
-    
-    // Clone response to read body for logging without consuming it
-    const responseClone = response.clone();
-    
-    // Try to parse response as JSON for logging
-    let responseData: unknown = undefined;
+  let lastError: Error | null = null;
+  
+  // Retry loop
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        responseData = await responseClone.json();
+      const startTime = performance.now();
+      const response = await fetch(url, options);
+      const duration = Math.round(performance.now() - startTime);
+      
+      // Clone response to read body for logging without consuming it
+      const responseClone = response.clone();
+      
+      // Try to parse response as JSON for logging (safely)
+      let responseData: unknown = undefined;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          responseData = await safeResponseJson(responseClone);
+        }
+      } catch {
+        // If JSON parsing fails, skip logging response body
+        responseData = '[Response body not JSON or failed to parse]';
       }
-    } catch {
-      // If JSON parsing fails, skip logging response body
-      responseData = '[Response body not JSON or failed to parse]';
+      
+      // Log the response
+      debugLog.response(
+        method,
+        url,
+        response.status,
+        response.statusText,
+        responseData,
+        duration
+      );
+      
+      // Check if we should retry based on status code
+      if (RETRY_STATUS_CODES.includes(response.status) && attempt < maxRetries) {
+        debugLog.retry(attempt + 1, maxRetries, url, retryDelay);
+        await sleep(retryDelay);
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      lastError = error as Error;
+      
+      // If this is not the last attempt, retry
+      if (attempt < maxRetries) {
+        debugLog.retry(attempt + 1, maxRetries, url, retryDelay);
+        await sleep(retryDelay);
+        continue;
+      }
+      
+      // Last attempt failed, log and throw
+      debugLog.error(method, url, error);
+      throw error;
     }
-    
-    // Log the response
-    debugLog.response(
-      method,
-      url,
-      response.status,
-      response.statusText,
-      responseData,
-      duration
-    );
-    
-    return response;
-  } catch (error) {
-    // Log the error
-    debugLog.error(method, url, error);
-    throw error;
   }
+  
+  // Should never reach here, but TypeScript needs this
+  throw lastError || new Error('Max retries exceeded');
+}
+
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
@@ -172,10 +226,10 @@ export async function apiFetchJson<T = unknown>(
   if (!response.ok) {
     const errorMessage = `API Error: ${response.status} ${response.statusText}`;
     
-    // Try to get error details from response
+    // Try to get error details from response (safely)
     let errorDetails: unknown = undefined;
     try {
-      errorDetails = await response.json();
+      errorDetails = await safeResponseJson(response);
     } catch {
       // If can't parse error response, use status text
       errorDetails = response.statusText;
@@ -188,7 +242,7 @@ export async function apiFetchJson<T = unknown>(
     throw new Error(errorMessage);
   }
   
-  return response.json();
+  return safeResponseJson<T>(response);
 }
 
 // Export for debugging

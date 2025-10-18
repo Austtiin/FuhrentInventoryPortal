@@ -1,6 +1,7 @@
 'use client';
 
 import { useSWR } from './useSWR';
+import { apiFetch } from '@/lib/apiClient';
 
 // Use the existing Vehicle type from @/types
 interface VehicleData {
@@ -49,6 +50,9 @@ interface PaginationOptions {
   limit?: number;
 }
 
+import { safeResponseJson } from '@/lib/safeJson';
+import type { InventoryApiResponse } from '@/types/apiResponses';
+
 // Fetcher function for inventory data with pagination
 const fetchInventory = async (page: number = 1, limit: number = 10): Promise<InventoryData> => {
   const params = new URLSearchParams({
@@ -57,19 +61,20 @@ const fetchInventory = async (page: number = 1, limit: number = 10): Promise<Inv
   });
   
   // Use GrabInventoryAll instead of /api/inventory
-  const response = await fetch(`/api/GrabInventoryAll?${params}`);
+  const response = await apiFetch(`/GrabInventoryAll?${params}`);
   
   if (!response.ok) {
-    throw new Error(`Failed to fetch inventory: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`API request failed with status ${response.status}: ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await safeResponseJson<InventoryApiResponse | Array<Record<string, unknown>>>(response);
   
   // Handle array response from GrabInventoryAll
   if (Array.isArray(data)) {
     return {
       success: true,
-      vehicles: data,
+      vehicles: data as unknown as VehicleData[],
       total: data.length,
       page,
       limit,
@@ -80,11 +85,25 @@ const fetchInventory = async (page: number = 1, limit: number = 10): Promise<Inv
   }
   
   // Handle wrapped response format
-  if (!data.success) {
-    throw new Error(data.error || 'Failed to fetch inventory');
+  if (data && typeof data === 'object' && 'success' in data) {
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to fetch inventory');
+    }
+    
+    const vehicles = (data.data || []) as unknown as VehicleData[];
+    return {
+      success: true,
+      vehicles,
+      total: vehicles.length,
+      page,
+      limit,
+      totalPages: Math.ceil(vehicles.length / limit),
+      hasNext: page * limit < vehicles.length,
+      hasPrev: page > 1
+    };
   }
-
-  return data;
+  
+  throw new Error('Invalid API response format');
 };
 
 // Custom hook for inventory data with pagination and 5-minute caching

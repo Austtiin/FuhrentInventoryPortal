@@ -110,3 +110,24 @@ export interface BreadcrumbItem {
   href?: string;
   isActive?: boolean;
 }
+
+// Dashboard related interfaces
+export interface DashboardStats {
+  totalInventory: number;
+  totalValue: string;
+  availableUnits: number;
+}
+
+export interface SystemStatus {
+  database: 'online' | 'offline' | 'error';
+  message?: string;
+  lastChecked?: Date;
+}
+
+// Inventory filtering interface
+export interface InventoryFilters {
+  search: string;
+  status: VehicleStatus | 'all';
+  sortBy: keyof Vehicle;
+  sortOrder: 'asc' | 'desc';
+}

@@ -182,8 +182,8 @@ export default function InventoryPageClient() {
 
   const handleMarkAsSold = async (vehicle: Vehicle) => {
     try {
-      const response = await apiFetch(`/checkstatus`, {
-        method: 'POST',
+      const response = await apiFetch(`/checkstatus/${vehicle.id}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },

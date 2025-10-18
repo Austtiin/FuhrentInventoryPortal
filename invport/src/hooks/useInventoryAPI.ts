@@ -1,13 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Vehicle, VehicleStatus } from '@/types';
+import { Vehicle, VehicleStatus, InventoryFilters } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
-
-interface InventoryFilters {
-  search: string;
-  status: VehicleStatus | 'all';
-  sortBy: keyof Vehicle;
-  sortOrder: 'asc' | 'desc';
-}
+import { safeResponseJson } from '@/lib/safeJson';
+import type { InventoryApiResponse, StatusUpdateApiResponse } from '@/types/apiResponses';
+import { rateLimiter, RATE_LIMITS } from '@/lib/rateLimiter';
 
 interface UseInventoryDirectReturn {
   vehicles: Vehicle[];
@@ -40,6 +36,9 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
 
       console.log('🔄 Fetching all inventory via API...');
 
+      // Rate limit: Max 5 calls per 10 seconds
+      await rateLimiter.throttle('inventory', RATE_LIMITS.INVENTORY);
+
       // Create timeout promise
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Request timeout - please check your connection')), 30000)
@@ -52,26 +51,28 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       ]) as Response;
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await safeResponseJson<InventoryApiResponse | Array<Record<string, unknown>>>(response);
 
       // Handle array response from GrabInventoryAll
-      let vehiclesData: Record<string, unknown>[] = [];
+      let vehiclesData: Array<Record<string, unknown>> = [];
       
       if (Array.isArray(result)) {
-        vehiclesData = result;
-      } else if (result.success && result.data) {
-        vehiclesData = result.data;
-      } else if (result.success && Array.isArray(result.vehicles)) {
-        vehiclesData = result.vehicles;
+        vehiclesData = result as Array<Record<string, unknown>>;
+      } else if (result && typeof result === 'object' && 'success' in result && result.success && result.data) {
+        vehiclesData = result.data as Array<Record<string, unknown>>;
+      } else if (result && typeof result === 'object' && 'success' in result && result.success && 'vehicles' in result && Array.isArray(result.vehicles)) {
+        vehiclesData = result.vehicles as Array<Record<string, unknown>>;
       } else {
-        throw new Error(result.error || 'Invalid API response format');
+        const errorMsg = result && typeof result === 'object' && 'error' in result ? result.error : 'Invalid API response format';
+        throw new Error(errorMsg as string || 'Invalid API response format');
       }
 
       // Transform data to match frontend expectations
-      const transformedVehicles: Vehicle[] = vehiclesData.map((vehicle: Record<string, unknown>) => ({
+      const transformedVehicles: Vehicle[] = vehiclesData.map((vehicle) => ({
         id: String(vehicle.UnitID || vehicle.Id || vehicle.id || ''),
         name: `${vehicle.Make || ''} ${vehicle.Model || ''} ${vehicle.Year || ''}`.trim(),
         model: String(vehicle.Model || ''),
@@ -122,7 +123,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
     try {
       console.log(`🔄 Marking vehicle ${vehicleId} as sold...`);
 
-      const response = await fetch(`/api/inventory/${vehicleId}`, {
+      const response = await apiFetch(`/vehicles/${vehicleId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -134,12 +135,13 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await safeResponseJson<StatusUpdateApiResponse>(response);
 
-      if (result.success) {
+      if (result && result.success) {
         console.log(`✅ Vehicle ${vehicleId} marked as sold`);
         // Update local state
         setVehicles(prev => prev.map(vehicle => 

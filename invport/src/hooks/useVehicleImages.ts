@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { safeResponseJson } from '@/lib/safeJson';
+import type { GenericApiResponse } from '@/types/apiResponses';
 
 export interface VehicleImage {
   name: string;
@@ -40,15 +42,21 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch images');
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json();
+      interface ImagesResponse {
+        success: boolean;
+        images?: VehicleImage[];
+        error?: string;
+      }
+      const result = await safeResponseJson<ImagesResponse>(response);
       
-      if (result.success) {
+      if (result && result.success) {
         setImages(result.images || []);
       } else {
-        setError(result.error || 'Failed to load images');
+        setError(result?.error || 'Failed to load images');
       }
     } catch (err) {
       console.error('Error fetching images:', err);
@@ -85,17 +93,18 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
       });
 
       if (!response.ok) {
-        throw new Error('Failed to upload image');
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await safeResponseJson<GenericApiResponse>(response);
       
-      if (result.success) {
+      if (result && result.success) {
         // Refresh images list
         await fetchImages();
         return true;
       } else {
-        setError(result.error || 'Failed to upload image');
+        setError(result?.error || 'Failed to upload image');
         return false;
       }
     } catch (err) {
@@ -123,17 +132,18 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete image');
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await safeResponseJson<GenericApiResponse>(response);
       
-      if (result.success) {
+      if (result && result.success) {
         // Refresh images list
         await fetchImages();
         return true;
       } else {
-        setError(result.error || 'Failed to delete image');
+        setError(result?.error || 'Failed to delete image');
         return false;
       }
     } catch (err) {
@@ -165,17 +175,18 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
       });
 
       if (!response.ok) {
-        throw new Error('Failed to reorder images');
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await safeResponseJson<GenericApiResponse>(response);
       
-      if (result.success) {
+      if (result && result.success) {
         // Refresh images list
         await fetchImages();
         return true;
       } else {
-        setError(result.error || 'Failed to reorder images');
+        setError(result?.error || 'Failed to reorder images');
         return false;
       }
     } catch (err) {

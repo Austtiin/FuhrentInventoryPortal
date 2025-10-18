@@ -4,7 +4,7 @@ import {
   PencilIcon, 
   ClockIcon
 } from '@heroicons/react/24/outline';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { LoadingSpinner } from '@/components/ui/Loading';
 import VehicleImage from '@/components/ui/VehicleImage';
 import { Vehicle } from '@/types';
 
@@ -187,7 +187,7 @@ const CompactInventoryCard: React.FC<CompactInventoryCardProps> = ({
             >
               {isMarkingAsPending ? (
                 <>
-                  <LoadingSpinner size="sm" color="gray" />
+                  <LoadingSpinner size="sm" />
                 </>
               ) : (
                 <>

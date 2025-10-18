@@ -71,7 +71,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
   // Fetch vehicle data function (for initial load and refresh)
   const fetchVehicleData = async (id: string) => {
     try {
-      const response = await apiFetch(`/GetByID/${id}`, {
+      const response = await apiFetch(`/vehicles/${id}`, {
         cache: 'no-store' // Force fresh data
       });
       if (!response.ok) {
