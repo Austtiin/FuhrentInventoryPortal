@@ -8,6 +8,7 @@ import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
 import NotificationCard, { NotificationType } from '@/components/ui/NotificationCard';
 import { Layout } from '@/components/layout';
 import { Vehicle, VehicleStatus, TransmissionType, FuelType, VehicleCategory } from '@/types';
+import { apiFetch } from '@/lib/apiClient';
 import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 
@@ -181,11 +182,15 @@ export default function InventoryPageClient() {
 
   const handleMarkAsSold = async (vehicle: Vehicle) => {
     try {
-      const response = await fetch(`/api/vehicles/${vehicle.id}/status`, {
-        method: 'PATCH',
+      const response = await apiFetch(`/checkstatus`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          unitId: vehicle.id,
+          status: 'Sold'
+        }),
       });
 
       if (!response.ok) {

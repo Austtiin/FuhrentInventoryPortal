@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Layout } from '@/components/layout';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/apiClient';
 
 const AddInventoryPage: React.FC = () => {
   const [itemType, setItemType] = useState<'FishHouse' | 'Vehicle' | 'Trailer'>('Vehicle');
@@ -35,12 +36,8 @@ const AddInventoryPage: React.FC = () => {
 
   const checkVINExists = async (vin: string): Promise<boolean> => {
     try {
-      const response = await fetch('/api/vehicles/check-vin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ vin: vin.toUpperCase() })
+      const response = await apiFetch(`/checkvin/${vin.toUpperCase()}`, {
+        method: 'GET'
       });
       
       if (!response.ok) return false;
@@ -78,7 +75,7 @@ const AddInventoryPage: React.FC = () => {
       };
       
       // Submit to API
-      const response = await fetch('/api/vehicles/add', {
+      const response = await apiFetch('/Addinventory', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

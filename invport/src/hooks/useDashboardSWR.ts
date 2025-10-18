@@ -1,6 +1,7 @@
 'use client';
 
 import { useSWR } from './useSWR';
+import { apiFetch } from '@/lib/apiClient';
 
 export interface DashboardStats {
   totalInventory: number;
@@ -30,7 +31,9 @@ interface DashboardData {
 
 // Fetcher function for dashboard data
 const fetchDashboardStats = async (): Promise<DashboardData> => {
-  const response = await fetch('/api/dashboard/stats');
+  console.log('📊 Fetching dashboard stats from API...');
+  
+  const response = await apiFetch('/GetDashboardStats');
   
   if (!response.ok) {
     throw new Error(`Failed to fetch dashboard stats: ${response.status}`);

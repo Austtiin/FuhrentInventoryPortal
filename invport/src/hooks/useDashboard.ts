@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '@/lib/apiClient';
 
 export interface DashboardStats {
   totalInventory: number;
@@ -30,7 +31,7 @@ export function useDashboard() {
       console.log('🔄 Loading dashboard data from API...');
 
       // Call the API endpoint for dashboard stats
-      const response = await fetch('/api/dashboard/stats');
+      const response = await apiFetch('/GetDashboardStats');
       
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);

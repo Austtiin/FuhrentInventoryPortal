@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Vehicle, VehicleStatus } from '@/types';
+import { apiFetch } from '@/lib/apiClient';
 
 interface InventoryFilters {
   search: string;
@@ -46,7 +47,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
 
       // Race between fetch and timeout
       const response = await Promise.race([
-        fetch('/api/inventory'),
+        apiFetch('/GrabInventoryAll'),
         timeoutPromise
       ]) as Response;
       
@@ -56,36 +57,45 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
 
       const result = await response.json();
 
-      if (result.success && result.data) {
-        // Transform data to match frontend expectations
-        const transformedVehicles: Vehicle[] = result.data.map((vehicle: Record<string, unknown>) => ({
-          id: String(vehicle.UnitID || vehicle.Id || vehicle.id || ''),
-          name: `${vehicle.Make || ''} ${vehicle.Model || ''} ${vehicle.Year || ''}`.trim(),
-          model: String(vehicle.Model || ''),
-          make: String(vehicle.Make || ''),
-          vin: String(vehicle.VIN || vehicle.vin || ''),
-          color: 'Unknown', // Will be removed from UI
-          status: (vehicle.Status as VehicleStatus) || 'available',
-          stock: String(vehicle.StockNo || vehicle.Stock || ''),
-          price: parseFloat(String(vehicle.Price)) || 0,
-          mileage: 0, // Will be removed from UI
-          year: parseInt(String(vehicle.Year)) || 0,
-          dateAdded: new Date().toISOString(),
-          lastUpdated: new Date().toISOString(),
-          // Add default properties
-          category: 'Sedan',
-          transmission: 'Automatic',
-          location: 'Main Lot',
-          dealer: 'Main Dealer',
-          images: [],
-          fuelType: 'Gasoline'
-        }));
-
-        setVehicles(transformedVehicles);
-        console.log(`✅ Loaded ${transformedVehicles.length} vehicles from API`);
+      // Handle array response from GrabInventoryAll
+      let vehiclesData: Record<string, unknown>[] = [];
+      
+      if (Array.isArray(result)) {
+        vehiclesData = result;
+      } else if (result.success && result.data) {
+        vehiclesData = result.data;
+      } else if (result.success && Array.isArray(result.vehicles)) {
+        vehiclesData = result.vehicles;
       } else {
-        throw new Error(result.error || 'Failed to fetch vehicles from server');
+        throw new Error(result.error || 'Invalid API response format');
       }
+
+      // Transform data to match frontend expectations
+      const transformedVehicles: Vehicle[] = vehiclesData.map((vehicle: Record<string, unknown>) => ({
+        id: String(vehicle.UnitID || vehicle.Id || vehicle.id || ''),
+        name: `${vehicle.Make || ''} ${vehicle.Model || ''} ${vehicle.Year || ''}`.trim(),
+        model: String(vehicle.Model || ''),
+        make: String(vehicle.Make || ''),
+        vin: String(vehicle.VIN || vehicle.vin || ''),
+        color: 'Unknown', // Will be removed from UI
+        status: (vehicle.Status as VehicleStatus) || 'available',
+        stock: String(vehicle.StockNo || vehicle.Stock || ''),
+        price: parseFloat(String(vehicle.Price)) || 0,
+        mileage: 0, // Will be removed from UI
+        year: parseInt(String(vehicle.Year)) || 0,
+        dateAdded: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+        // Add default properties
+        category: 'Sedan',
+        transmission: 'Automatic',
+        location: 'Main Lot',
+        dealer: 'Main Dealer',
+        images: [],
+        fuelType: 'Gasoline'
+      }));
+
+      setVehicles(transformedVehicles);
+      console.log(`✅ Loaded ${transformedVehicles.length} vehicles from API`);
 
     } catch (err) {
       console.error('❌ Failed to fetch vehicles:', err);

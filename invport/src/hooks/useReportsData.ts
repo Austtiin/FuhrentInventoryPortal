@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '@/lib/apiClient';
 
 export interface ReportsData {
   totalStats: {
@@ -67,7 +68,7 @@ export function useReportsData() {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/reports/analytics');
+      const response = await apiFetch('/GetReportsDashboard');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -75,12 +76,40 @@ export function useReportsData() {
       
       const result = await response.json();
       
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch reports data');
-      }
+      // Adapt the Azure Function response to match our expected format
+      const adaptedData: ReportsData = {
+        totalStats: {
+          totalValue: result.totalInventoryValue || 0,
+          totalVehicles: result.totalVehicles || 0,
+          totalFishHouses: result.totalFishHouses || 0,
+          totalTrailers: result.totalTrailers || 0,
+          uniqueMakes: result.totalUniqueMakes || 0,
+          pendingSales: result.pendingSales || 0,
+          avgPrice: 0, // Calculated client-side if needed
+          minPrice: 0,
+          maxPrice: 0,
+          uniqueCategories: 0,
+          avgYear: 0,
+          oldestYear: 0,
+          newestYear: 0,
+        },
+        categoryBreakdown: [],
+        statusBreakdown: [],
+        priceStats: {
+          vehiclesWithPrice: 0,
+          vehiclesWithoutPrice: 0,
+          under10k: 0,
+          range10k25k: 0,
+          range25k50k: 0,
+          over50k: 0,
+        },
+        yearDistribution: [],
+        makeDistribution: [],
+        trendData: [],
+      };
       
-      setData(result.data);
-      setLastUpdated(result.lastUpdated);
+      setData(adaptedData);
+      setLastUpdated(result.lastUpdated || new Date().toISOString());
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch reports data'));
     } finally {

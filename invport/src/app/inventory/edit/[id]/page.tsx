@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { ImageGallery } from '@/components/inventory/ImageGallery';
 import { useNotification } from '@/hooks/useNotification';
+import { apiFetch } from '@/lib/apiClient';
 import { NotificationContainer } from '@/components/ui/Notification';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -70,7 +71,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
   // Fetch vehicle data function (for initial load and refresh)
   const fetchVehicleData = async (id: string) => {
     try {
-      const response = await fetch(`/api/vehicles/${id}`, {
+      const response = await apiFetch(`/GetByID/${id}`, {
         cache: 'no-store' // Force fresh data
       });
       if (!response.ok) {
@@ -144,7 +145,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
         itemType
       };
       
-      const response = await fetch(`/api/vehicles/${unitId}`, {
+      const response = await apiFetch(`/vehicles/${unitId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -259,12 +260,15 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         setIsSaving(true);
         try {
-          const response = await fetch(`/api/vehicles/${unitId}/status`, {
-            method: 'PATCH',
+          const response = await apiFetch(`/checkstatus`, {
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ status: 'Sold' }),
+            body: JSON.stringify({ 
+              unitId: unitId,
+              status: 'Sold' 
+            }),
           });
 
           const result = await response.json();

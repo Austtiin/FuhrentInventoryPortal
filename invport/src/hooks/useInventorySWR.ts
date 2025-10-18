@@ -56,7 +56,8 @@ const fetchInventory = async (page: number = 1, limit: number = 10): Promise<Inv
     limit: limit.toString()
   });
   
-  const response = await fetch(`/api/inventory?${params}`);
+  // Use GrabInventoryAll instead of /api/inventory
+  const response = await fetch(`/api/GrabInventoryAll?${params}`);
   
   if (!response.ok) {
     throw new Error(`Failed to fetch inventory: ${response.status}`);
@@ -64,6 +65,21 @@ const fetchInventory = async (page: number = 1, limit: number = 10): Promise<Inv
 
   const data = await response.json();
   
+  // Handle array response from GrabInventoryAll
+  if (Array.isArray(data)) {
+    return {
+      success: true,
+      vehicles: data,
+      total: data.length,
+      page,
+      limit,
+      totalPages: Math.ceil(data.length / limit),
+      hasNext: page * limit < data.length,
+      hasPrev: page > 1
+    };
+  }
+  
+  // Handle wrapped response format
   if (!data.success) {
     throw new Error(data.error || 'Failed to fetch inventory');
   }
