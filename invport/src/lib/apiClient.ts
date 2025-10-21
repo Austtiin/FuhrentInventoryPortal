@@ -84,7 +84,12 @@ const debugLog = {
  * @returns Base URL for API calls
  */
 export function getApiBaseUrl(): string {
-  // In production or when env var not set, use relative /api path
+  // In development, use Azure Functions local port 7071
+  if (process.env.NODE_ENV === 'development') {
+    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:7071/api';
+  }
+  
+  // In production, use relative /api path
   // Azure Static Web App will proxy /api/* to Azure Functions
   return process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 }

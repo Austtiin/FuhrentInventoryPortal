@@ -2,26 +2,38 @@
  * Azure Blob Storage Utilities for Inventory Images
  * 
  * Storage Structure:
- * - https://flattstorage.blob.core.windows.net/invpics/
- *   - /fishhouses/{VIN}/1.png, 2.png, ...
- *   - /vehicles/{VIN}/1.png, 2.png, ...
- *   - /trailers/{VIN}/1.png, 2.png, ...
+ * - https://storageinventoryflatt.blob.core.windows.net/invpics/units/
+ *   - /{VIN}/IMG_001.png, IMG_002.png, ...
  */
 
-// Type mapping for folder structure
+// Type mapping for folder structure (keeping for backwards compatibility)
 export type UnitType = 'FishHouse' | 'Vehicle' | 'Trailer';
 
-const BLOB_BASE_URL = 'https://flattstorage.blob.core.windows.net/invpics';
+/**
+ * Get the base URL for images from environment variable or fallback
+ */
+function getImageBaseUrl(): string {
+  // For production, use environment variable
+  const envBaseUrl = process.env.NEXT_PUBLIC_IMG_BASE_URL || process.env.IMGBaseURL;
+  
+  if (envBaseUrl) {
+    // Ensure it ends with a slash
+    return envBaseUrl.endsWith('/') ? envBaseUrl : `${envBaseUrl}/`;
+  }
+  
+  // Fallback for development
+  return 'https://storageinventoryflatt.blob.core.windows.net/invpics/units/';
+}
 
 /**
- * Get the folder path based on TypeID
+ * Get the folder path based on TypeID (keeping for backwards compatibility)
  */
 export function getTypeFolderName(typeId: number): string {
   switch (typeId) {
     case 1:
       return 'fishhouses';
     case 2:
-      return 'vehicles';
+      return 'vehicles'; 
     case 3:
       return 'trailers';
     default:
@@ -31,22 +43,25 @@ export function getTypeFolderName(typeId: number): string {
 
 /**
  * Get the full blob URL for a specific image
+ * New format: https://storageinventoryflatt.blob.core.windows.net/invpics/units/{VIN}/IMG_{number}.png
  */
 export function getImageUrl(vin: string, typeId: number, imageNumber: number): string {
-  const folder = getTypeFolderName(typeId);
-  return `${BLOB_BASE_URL}/${folder}/${vin}/${imageNumber}.png`;
+  const baseUrl = getImageBaseUrl();
+  const paddedNumber = imageNumber.toString().padStart(3, '0');
+  return `${baseUrl}${vin}/IMG_${paddedNumber}.png`;
 }
 
 /**
  * Get all image URLs for a VIN
- * Returns array of image URLs in order (1.png, 2.png, etc.)
+ * Returns array of image URLs in order (IMG_001.png, IMG_002.png, etc.)
  */
 export function getAllImageUrls(vin: string, typeId: number, maxImages: number = 10): string[] {
-  const folder = getTypeFolderName(typeId);
+  const baseUrl = getImageBaseUrl();
   const urls: string[] = [];
   
   for (let i = 1; i <= maxImages; i++) {
-    urls.push(`${BLOB_BASE_URL}/${folder}/${vin}/${i}.png`);
+    const paddedNumber = i.toString().padStart(3, '0');
+    urls.push(`${baseUrl}${vin}/IMG_${paddedNumber}.png`);
   }
   
   return urls;
@@ -72,12 +87,13 @@ export async function checkImageExists(url: string): Promise<boolean> {
  * Returns only the URLs that actually exist
  */
 export async function loadExistingImages(vin: string, typeId: number, maxCheck: number = 10): Promise<string[]> {
-  const folder = getTypeFolderName(typeId);
+  const baseUrl = getImageBaseUrl();
   const existingImages: string[] = [];
   
-  // Check images sequentially (1, 2, 3, ...) and stop when we hit a missing one
+  // Check images sequentially (IMG_001, IMG_002, IMG_003, ...) and stop when we hit a missing one
   for (let i = 1; i <= maxCheck; i++) {
-    const url = `${BLOB_BASE_URL}/${folder}/${vin}/${i}.png`;
+    const paddedNumber = i.toString().padStart(3, '0');
+    const url = `${baseUrl}${vin}/IMG_${paddedNumber}.png`;
     const exists = await checkImageExists(url);
     
     if (exists) {
@@ -110,7 +126,7 @@ export function getNextImageNumber(existingImages: string[]): number {
  * Parse image number from URL
  */
 export function getImageNumberFromUrl(url: string): number | null {
-  const match = url.match(/\/(\d+)\.png$/);
+  const match = url.match(/\/IMG_(\d+)\.png$/);
   return match ? parseInt(match[1]) : null;
 }
 
@@ -119,6 +135,7 @@ export function getImageNumberFromUrl(url: string): number | null {
  * Note: This requires SAS token or proper authentication
  */
 export function buildUploadUrl(vin: string, typeId: number, imageNumber: number): string {
-  const folder = getTypeFolderName(typeId);
-  return `${BLOB_BASE_URL}/${folder}/${vin}/${imageNumber}.png`;
+  const baseUrl = getImageBaseUrl();
+  const paddedNumber = imageNumber.toString().padStart(3, '0');
+  return `${baseUrl}${vin}/IMG_${paddedNumber}.png`;
 }

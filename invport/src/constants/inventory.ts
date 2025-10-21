@@ -6,9 +6,9 @@
  */
 
 export const STATUS_OPTIONS = [
-  { value: 'Available', label: 'Available', color: 'green' },
-  { value: 'Sold', label: 'Sold', color: 'blue' },
-  { value: 'Pending', label: 'Pending', color: 'yellow' },
+  { value: 'available', label: 'Available', color: 'green' },
+  { value: 'sold', label: 'Sold', color: 'blue' },
+  { value: 'pending', label: 'Pending', color: 'yellow' },
 ] as const;
 
 export const CONDITION_OPTIONS = ['New', 'Used', 'Certified'] as const;

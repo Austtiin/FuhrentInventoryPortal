@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface User {
   id: string;
@@ -36,25 +36,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock user for development - wrapped in useMemo to prevent recreation
-  const mockUser: User = useMemo(() => ({
-    id: '1',
-    email: 'admin@fuhrenterprises.com',
-    name: 'Admin User',
-    role: 'Administrator',
-  }), []);
-
   useEffect(() => {
-    // Simulate checking for existing auth token
+    // Check for existing auth token
     const checkAuth = async () => {
       try {
         // Check if localStorage is available (client-side)
         if (typeof window !== 'undefined') {
-          // TODO: Replace with actual token validation
           const token = localStorage.getItem('auth_token');
           if (token) {
-            // TODO: Validate token with backend
-            setUser(mockUser);
+            // Validate token with backend
+            try {
+              const response = await fetch('/api/auth/validate', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                }
+              });
+              
+              if (response.ok) {
+                const userData = await response.json();
+                setUser(userData.user);
+              } else {
+                // Invalid token, remove it
+                localStorage.removeItem('auth_token');
+              }
+            } catch (error) {
+              console.error('Token validation failed:', error);
+              localStorage.removeItem('auth_token');
+            }
           }
         }
       } catch (error) {
@@ -65,18 +75,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkAuth();
-  }, [mockUser]);  const signIn = async (email: string, password: string) => {
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual authentication
-      console.log('Signing in with:', email, password);
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid credentials');
+      }
+
+      const result = await response.json();
+      const token = result.token;
+      const userData = result.user;
       
-      // Mock successful login
-      const token = 'mock_jwt_token';
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth_token', token);
       }
-      setUser(mockUser);
+      setUser(userData);
     } catch (error) {
       console.error('Sign in failed:', error);
       throw error;

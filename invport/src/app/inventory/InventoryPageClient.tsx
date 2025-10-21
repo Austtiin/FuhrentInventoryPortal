@@ -80,12 +80,20 @@ export default function InventoryPageClient() {
   // Check for refresh flag on mount and when page becomes visible
   useEffect(() => {
     const checkRefreshFlag = async () => {
-      const shouldRefresh = sessionStorage.getItem('refreshInventory');
-      if (shouldRefresh === 'true') {
-        console.log('🔄 Forcing inventory list refresh after edit/delete...');
-        // Use mutate() to force revalidation and bypass cache
+      try {
+        const shouldRefresh = sessionStorage.getItem('refreshInventory');
+        if (shouldRefresh === 'true') {
+          console.log('🔄 Forcing inventory list refresh after edit/delete...');
+          // Use mutate() to force revalidation and bypass cache
+          await mutate();
+          sessionStorage.removeItem('refreshInventory');
+        }
+      } catch (error) {
+        // Handle sessionStorage access errors (e.g., browser extensions, incognito mode)
+        console.warn('⚠️ SessionStorage access failed:', error);
+        // Fallback: Force refresh anyway since we can't check the flag
+        console.log('🔄 Forcing inventory list refresh as fallback...');
         await mutate();
-        sessionStorage.removeItem('refreshInventory');
       }
     };
 
@@ -182,14 +190,44 @@ export default function InventoryPageClient() {
 
   const handleMarkAsSold = async (vehicle: Vehicle) => {
     try {
-      const response = await apiFetch(`/checkstatus/${vehicle.id}`, {
-        method: 'PATCH',
+      const response = await apiFetch(`/SetStatus/${vehicle.id}`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          unitId: vehicle.id,
-          status: 'Sold'
+          status: "sold"
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update vehicle status');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh the cache to get updated data
+        await refresh();
+        showNotification('success', 'Status Updated', `${vehicle.year} ${vehicle.make} ${vehicle.model} marked as sold`);
+      } else {
+        throw new Error(result.error || 'Failed to update vehicle status');
+      }
+    } catch (error) {
+      console.error('Error marking vehicle as sold:', error);
+      showNotification('error', 'Update Failed', 'Failed to mark vehicle as sold. Please try again.');
+    }
+  };
+
+  const handleMarkAsPending = async (vehicle: Vehicle) => {
+    try {
+      const response = await apiFetch(`/SetStatus/${vehicle.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: "pending"
         }),
       });
 
@@ -209,6 +247,37 @@ export default function InventoryPageClient() {
     } catch (error) {
       console.error('Error marking vehicle as pending:', error);
       showNotification('error', 'Update Failed', 'Failed to mark vehicle as pending. Please try again.');
+    }
+  };
+
+  const handleMarkAsAvailable = async (vehicle: Vehicle) => {
+    try {
+      const response = await apiFetch(`/SetStatus/${vehicle.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: "available"
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update vehicle status');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh the cache to get updated data
+        await refresh();
+        showNotification('success', 'Status Updated', `${vehicle.year} ${vehicle.make} ${vehicle.model} marked as available`);
+      } else {
+        throw new Error(result.error || 'Failed to update vehicle status');
+      }
+    } catch (error) {
+      console.error('Error marking vehicle as available:', error);
+      showNotification('error', 'Update Failed', 'Failed to mark vehicle as available. Please try again.');
     }
   };
 
@@ -236,7 +305,7 @@ export default function InventoryPageClient() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Vehicle Inventory</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Unit Inventory</h1>
             <div className="flex items-center gap-2 mt-2">
               <p className="text-gray-800">
                 {isLoading ? 'Loading...' : `${sortedVehicles.length} of ${total} vehicles`}
@@ -376,6 +445,8 @@ export default function InventoryPageClient() {
                     item={vehicle}
                     onView={() => handleViewVehicle(vehicle)}
                     onEdit={() => handleEditVehicle(vehicle)}
+                    onMarkAsPending={() => handleMarkAsPending(vehicle)}
+                    onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
                     onMarkAsSold={() => handleMarkAsSold(vehicle)}
                     onShowNotification={showNotification}
                   />

@@ -8,11 +8,12 @@ const nextConfig: NextConfig = {
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),
   
-  // DISABLE ALL CACHING - Force dynamic rendering
+  // Enable build caching for faster rebuilds
   experimental: {
+    // Enable caching with optimized stale times
     staleTimes: {
-      dynamic: 0,
-      static: 0,
+      dynamic: 30, // 30 seconds for dynamic content
+      static: 180, // 3 minutes for static content
     },
   },
   
@@ -26,6 +27,14 @@ const nextConfig: NextConfig = {
         pathname: '/invpics/**',
       },
     ],
+  },
+  
+  // Enable build caching
+  onDemandEntries: {
+    // period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 25 * 1000,
+    // number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 5,
   },
   // Exclude server-side packages from client bundle
   serverExternalPackages: ['mssql', '@azure/storage-blob'],
@@ -43,10 +52,26 @@ const nextConfig: NextConfig = {
       '.js',
       '.json',
     ],
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
+      },
+    },
   },
   
   // Webpack configuration (for production builds)
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
+    // Enable build caching for faster rebuilds
+    if (dev) {
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [__filename],
+        },
+      };
+    }
+    
     if (!isServer) {
       // Exclude Node.js modules from client-side bundle
       config.resolve.fallback = {

@@ -6,7 +6,7 @@ import { Layout } from '@/components/layout';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/Loading';
-import { ImageGallery } from '@/components/inventory/ImageGallery';
+import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 import { useNotification } from '@/hooks/useNotification';
 import { apiFetch } from '@/lib/apiClient';
 import { NotificationContainer } from '@/components/ui/Notification';
@@ -68,19 +68,48 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
     status: 'Available',
   });
 
+  // Safe sessionStorage operations with error handling
+  const safeSetSessionStorage = (key: string, value: string) => {
+    try {
+      sessionStorage.setItem(key, value);
+    } catch (error) {
+      console.warn('⚠️ Failed to set sessionStorage:', error);
+      // Continue without sessionStorage - functionality will still work
+    }
+  };
+
   // Fetch vehicle data function (for initial load and refresh)
   const fetchVehicleData = async (id: string) => {
     try {
+      console.log(`🔄 Fetching vehicle data for ID: ${id}`);
       const response = await apiFetch(`/vehicles/${id}`, {
         cache: 'no-store' // Force fresh data
       });
+      
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch vehicle data');
+        const errorText = await response.text();
+        console.error(`❌ API Error: ${response.status} - ${errorText}`);
+        throw new Error(`Failed to fetch vehicle data: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
+      console.log(`📋 API Response:`, result);
+      
+      // According to API docs, /vehicles/{id} returns vehicle data directly
+      // Check if it's wrapped in a success/data structure or direct
+      let vehicle: VehicleData;
       if (result.success && result.data) {
-        const vehicle: VehicleData = result.data;
+        vehicle = result.data;
+      } else if (result.unitId || result.UnitID) {
+        // Direct vehicle data
+        vehicle = result;
+      } else {
+        throw new Error('Invalid response format from API');
+      }
+      
+      console.log(`🚗 Vehicle data:`, vehicle);
         
         // Set item type based on TypeID
         if (vehicle.TypeID === 1) setItemType('FishHouse');
@@ -101,12 +130,12 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
           price: vehicle.Price?.toString() || '',
           status: vehicle.Status || 'Available',
         });
-      }
       
       setIsLoading(false);
     } catch (err) {
       console.error('Error fetching vehicle:', err);
-      setError('Failed to load vehicle data');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load vehicle data';
+      setError(errorMessage);
       setIsLoading(false);
     }
   };
@@ -159,7 +188,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
         // Refresh the data to show updated values
         await fetchVehicleData(unitId);
         // Set flag to refresh inventory list when user goes back
-        sessionStorage.setItem('refreshInventory', 'true');
+        safeSetSessionStorage('refreshInventory', 'true');
         success('Changes Saved!', 'Your changes have been saved successfully and the data has been refreshed.');
         setIsSaving(false);
       } else {
@@ -184,12 +213,12 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         setIsSaving(true);
         try {
-          const response = await fetch(`/api/vehicles/${unitId}/status`, {
-            method: 'PATCH',
+          const response = await apiFetch(`/SetStatus/${unitId}`, {
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ status: 'Pending' }),
+            body: JSON.stringify({ status: 'pending' }),
           });
 
           const result = await response.json();
@@ -197,13 +226,14 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
             // Refresh the data from database to ensure we have latest status
             await fetchVehicleData(unitId);
             // Set flag to refresh inventory list when user goes back
-            sessionStorage.setItem('refreshInventory', 'true');
+            safeSetSessionStorage('refreshInventory', 'true');
             success('Status Updated', 'Unit has been marked as Pending successfully!');
           } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Failed to update status');
           }
-        } catch {
-          showError('Update Failed', 'Failed to mark unit as pending. Please try again.');
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to mark unit as pending';
+          showError('Update Failed', errorMessage);
         } finally {
           setIsSaving(false);
         }
@@ -222,12 +252,12 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         setIsSaving(true);
         try {
-          const response = await fetch(`/api/vehicles/${unitId}/status`, {
-            method: 'PATCH',
+          const response = await apiFetch(`/SetStatus/${unitId}`, {
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ status: 'Available' }),
+            body: JSON.stringify({ status: 'available' }),
           });
 
           const result = await response.json();
@@ -235,13 +265,14 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
             // Refresh the data from database to ensure we have latest status
             await fetchVehicleData(unitId);
             // Set flag to refresh inventory list when user goes back
-            sessionStorage.setItem('refreshInventory', 'true');
+            safeSetSessionStorage('refreshInventory', 'true');
             success('Status Updated', 'Unit is now marked as Available for sale!');
           } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Failed to update status');
           }
-        } catch {
-          showError('Update Failed', 'Failed to mark unit as available. Please try again.');
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to mark unit as available';
+          showError('Update Failed', errorMessage);
         } finally {
           setIsSaving(false);
         }
@@ -260,15 +291,12 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         setIsSaving(true);
         try {
-          const response = await apiFetch(`/checkstatus`, {
+          const response = await apiFetch(`/SetStatus/${unitId}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
-              unitId: unitId,
-              status: 'Sold' 
-            }),
+            body: JSON.stringify({ status: 'sold' }),
           });
 
           const result = await response.json();
@@ -276,13 +304,14 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
             // Refresh the data from database to ensure we have latest status
             await fetchVehicleData(unitId);
             // Set flag to refresh inventory list when user goes back
-            sessionStorage.setItem('refreshInventory', 'true');
+            safeSetSessionStorage('refreshInventory', 'true');
             success('Status Updated', 'Unit has been marked as Sold successfully!');
           } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Failed to update status');
           }
-        } catch {
-          showError('Update Failed', 'Failed to mark unit as sold. Please try again.');
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to mark unit as sold';
+          showError('Update Failed', errorMessage);
         } finally {
           setIsSaving(false);
         }
@@ -308,7 +337,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
           const result = await response.json();
           if (result.success) {
             // Set flag to refresh inventory list
-            sessionStorage.setItem('refreshInventory', 'true');
+            safeSetSessionStorage('refreshInventory', 'true');
             success('Unit Deleted', 'The unit has been permanently deleted from the inventory.');
             setTimeout(() => {
               router.push('/inventory');
@@ -462,9 +491,38 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
               </div>
             )}
 
-            {/* Section 1: Item Type Selection */}
+            {/* Section 1: Photos */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">1. Photos</h2>
+              {unitId && formData.vin ? (
+                <VehicleImageGallery 
+                  vin={formData.vin}
+                  typeId={itemType === 'FishHouse' ? 1 : itemType === 'Vehicle' ? 2 : 3}
+                  mode="gallery"
+                  editable={true}
+                  maxImages={20}
+                  onNotification={(type, title, message) => {
+                    if (type === 'success') {
+                      success(title, message || '');
+                    } else if (type === 'error') {
+                      showError(title, message || '');
+                    } else {
+                      warning(title, message || '');
+                    }
+                  }}
+                />
+              ) : (
+                <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  <p className="text-sm text-gray-600 mb-4">
+                    {!unitId ? 'Loading vehicle data...' : 'VIN required for photo management'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Section 2: Item Type Selection */}
             <div className="border-b border-gray-200 pb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">1. Item Type</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">2. Item Type</h2>
               <div className="grid grid-cols-3 gap-4">
                 <button
                   type="button"
@@ -508,9 +566,9 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
               </p>
             </div>
 
-            {/* Section 2: Item Details */}
+            {/* Section 3: Item Details */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">2. Item Details</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">3. Item Details</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Year - Required */}
                 <div>
@@ -691,22 +749,6 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
                   />
                 </div>
               </div>
-            </div>
-
-            {/* Photo Gallery */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">3. Photos</h2>
-              <ImageGallery 
-                vin={formData.vin} 
-                typeId={itemType === 'FishHouse' ? 1 : itemType === 'Vehicle' ? 2 : 3}
-                editable={true}
-                maxImages={10}
-                onNotification={(type, title, message) => {
-                  if (type === 'success') success(title, message);
-                  else if (type === 'error') showError(title, message);
-                  else if (type === 'warning') warning(title, message);
-                }}
-              />
             </div>
 
             {/* Form Actions */}

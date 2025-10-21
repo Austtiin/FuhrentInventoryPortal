@@ -1,17 +1,22 @@
+'use client';
+
 import React, { useState } from 'react';
 import { 
   EyeIcon, 
   PencilIcon, 
-  ClockIcon
+  ClockIcon,
+  CheckIcon 
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/components/ui/Loading';
-import VehicleImage from '@/components/ui/VehicleImage';
+import { SingleVehicleImage } from '@/components/inventory/SingleVehicleImage';
 import { Vehicle } from '@/types';
 
 interface CompactInventoryCardProps {
   item: Vehicle;
   onView: (item: Vehicle) => void;
   onEdit: (item: Vehicle) => void;
+  onMarkAsPending: (item: Vehicle) => void;
+  onMarkAsAvailable: (item: Vehicle) => void;
   onMarkAsSold: (item: Vehicle) => void;
   onShowNotification?: (type: 'success' | 'error' | 'warning', title: string, message: string) => void;
 }
@@ -22,211 +27,242 @@ const getStatusConfig = (status: string) => {
       return { 
         bg: 'bg-emerald-100', 
         text: 'text-emerald-800', 
-        border: 'border-emerald-200',
-        dot: 'bg-emerald-500',
         label: 'Available'
       };
     case 'sold':
       return { 
-        bg: 'bg-gray-100', 
-        text: 'text-gray-700', 
-        border: 'border-gray-200',
-        dot: 'bg-gray-500',
+        bg: 'bg-red-100', 
+        text: 'text-red-800', 
         label: 'Sold'
       };
     case 'pending':
       return { 
         bg: 'bg-amber-100', 
         text: 'text-amber-800', 
-        border: 'border-amber-200',
-        dot: 'bg-amber-500',
         label: 'Pending'
-      };
-    case 'reserved':
-      return { 
-        bg: 'bg-purple-100', 
-        text: 'text-purple-800', 
-        border: 'border-purple-200',
-        dot: 'bg-purple-500',
-        label: 'Reserved'
-      };
-    case 'maintenance':
-      return { 
-        bg: 'bg-orange-100', 
-        text: 'text-orange-800', 
-        border: 'border-orange-200',
-        dot: 'bg-orange-500',
-        label: 'Maintenance'
       };
     default:
       return { 
         bg: 'bg-gray-100', 
-        text: 'text-gray-700', 
-        border: 'border-gray-200',
-        dot: 'bg-gray-500',
-        label: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+        text: 'text-gray-800', 
+        label: status || 'Unknown'
       };
   }
 };
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(price);
-};
-
-const CompactInventoryCard: React.FC<CompactInventoryCardProps> = ({ 
-  item, 
-  onView, 
-  onEdit, 
+export default function CompactInventoryCard({
+  item,
+  onView,
+  onEdit,
+  onMarkAsPending,
+  onMarkAsAvailable,
   onMarkAsSold,
-  onShowNotification 
-}) => {
-  const [isMarkingAsPending, setIsMarkingAsPending] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState(item.status);
-  const isAvailable = currentStatus.toLowerCase() === 'available';
-  const statusConfig = getStatusConfig(currentStatus);
+  onShowNotification
+}: CompactInventoryCardProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const statusConfig = getStatusConfig(item.status);
 
-  const handleMarkAsPendingClick = () => {
-    setShowConfirmation(true);
+  const formatPrice = (price: number | null | undefined) => {
+    if (!price) return 'Price TBD';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
   };
 
-  const handleConfirmMarkAsPending = async () => {
-    if (isMarkingAsPending) return;
-    
+  const handleStatusChange = async (action: 'pending' | 'available' | 'sold') => {
+    console.log(`🎯 CompactInventoryCard: handleStatusChange called with action: ${action} for vehicle: ${item.id}`);
+    if (isLoading) return;
+    setIsLoading(true);
     try {
-      setIsMarkingAsPending(true);
-      setShowConfirmation(false);
-      await onMarkAsSold(item);
-      // Update local state to reflect the change immediately
-      setCurrentStatus('pending');
-      onShowNotification?.('success', 'Unit Updated', `${item.year} ${item.make} ${item.model} has been marked as pending.`);
+      switch (action) {
+        case 'pending':
+          console.log(`📞 Calling onMarkAsPending for vehicle: ${item.id}`);
+          await onMarkAsPending(item);
+          onShowNotification?.('success', 'Status Updated', `${item.year} ${item.make} ${item.model} marked as pending`);
+          break;
+        case 'available':
+          console.log(`📞 Calling onMarkAsAvailable for vehicle: ${item.id}`);
+          await onMarkAsAvailable(item);
+          onShowNotification?.('success', 'Status Updated', `${item.year} ${item.make} ${item.model} marked as available`);
+          break;
+        case 'sold':
+          console.log(`📞 Calling onMarkAsSold for vehicle: ${item.id}`);
+          await onMarkAsSold(item);
+          onShowNotification?.('success', 'Status Updated', `${item.year} ${item.make} ${item.model} marked as sold`);
+          break;
+      }
     } catch (error) {
-      console.error('Failed to mark as pending:', error);
-      onShowNotification?.('error', 'Update Failed', 'Failed to mark unit as pending. Please try again.');
+      console.error(`❌ CompactInventoryCard: Error in handleStatusChange:`, error);
+      onShowNotification?.('error', 'Error', 'Failed to update vehicle status');
     } finally {
-      setIsMarkingAsPending(false);
+      setIsLoading(false);
     }
   };
 
-  const handleCancelConfirmation = () => {
-    setShowConfirmation(false);
-  };
-
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-md hover:border-blue-400 hover:-translate-y-1">
-      {/* Vehicle Image */}
-      <div className="relative">
-        <VehicleImage 
-          vehicleId={item.id}
-          make={item.make}
-          model={item.model}
-          year={item.year}
-          className="w-full h-40 object-cover"
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden h-full max-w-xs mx-auto">
+      {/* Image Section - Fixed Height */}
+      <div className="relative h-48 bg-gray-100">
+        <SingleVehicleImage 
+          vin={item.vin}
+          typeId={item.typeId || 2}
+          className="w-full h-full"
         />
         
-        {/* Status Badge */}
-        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.text} border ${statusConfig.border}`}>
-          <div className="flex items-center gap-1">
-            <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`}></div>
+        {/* Status Badge Overlay */}
+        <div className="absolute top-3 left-3">
+          <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${statusConfig.bg} ${statusConfig.text} shadow-sm`}>
             {statusConfig.label}
-          </div>
+          </span>
+        </div>
+        
+        {/* Stock Number Overlay */}
+        <div className="absolute top-3 right-3">
+          <span className="bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+            #{item.stock}
+          </span>
         </div>
       </div>
 
-      {/* Card Content */}
-      <div className="p-3">
+      {/* Content Section */}
+      <div className="p-4 flex flex-col h-60">
         {/* Vehicle Title */}
-        <div className="mb-2">
-          <h3 className="font-bold text-gray-900 text-sm leading-tight mb-1">
-            {item.year} {item.make} {item.model}
-          </h3>
-          <p className="text-xs text-gray-600">
-            Stock: {item.stock || 'N/A'} • VIN: {item.vin?.slice(-6) || 'N/A'}
+        <h3 className="font-bold text-gray-900 text-base mb-2 leading-tight line-clamp-2 min-h-[2.5rem]">
+          {item.year} {item.make} {item.model}
+        </h3>
+
+        {/* Vehicle Details */}
+        <div className="space-y-1 mb-3 flex-1">
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">VIN:</span> 
+            <span className="ml-1 font-mono text-xs">{item.vin}</span>
+          </div>
+          
+          {item.mileage && (
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Mileage:</span> 
+              <span className="ml-1">{item.mileage?.toLocaleString()} miles</span>
+            </div>
+          )}
+          
+          {item.color && (
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Color:</span> 
+              <span className="ml-1">{item.color}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Price */}
+        <div className="mb-3">
+          <p className="text-xl font-bold text-emerald-600">
+            {formatPrice(item.price)}
           </p>
         </div>
 
-        {/* Price - Prominent Display */}
-        <div className="mb-3 text-center">
-          <span className="text-lg font-bold text-blue-600">
-            {formatPrice(item.price)}
-          </span>
-        </div>
-
         {/* Action Buttons */}
-        <div className="flex gap-1">
+        <div className="flex gap-2">
           <button
             onClick={() => onView(item)}
-            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-gray-300 rounded font-medium text-gray-900 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
           >
-            <EyeIcon className="w-3 h-3" />
-            <span className="hidden sm:inline">View</span>
+            <EyeIcon className="h-4 w-4 mr-1" />
+            View
           </button>
-          
           <button
             onClick={() => onEdit(item)}
-            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-blue-600 rounded font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
+            className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
           >
-            <PencilIcon className="w-3 h-3" />
-            <span className="hidden sm:inline">Edit</span>
+            <PencilIcon className="h-4 w-4 mr-1" />
+            Edit
           </button>
           
-          {isAvailable && (
+          {/* Conditional Status Buttons */}
+          {item.status?.toLowerCase() === 'available' && (
             <button
-              onClick={handleMarkAsPendingClick}
-              disabled={isMarkingAsPending}
-              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border rounded font-medium transition-all ${
-                isMarkingAsPending 
-                  ? 'bg-yellow-400 text-white border-yellow-400 cursor-not-allowed' 
-                  : 'bg-yellow-500 text-white border-yellow-500 hover:bg-yellow-600 cursor-pointer'
-              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ BUTTON CLICKED: Mark as Pending for vehicle:', item.id);
+                handleStatusChange('pending');
+              }}
+              disabled={isLoading}
+              className="flex-1 flex items-center justify-center px-3 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 shadow-sm"
             >
-              {isMarkingAsPending ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                </>
+              {isLoading ? (
+                <LoadingSpinner size="sm" />
               ) : (
                 <>
-                  <ClockIcon className="w-3 h-3" />
-                  <span className="hidden sm:inline">Mark as Pending</span>
+                  <ClockIcon className="h-4 w-4 mr-1" />
+                  Pending
+                </>
+              )}
+            </button>
+          )}
+          
+          {item.status?.toLowerCase() === 'pending' && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('🖱️ BUTTON CLICKED: Mark as Available for vehicle:', item.id);
+                  handleStatusChange('available');
+                }}
+                disabled={isLoading}
+                className="flex-1 flex items-center justify-center px-2 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm"
+              >
+                {isLoading ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  'Available'
+                )}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('🖱️ BUTTON CLICKED: Mark as Sold for vehicle:', item.id);
+                  handleStatusChange('sold');
+                }}
+                disabled={isLoading}
+                className="flex-1 flex items-center justify-center px-2 py-2 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 shadow-sm"
+              >
+                {isLoading ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  'Sold'
+                )}
+              </button>
+            </>
+          )}
+
+          {item.status?.toLowerCase() === 'sold' && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ BUTTON CLICKED: Mark as Available for vehicle:', item.id);
+                handleStatusChange('available');
+              }}
+              disabled={isLoading}
+              className="flex-1 flex items-center justify-center px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm"
+            >
+              {isLoading ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <>
+                  <CheckIcon className="h-4 w-4 mr-1" />
+                  Mark Available
                 </>
               )}
             </button>
           )}
         </div>
       </div>
-      
-      {/* Confirmation Dialog */}
-      {showConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 mx-4 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Action</h3>
-            <p className="text-gray-600 mb-4">
-              Are you sure you want to mark this unit as pending?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={handleCancelConfirmation}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmMarkAsPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-yellow-500 border border-yellow-500 rounded-md hover:bg-yellow-600"
-              >
-                Mark Pending
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-};
-
-export default CompactInventoryCard;
+}

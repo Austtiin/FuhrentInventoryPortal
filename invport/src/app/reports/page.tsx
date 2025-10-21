@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const ReportsPage: React.FC = () => {
-  const [dateRange, setDateRange] = useState('30');
+  const [dateRange, setDateRange] = useState('7');
   const { data: reportsData, isLoading, error, lastUpdated, refresh } = useReportsData();
 
   // Format currency
@@ -136,7 +136,6 @@ const ReportsPage: React.FC = () => {
               className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
               <option value="90">Last 90 days</option>
               <option value="365">Last year</option>
             </select>

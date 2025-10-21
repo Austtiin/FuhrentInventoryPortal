@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Vehicle } from '@/types';
-import VehicleImage from '@/components/ui/VehicleImage';
+import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 
 interface VehicleDetailsModalProps {
   vehicle: Vehicle;
@@ -64,32 +64,30 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 
           {/* Content */}
           <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Images */}
-              <div className="space-y-4">
-                <div>
-                  <VehicleImage
-                    vehicleId={vehicle.id}
-                    year={vehicle.year}
-                    make={vehicle.make}
-                    model={vehicle.model}
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
-                  {/* Placeholder for additional images */}
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    {Array.from({ length: 3 }).map((_, index) => (
-                      <div
-                        key={index}
-                        className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300"
-                      >
-                        <span className="text-gray-400 text-sm">Image {index + 2}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            {/* Main Image and Gallery */}
+            <div className="mb-8">
+              <div className="w-full h-96 rounded-lg overflow-hidden bg-gray-100 mb-4">
+                <VehicleImageGallery 
+                  vin={vehicle.vin}
+                  mode="single"
+                  typeId={vehicle.typeId || 2}
+                  className="w-full h-full"
+                />
               </div>
+            </div>
 
-              {/* Details */}
+            {/* Description Section - Below the images */}
+            {vehicle.description && (
+              <div className="bg-gray-50 rounded-lg p-6 mb-8">
+                <h4 className="text-xl font-semibold text-gray-900 mb-4">Description</h4>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {vehicle.description}
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              {/* Price and Status - Left Column */}
               <div className="space-y-6">
                 {/* Price and Status */}
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -109,9 +107,90 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                       {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
                     </span>
                   </div>
-                  <p className="text-gray-600 text-sm">
-                    {formatMileage(vehicle.mileage)} miles • Located in {vehicle.location}
-                  </p>
+                </div>
+
+                {/* Basic Vehicle Information */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Unit Information</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Year:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.year}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Make:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.make}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Model:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.model}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Stock #:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.stock || 'N/A'}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="font-medium text-gray-700">VIN:</span>
+                      <span className="ml-2 text-gray-900 font-mono text-xs">{vehicle.vin}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Condition:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.condition || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Category:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.category}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Appearance */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Appearance</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Exterior Color:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.extColor || vehicle.color}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Interior Color:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.intColor || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Body Style:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.bodyStyle || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Size Category:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.sizeCategory || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Technical Details - Right Column */}
+              <div className="space-y-6">
+                {/* Engine & Drivetrain */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Engine & Drivetrain</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Engine:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.engine || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Transmission:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.transmission}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Drivetrain:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.drivetrain || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Fuel Type:</span>
+                      <span className="ml-2 text-gray-900">{vehicle.fuelType}</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Basic Vehicle Information */}
@@ -172,29 +251,6 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Engine & Drivetrain */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Engine & Drivetrain</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Engine:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.engine || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Transmission:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.transmission}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Drivetrain:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.drivetrain || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Fuel Type:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.fuelType}</span>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Inventory Details */}
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 mb-3">Inventory Details</h4>
@@ -236,18 +292,18 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                     </div>
                   </div>
                 </div>
-
-                {/* Description */}
-                {vehicle.description && (
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Description</h4>
-                    <p className="text-gray-700 text-sm leading-relaxed">
-                      {vehicle.description}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
+
+            {/* Description Section - Below the main content */}
+            {vehicle.description && (
+              <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                <h4 className="text-xl font-semibold text-gray-900 mb-4">Description</h4>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {vehicle.description}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Footer */}

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Vehicle, VehicleStatus, InventoryFilters } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
 import { safeResponseJson } from '@/lib/safeJson';
-import type { InventoryApiResponse, StatusUpdateApiResponse } from '@/types/apiResponses';
+import type { InventoryApiResponse } from '@/types/apiResponses';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rateLimiter';
 
 interface UseInventoryDirectReturn {
@@ -14,6 +14,8 @@ interface UseInventoryDirectReturn {
   setFilters: (filters: Partial<InventoryFilters>) => void;
   refreshData: () => void;
   markAsSold: (vehicleId: string | number) => Promise<void>;
+  markAsPending: (vehicleId: string | number) => Promise<void>;
+  markAsAvailable: (vehicleId: string | number) => Promise<void>;
 }
 
 const defaultFilters: InventoryFilters = {
@@ -79,7 +81,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         make: String(vehicle.Make || ''),
         vin: String(vehicle.VIN || vehicle.vin || ''),
         color: 'Unknown', // Will be removed from UI
-        status: (vehicle.Status as VehicleStatus) || 'available',
+        status: ((vehicle.Status as string)?.toLowerCase() as VehicleStatus) || 'available',
         stock: String(vehicle.StockNo || vehicle.Stock || ''),
         price: parseFloat(String(vehicle.Price)) || 0,
         mileage: 0, // Will be removed from UI
@@ -123,14 +125,13 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
     try {
       console.log(`🔄 Marking vehicle ${vehicleId} as sold...`);
 
-      const response = await apiFetch(`/vehicles/${vehicleId}`, {
-        method: 'PATCH',
+      const response = await apiFetch(`/SetStatus/${vehicleId}`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: vehicleId,
-          status: 'Sold'
+          status: 'sold'
         }),
       });
 
@@ -139,22 +140,110 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      const result = await safeResponseJson<StatusUpdateApiResponse>(response);
+      const result = await response.json();
+      console.log(`📋 SetStatus API Response:`, result);
 
-      if (result && result.success) {
+      if (result && !result.error) {
         console.log(`✅ Vehicle ${vehicleId} marked as sold`);
         // Update local state
         setVehicles(prev => prev.map(vehicle => 
           vehicle.id === vehicleId 
-            ? { ...vehicle, status: 'Sold' as VehicleStatus, lastUpdated: new Date().toISOString() }
+            ? { ...vehicle, status: 'sold' as VehicleStatus, lastUpdated: new Date().toISOString() }
             : vehicle
         ));
       } else {
-        throw new Error(result.error || 'Failed to update vehicle status');
+        console.error(`❌ API Error Response:`, result);
+        throw new Error(result.message || result.error || 'Failed to update vehicle status');
       }
 
     } catch (err) {
       console.error('❌ Failed to mark vehicle as sold:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update vehicle';
+      setError(errorMessage);
+      throw err;
+    }
+  }, []);
+
+  const markAsPending = useCallback(async (vehicleId: string | number) => {
+    try {
+      console.log(`🔄 Marking vehicle ${vehicleId} as pending...`);
+
+      const response = await apiFetch(`/SetStatus/${vehicleId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'pending'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log(`📋 SetStatus API Response (pending):`, result);
+
+      if (result && !result.error) {
+        console.log(`✅ Vehicle ${vehicleId} marked as pending`);
+        // Update local state
+        setVehicles(prev => prev.map(vehicle => 
+          vehicle.id === vehicleId 
+            ? { ...vehicle, status: 'pending' as VehicleStatus, lastUpdated: new Date().toISOString() }
+            : vehicle
+        ));
+      } else {
+        console.error(`❌ API Error Response (pending):`, result);
+        throw new Error(result.message || result.error || 'Failed to update vehicle status');
+      }
+
+    } catch (err) {
+      console.error('❌ Failed to mark vehicle as pending:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update vehicle';
+      setError(errorMessage);
+      throw err;
+    }
+  }, []);
+
+  const markAsAvailable = useCallback(async (vehicleId: string | number) => {
+    try {
+      console.log(`🔄 Marking vehicle ${vehicleId} as available...`);
+
+      const response = await apiFetch(`/SetStatus/${vehicleId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'available'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log(`📋 SetStatus API Response (available):`, result);
+
+      if (result && !result.error) {
+        console.log(`✅ Vehicle ${vehicleId} marked as available`);
+        // Update local state
+        setVehicles(prev => prev.map(vehicle => 
+          vehicle.id === vehicleId 
+            ? { ...vehicle, status: 'available' as VehicleStatus, lastUpdated: new Date().toISOString() }
+            : vehicle
+        ));
+      } else {
+        console.error(`❌ API Error Response (available):`, result);
+        throw new Error(result.message || result.error || 'Failed to update vehicle status');
+      }
+
+    } catch (err) {
+      console.error('❌ Failed to mark vehicle as available:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to update vehicle';
       setError(errorMessage);
       throw err;
@@ -237,6 +326,8 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
     filters,
     setFilters,
     refreshData,
-    markAsSold
+    markAsSold,
+    markAsPending,
+    markAsAvailable
   };
 };

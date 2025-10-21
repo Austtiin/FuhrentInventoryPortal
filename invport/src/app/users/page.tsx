@@ -28,45 +28,9 @@ const UsersPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
 
-  // Mock user data
-  const users: User[] = [
-    {
-      id: '1',
-      name: 'John Smith',
-      email: 'john.smith@fuhrenterprises.com',
-      role: 'Admin',
-      status: 'Active',
-      lastLogin: '2024-01-15T10:30:00Z',
-      createdAt: '2023-06-01T09:00:00Z'
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@fuhrenterprises.com',
-      role: 'Manager',
-      status: 'Active',
-      lastLogin: '2024-01-14T16:45:00Z',
-      createdAt: '2023-08-15T14:20:00Z'
-    },
-    {
-      id: '3',
-      name: 'Mike Davis',
-      email: 'mike.davis@fuhrenterprises.com',
-      role: 'Staff',
-      status: 'Active',
-      lastLogin: '2024-01-13T11:15:00Z',
-      createdAt: '2023-09-10T11:30:00Z'
-    },
-    {
-      id: '4',
-      name: 'Emily Wilson',
-      email: 'emily.wilson@fuhrenterprises.com',
-      role: 'Viewer',
-      status: 'Inactive',
-      lastLogin: '2024-01-05T09:20:00Z',
-      createdAt: '2023-11-20T13:45:00Z'
-    },
-  ];
+  // User management system is not yet implemented
+  // This will be connected to Azure AD/Entra ID or a user management API
+  const users: User[] = [];
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -268,7 +232,9 @@ const UsersPage: React.FC = () => {
         {filteredUsers.length === 0 && (
           <div className="text-center py-12">
             <UsersIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No users found matching your criteria</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">User Management System</h3>
+            <p className="text-gray-500 mb-4">User management functionality is not yet implemented.</p>
+            <p className="text-sm text-gray-400">This will be integrated with Azure AD/Entra ID or a custom user management system.</p>
           </div>
         )}
       </div>
