@@ -2,18 +2,17 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  // Removed static export to enable server-side database functionality
-  // output: 'export',
+  // Enable static export for Azure Static Web Apps
+  output: 'export',
   trailingSlash: true,
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),
   
-  // Enable build caching for faster rebuilds
+  // Disable caching for static export (not needed)
   experimental: {
-    // Enable caching with optimized stale times
     staleTimes: {
-      dynamic: 30, // 30 seconds for dynamic content
-      static: 180, // 3 minutes for static content
+      dynamic: 0,
+      static: 0,
     },
   },
   
@@ -88,3 +87,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
