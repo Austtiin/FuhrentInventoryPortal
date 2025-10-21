@@ -28,6 +28,7 @@ export default function Dashboard() {
         break;
       case 'available-units':
         router.push('/inventory?filter=available');
+        
         break;
       default:
         break;
