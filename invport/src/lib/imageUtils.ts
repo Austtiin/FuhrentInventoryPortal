@@ -4,10 +4,13 @@
 
 // Get the base URL for images
 export function getImageBaseUrl(): string {
-  // In both dev and production, use the same Azure blob storage URL
-  return process.env.NEXT_PUBLIC_IMG_BASE_URL || 
-         process.env.IMGBaseURL || 
-         'https://storageinventoryflatt.blob.core.windows.net/invpics/units/';
+  // In production, use environment variable if set
+  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_IMG_BASE_URL) {
+    return process.env.NEXT_PUBLIC_IMG_BASE_URL;
+  }
+
+  // In development (or if env var not set in production), use default Azure Storage URL
+  return 'https://storageinventoryflatt.blob.core.windows.net/invpics/units/';
 }
 
 /**
@@ -120,3 +123,4 @@ export async function getVehicleImageData(vin: string, maxImages: number = 10) {
     totalImages: images.length
   };
 }
+

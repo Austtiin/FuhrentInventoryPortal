@@ -1,6 +1,6 @@
 'use client';
 
-import { useSWR } from './useSWR';
+import useSWR from 'swr';
 import { apiFetch } from '@/lib/apiClient';
 import type { DashboardStats, SystemStatus } from '@/types';
 
@@ -59,7 +59,7 @@ const fetchDashboardStats = async (): Promise<DashboardData> => {
 
 // Custom hook for dashboard data with SWR - NO CACHING
 export function useDashboardSWR() {
-  const { data, error, isLoading, isValidating, mutate, refresh } = useSWR(
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
     'dashboard-stats',
     fetchDashboardStats,
     {
@@ -100,6 +100,7 @@ export function useDashboardSWR() {
     isLoading,
     isValidating,
     mutate,
-    refreshData: refresh
+    refreshData: () => mutate()
   };
 }
+
