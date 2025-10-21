@@ -82,16 +82,21 @@ const debugLog = {
 /**
  * Get the API base URL based on environment
  * @returns Base URL for API calls
+ * 
+ * Azure Static Web Apps automatically routes /api/* to managed functions.
+ * 
+ * Development: http://localhost:7071/api (local Azure Functions)
+ * Production:  /api (relative - Azure Static Web Apps handles routing)
  */
 export function getApiBaseUrl(): string {
-  // In development, use Azure Functions local port 7071
+  // In development, use local Azure Functions Core Tools
   if (process.env.NODE_ENV === 'development') {
-    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:7071/api';
+    return 'http://localhost:7071/api';
   }
   
   // In production, use relative /api path
-  // Azure Static Web App will proxy /api/* to Azure Functions
-  return process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+  // Azure Static Web Apps automatically routes this to managed functions
+  return '/api';
 }
 
 /**
@@ -256,3 +261,4 @@ export const API_CONFIG = {
   environment: process.env.NODE_ENV,
   isLocal: process.env.NEXT_PUBLIC_API_BASE_URL?.includes('localhost'),
 } as const;
+

@@ -1,7 +1,8 @@
 /**
  * Get the appropriate API base URL based on environment
+ * 
  * Development: http://localhost:7071/api (Local Azure Functions)
- * Production: /api (Azure Static Web Apps managed functions)
+ * Production:  /api (Azure Static Web Apps routes to managed functions)
  */
 export function getApiBaseUrl(): string {
   // Check if running in browser
@@ -11,10 +12,11 @@ export function getApiBaseUrl(): string {
                          window.location.hostname === '127.0.0.1';
     
     if (isDevelopment) {
-      return process.env.NEXT_PUBLIC_AZURE_FUNCTIONS_URL || 'http://localhost:7071/api';
+      return 'http://localhost:7071/api';
     }
     
-    // In production, Azure Static Web Apps serves functions at /api
+    // In production, use relative /api path
+    // Azure Static Web Apps automatically routes to managed functions
     return '/api';
   }
   
@@ -24,7 +26,9 @@ export function getApiBaseUrl(): string {
 
 /**
  * Make a request to Azure Functions API
- * Works in both development (local functions) and production (Azure managed functions)
+ * 
+ * Development: Calls local functions at http://localhost:7071/api
+ * Production:  Uses relative /api path (Azure Static Web Apps handles routing)
  */
 export async function callExternalApi(endpoint: string, options?: RequestInit): Promise<Response> {
   const baseUrl = getApiBaseUrl();
@@ -33,7 +37,7 @@ export async function callExternalApi(endpoint: string, options?: RequestInit): 
   // Log only in development
   if (typeof window !== 'undefined' && 
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    console.log(`🔗 Calling Azure Functions: ${url}`);
+    console.log(`🔗 Calling API: ${url}`);
   }
   
   return fetch(url, {
