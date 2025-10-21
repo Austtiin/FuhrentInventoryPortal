@@ -6,6 +6,7 @@
   "routes": [
     {
       "route": "/api/*",
+      "rewrite": "https://flatt-api-functions-hcfrf0cnecgqafgw.centralus-01.azurewebsites.net/api/{*path}",
       "allowedRoles": ["anonymous"]
     }
   ],
