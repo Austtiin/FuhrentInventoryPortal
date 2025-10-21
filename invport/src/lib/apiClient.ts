@@ -8,9 +8,9 @@
 
 import { safeResponseJson, safeJsonParse } from './safeJson';
 
-// Control debug output
-const DEBUG_ENABLED = true; // Set to false to disable all debug logs
-const DEBUG_RESPONSE_BODY = true; // Set to false to hide response body in logs
+// Control debug output - ALWAYS ENABLED for troubleshooting
+const DEBUG_ENABLED = true; // Always enabled to help debug production issues
+const DEBUG_RESPONSE_BODY = true; // Always show response body for debugging
 
 // Retry configuration
 const DEFAULT_MAX_RETRIES = 3; // Default number of retry attempts
@@ -89,14 +89,19 @@ const debugLog = {
  * Production:  /api (relative - Azure Static Web Apps handles routing)
  */
 export function getApiBaseUrl(): string {
-  // In development, use local Azure Functions Core Tools
-  if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:7071/api';
-  }
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const baseUrl = isDevelopment ? 'http://localhost:7071/api' : '/api';
   
-  // In production, use relative /api path
-  // Azure Static Web Apps automatically routes this to managed functions
-  return '/api';
+  // Enhanced logging for production debugging
+  console.log('🔧 [API Config] Environment:', {
+    NODE_ENV: process.env.NODE_ENV,
+    isDevelopment,
+    baseUrl,
+    hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
+    origin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
+  });
+  
+  return baseUrl;
 }
 
 /**
@@ -110,14 +115,23 @@ export function buildApiUrl(endpoint: string): string {
   // Remove leading slash from endpoint if present (we'll add it back)
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   
-  // Ensure proper path joining
-  // If baseUrl ends with /api, don't add another /api
+  // Build the final URL
+  let finalUrl: string;
   if (baseUrl.endsWith('/api')) {
-    return `${baseUrl}/${cleanEndpoint}`;
+    finalUrl = `${baseUrl}/${cleanEndpoint}`;
+  } else {
+    finalUrl = `${baseUrl}/${cleanEndpoint}`;
   }
   
-  // Otherwise, baseUrl should be /api
-  return `${baseUrl}/${cleanEndpoint}`;
+  // Log URL construction for debugging
+  console.log('🔗 [API URL] Building:', {
+    endpoint,
+    cleanEndpoint,
+    baseUrl,
+    finalUrl,
+  });
+  
+  return finalUrl;
 }
 
 /**
@@ -157,9 +171,26 @@ export async function apiFetch(
   // Retry loop
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
+      console.log(`🔄 [API Fetch] Attempt ${attempt + 1}/${maxRetries + 1}:`, {
+        url,
+        method,
+        headers: options?.headers,
+        hasBody: !!options?.body,
+      });
+      
       const startTime = performance.now();
       const response = await fetch(url, options);
       const duration = Math.round(performance.now() - startTime);
+      
+      console.log(`📡 [API Response] ${response.status} ${response.statusText}:`, {
+        url,
+        method,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        duration: `${duration}ms`,
+        ok: response.ok,
+      });
       
       // Clone response to read body for logging without consuming it
       const responseClone = response.clone();
@@ -170,9 +201,12 @@ export async function apiFetch(
         const contentType = response.headers.get('content-type');
         if (contentType?.includes('application/json')) {
           responseData = await safeResponseJson(responseClone);
+          console.log('📦 [API Response Body]:', responseData);
+        } else {
+          console.log('📦 [API Response Body]: Non-JSON content type:', contentType);
         }
-      } catch {
-        // If JSON parsing fails, skip logging response body
+      } catch (parseError) {
+        console.warn('⚠️ [API Response Body] Failed to parse:', parseError);
         responseData = '[Response body not JSON or failed to parse]';
       }
       
@@ -188,6 +222,7 @@ export async function apiFetch(
       
       // Check if we should retry based on status code
       if (RETRY_STATUS_CODES.includes(response.status) && attempt < maxRetries) {
+        console.warn(`🔄 [API Retry] Status ${response.status} - Retrying in ${retryDelay}ms`);
         debugLog.retry(attempt + 1, maxRetries, url, retryDelay);
         await sleep(retryDelay);
         continue;
@@ -197,8 +232,16 @@ export async function apiFetch(
     } catch (error) {
       lastError = error as Error;
       
+      console.error(`❌ [API Error] Attempt ${attempt + 1}/${maxRetries + 1}:`, {
+        url,
+        method,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      
       // If this is not the last attempt, retry
       if (attempt < maxRetries) {
+        console.warn(`🔄 [API Retry] Error occurred - Retrying in ${retryDelay}ms`);
         debugLog.retry(attempt + 1, maxRetries, url, retryDelay);
         await sleep(retryDelay);
         continue;
@@ -206,12 +249,25 @@ export async function apiFetch(
       
       // Last attempt failed, log and throw
       debugLog.error(method, url, error);
+      console.error(`❌ [API Fatal] All ${maxRetries + 1} attempts failed for ${url}`);
       throw error;
     }
   }
   
   // Should never reach here, but TypeScript needs this
   throw lastError || new Error('Max retries exceeded');
+}
+
+/**
+ * Initialize API client with diagnostic logging
+ */
+if (typeof window !== 'undefined') {
+  console.log('🚀 [API Client] Initializing in browser:', {
+    environment: process.env.NODE_ENV,
+    hostname: window.location.hostname,
+    origin: window.location.origin,
+    userAgent: navigator.userAgent.substring(0, 100)
+  });
 }
 
 /**
