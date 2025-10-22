@@ -3,7 +3,7 @@
  * 
  * Storage Structure:
  * - https://storageinventoryflatt.blob.core.windows.net/invpics/units/
- *   - /{VIN}/IMG_001.png, IMG_002.png, ...
+ *   - /{VIN}/1.png, 2.png, ...
  */
 
 // Type mapping for folder structure (keeping for backwards compatibility)
@@ -45,23 +45,23 @@ export function getTypeFolderName(typeId: number): string {
  * Get the full blob URL for a specific image
  * New format: https://storageinventoryflatt.blob.core.windows.net/invpics/units/{VIN}/IMG_{number}.png
  */
-export function getImageUrl(vin: string, typeId: number, imageNumber: number): string {
+export function getImageUrl(vin: string, typeId: number, imageNumber: number, extension: string = 'png'): string {
   const baseUrl = getImageBaseUrl();
-  const paddedNumber = imageNumber.toString().padStart(3, '0');
-  return `${baseUrl}${vin}/IMG_${paddedNumber}.png`;
+  return `${baseUrl}${vin}/${imageNumber}.${extension}`;
 }
 
 /**
  * Get all image URLs for a VIN
  * Returns array of image URLs in order (IMG_001.png, IMG_002.png, etc.)
  */
-export function getAllImageUrls(vin: string, typeId: number, maxImages: number = 10): string[] {
+export function getAllImageUrls(vin: string, typeId: number, maxImages: number = 10, extensions: string[] = ['png','jpg','jpeg']): string[] {
   const baseUrl = getImageBaseUrl();
   const urls: string[] = [];
   
   for (let i = 1; i <= maxImages; i++) {
-    const paddedNumber = i.toString().padStart(3, '0');
-    urls.push(`${baseUrl}${vin}/IMG_${paddedNumber}.png`);
+    for (const ext of extensions) {
+      urls.push(`${baseUrl}${vin}/${i}.${ext}`);
+    }
   }
   
   return urls;
@@ -86,22 +86,23 @@ export async function checkImageExists(url: string): Promise<boolean> {
  * Load all existing images for a VIN
  * Returns only the URLs that actually exist
  */
-export async function loadExistingImages(vin: string, typeId: number, maxCheck: number = 10): Promise<string[]> {
+export async function loadExistingImages(vin: string, typeId: number, maxCheck: number = 10, extensions: string[] = ['png','jpg','jpeg']): Promise<string[]> {
   const baseUrl = getImageBaseUrl();
   const existingImages: string[] = [];
   
-  // Check images sequentially (IMG_001, IMG_002, IMG_003, ...) and stop when we hit a missing one
+  // Check images sequentially (1.png, 2.jpg, ...) and stop when we hit a missing one
   for (let i = 1; i <= maxCheck; i++) {
-    const paddedNumber = i.toString().padStart(3, '0');
-    const url = `${baseUrl}${vin}/IMG_${paddedNumber}.png`;
-    const exists = await checkImageExists(url);
-    
-    if (exists) {
-      existingImages.push(url);
-    } else {
-      // If we hit a gap, stop checking (assumes sequential naming)
-      break;
+    let found = false;
+    for (const ext of extensions) {
+      const url = `${baseUrl}${vin}/${i}.${ext}`;
+      const exists = await checkImageExists(url);
+      if (exists) {
+        existingImages.push(url);
+        found = true;
+        break;
+      }
     }
+    if (!found) break;
   }
   
   return existingImages;
@@ -126,7 +127,7 @@ export function getNextImageNumber(existingImages: string[]): number {
  * Parse image number from URL
  */
 export function getImageNumberFromUrl(url: string): number | null {
-  const match = url.match(/\/IMG_(\d+)\.png$/);
+  const match = url.match(/\/(\d+)\.(png|jpg|jpeg|webp|gif)$/i);
   return match ? parseInt(match[1]) : null;
 }
 
@@ -134,8 +135,7 @@ export function getImageNumberFromUrl(url: string): number | null {
  * Build upload URL for Azure Blob Storage
  * Note: This requires SAS token or proper authentication
  */
-export function buildUploadUrl(vin: string, typeId: number, imageNumber: number): string {
+export function buildUploadUrl(vin: string, typeId: number, imageNumber: number, extension: string = 'png'): string {
   const baseUrl = getImageBaseUrl();
-  const paddedNumber = imageNumber.toString().padStart(3, '0');
-  return `${baseUrl}${vin}/IMG_${paddedNumber}.png`;
+  return `${baseUrl}${vin}/${imageNumber}.${extension}`;
 }

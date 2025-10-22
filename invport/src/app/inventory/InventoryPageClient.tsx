@@ -45,7 +45,7 @@ export default function InventoryPageClient() {
   };
 
   const handleEditVehicle = (vehicle: Vehicle) => {
-    router.push(`/inventory/edit/${vehicle.id}`);
+    router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
   };
 
   const showNotification = (type: NotificationType, title: string, message: string) => {

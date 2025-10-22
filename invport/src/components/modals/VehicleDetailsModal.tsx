@@ -29,10 +29,6 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
     }).format(price);
   };
 
-  const formatMileage = (mileage: number) => {
-    return new Intl.NumberFormat('en-US').format(mileage);
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
@@ -71,6 +67,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                   vin={vehicle.vin}
                   mode="single"
                   typeId={vehicle.typeId || 2}
+                  editable={false}
                   className="w-full h-full"
                 />
               </div>
@@ -316,7 +313,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
             </button>
             <button
               onClick={() => {
-                router.push(`/inventory/edit/${vehicle.id}`);
+                router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
                 onClose();
               }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"

@@ -21,9 +21,16 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: 'storageinventoryflatt.blob.core.windows.net',
+        port: '',
+        pathname: '/**',
+      },
+      // Keep previous host for backward compatibility if needed
+      {
+        protocol: 'https',
         hostname: 'flattstorage.blob.core.windows.net',
         port: '',
-        pathname: '/invpics/**',
+        pathname: '/**',
       },
     ],
   },

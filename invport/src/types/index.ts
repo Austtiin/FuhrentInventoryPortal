@@ -20,6 +20,7 @@ export interface Vehicle {
   location: string;
   dealer: string;
   // Extended database fields
+  unitId?: number; // Added for direct UnitID access
   condition?: string;
   typeId?: number;
   widthCategory?: string;

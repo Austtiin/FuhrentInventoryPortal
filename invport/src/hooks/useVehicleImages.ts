@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { safeResponseJson } from '@/lib/safeJson';
+import { buildApiUrl } from '@/lib/apiClient';
 import type { GenericApiResponse } from '@/types/apiResponses';
 
 export interface VehicleImage {
@@ -37,7 +38,7 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
     setError(null);
 
     try {
-      const response = await fetch(`/api/images/${vin}?typeId=${typeId}`, {
+      const response = await fetch(buildApiUrl(`images/${vin}?typeId=${typeId}`), {
         cache: 'no-store'
       });
 
@@ -87,7 +88,7 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
       formData.append('file', file);
       formData.append('typeId', typeId.toString());
 
-      const response = await fetch(`/api/images/${vin}`, {
+      const response = await fetch(buildApiUrl(`images/${vin}`), {
         method: 'POST',
         body: formData,
       });
@@ -127,7 +128,7 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
     setError(null);
 
     try {
-      const response = await fetch(`/api/images/${vin}?imageNumber=${imageNumber}&typeId=${typeId}`, {
+      const response = await fetch(buildApiUrl(`images/${vin}?imageNumber=${imageNumber}&typeId=${typeId}`), {
         method: 'DELETE',
       });
 
@@ -166,7 +167,7 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
     setError(null);
 
     try {
-      const response = await fetch(`/api/images/${vin}`, {
+      const response = await fetch(buildApiUrl(`images/${vin}`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

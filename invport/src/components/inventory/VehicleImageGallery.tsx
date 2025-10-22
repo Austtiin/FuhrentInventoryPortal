@@ -14,6 +14,7 @@ import {
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { useVehicleImages, VehicleImage } from '@/hooks/useVehicleImages';
+import { useVehicleImagesDirect } from '@/hooks/useVehicleImagesDirect';
 
 interface VehicleImageGalleryProps {
   vin: string | undefined;
@@ -40,7 +41,15 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   onNotification,
   className = ''
 }) => {
-  const { images, isLoading, error, uploadImage, deleteImage, reorderImages } = useVehicleImages(vin, typeId);
+  // Use direct blob probing for read-only views; use API hook for editable mode
+  const direct = useVehicleImagesDirect(vin, maxImages);
+  const api = useVehicleImages(editable ? vin : undefined, typeId);
+  const images = editable ? api.images : direct.images;
+  const isLoading = editable ? api.isLoading : direct.isLoading;
+  const error = editable ? api.error : direct.error;
+  const uploadImage = api.uploadImage;
+  const deleteImage = api.deleteImage;
+  const reorderImages = api.reorderImages;
   const [selectedImage, setSelectedImage] = useState<VehicleImage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatuses, setUploadStatuses] = useState<UploadStatus[]>([]);

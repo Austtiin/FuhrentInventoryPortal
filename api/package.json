@@ -8,6 +8,8 @@
     "test": "echo \"No tests specified\""
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.28.0",
+    "busboy": "^1.6.0",
     "mssql": "^11.0.1"
   },
   "devDependencies": {
