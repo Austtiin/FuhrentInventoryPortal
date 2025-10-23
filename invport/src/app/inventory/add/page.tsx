@@ -5,6 +5,20 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Layout } from '@/components/layout';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/apiClient';
+import { VEHICLE_COLORS, STATUS_OPTIONS } from '@/constants/inventory';
+
+// Utility function to capitalize first letter of each word
+const toTitleCase = (str: string): string => {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+// Fields that should be capitalized
+const TITLE_CASE_FIELDS = ['make', 'model', 'category'];
+const UPPERCASE_FIELDS = ['vin', 'stockNo'];
 
 const AddInventoryPage: React.FC = () => {
   const [itemType, setItemType] = useState<'FishHouse' | 'Vehicle' | 'Trailer'>('Vehicle');
@@ -16,8 +30,10 @@ const AddInventoryPage: React.FC = () => {
     make: '',
     model: '',
     vin: '',
+    color: '',
     stockNo: '',
     condition: 'New',
+    status: 'Available',
     category: '',
     width: '',
     length: '',
@@ -26,9 +42,18 @@ const AddInventoryPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Apply appropriate text formatting based on field
+    let processedValue = value;
+    if (TITLE_CASE_FIELDS.includes(name)) {
+      processedValue = toTitleCase(value);
+    } else if (UPPERCASE_FIELDS.includes(name)) {
+      processedValue = value.toUpperCase();
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }));
     // Clear error when user types
     if (error) setError('');
@@ -69,13 +94,23 @@ const AddInventoryPage: React.FC = () => {
       const typeId = itemType === 'FishHouse' ? 1 : itemType === 'Vehicle' ? 2 : 3;
       
       const submissionData = {
-        ...formData,
+        vin: formData.vin,
+        year: parseInt(formData.year) || 0,
+        make: formData.make,
+        model: formData.model,
         typeId,
-        itemType
+        price: parseFloat(formData.price) || 0,
+        status: formData.status,
+        color: formData.color,
+        stockNo: formData.stockNo,
+        condition: formData.condition,
+        category: formData.category,
+        widthCategory: formData.width,
+        sizeCategory: formData.length,
       };
       
       // Submit to API
-      const response = await apiFetch('/Addinventory', {
+      const response = await apiFetch('/vehicles/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -233,6 +268,27 @@ const AddInventoryPage: React.FC = () => {
                   />
                 </div>
 
+                {/* Color */}
+                <div>
+                  <label htmlFor="color" className="block text-sm font-medium text-gray-900 mb-2">
+                    Color
+                  </label>
+                  <select
+                    id="color"
+                    name="color"
+                    value={formData.color}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                  >
+                    <option value="">Select Color</option>
+                    {VEHICLE_COLORS.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* VIN - Required */}
                 <div>
                   <label htmlFor="vin" className="block text-sm font-medium text-gray-900 mb-2">
@@ -283,7 +339,7 @@ const AddInventoryPage: React.FC = () => {
                     name="stockNo"
                     value={formData.stockNo}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent uppercase"
                     placeholder="Enter stock number"
                   />
                 </div>
@@ -303,6 +359,26 @@ const AddInventoryPage: React.FC = () => {
                   >
                     <option value="New">New</option>
                     <option value="Pre-Owned">Pre-Owned</option>
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-900 mb-2">
+                    Status
+                  </label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                  >
+                    {STATUS_OPTIONS.map((status) => (
+                      <option key={status.value} value={status.label}>
+                        {status.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { safeLocalStorage } from '@/lib/safeStorage';
+import { safeResponseJson } from '@/lib/safeJson';
 
 interface User {
   id: string;
@@ -42,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         // Check if localStorage is available (client-side)
         if (typeof window !== 'undefined') {
-          const token = localStorage.getItem('auth_token');
+          const token = safeLocalStorage.getItem('auth_token');
           if (token) {
             // Validate token with backend
             try {
@@ -55,15 +57,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               });
               
               if (response.ok) {
-                const userData = await response.json();
+                const userData = await safeResponseJson<{user: User}>(response);
                 setUser(userData.user);
               } else {
                 // Invalid token, remove it
-                localStorage.removeItem('auth_token');
+                safeLocalStorage.removeItem('auth_token');
               }
             } catch (error) {
               console.error('Token validation failed:', error);
-              localStorage.removeItem('auth_token');
+              safeLocalStorage.removeItem('auth_token');
             }
           }
         }
@@ -92,12 +94,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Invalid credentials');
       }
 
-      const result = await response.json();
+      const result = await safeResponseJson<{token: string, user: User}>(response);
       const token = result.token;
       const userData = result.user;
       
       if (typeof window !== 'undefined') {
-        localStorage.setItem('auth_token', token);
+        safeLocalStorage.setItem('auth_token', token);
       }
       setUser(userData);
     } catch (error) {
@@ -112,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // TODO: Revoke tokens with backend
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
+        safeLocalStorage.removeItem('auth_token');
       }
       setUser(null);
     } catch (error) {

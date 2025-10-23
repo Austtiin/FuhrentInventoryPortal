@@ -11,6 +11,16 @@ import { apiFetch } from '@/lib/apiClient';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ArrowLeftIcon, ArrowPathIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { VEHICLE_COLORS } from '@/constants/inventory';
+
+// Utility function to capitalize first letter of each word
+const toTitleCase = (str: string): string => {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
 
 interface VehicleData {
   UnitID: number;
@@ -18,6 +28,7 @@ interface VehicleData {
   Year?: number;
   Make?: string;
   Model?: string;
+  Color?: string;
   Price?: number;
   StockNo?: string;
   Condition?: string;
@@ -33,6 +44,8 @@ interface VehicleFormData {
   Year?: number;
   Make?: string;
   Model?: string;
+  VIN?: string;
+  Color?: string;
   Price?: number;
   StockNo?: string;
   Condition?: string;
@@ -43,6 +56,10 @@ interface VehicleFormData {
   SizeCategory?: string;
   TypeID?: number;
 }
+
+// Fields that should be capitalized
+const TITLE_CASE_FIELDS: (keyof VehicleFormData)[] = ['Make', 'Model', 'Category'];
+const UPPERCASE_FIELDS: (keyof VehicleFormData)[] = ['VIN'];
 
 function EditInventoryPageContent() {
   const router = useRouter();
@@ -110,6 +127,8 @@ function EditInventoryPageContent() {
         Year: v.Year,
         Make: v.Make,
         Model: v.Model,
+        VIN: v.VIN,
+        Color: v.Color,
         Price: v.Price,
         StockNo: v.StockNo,
         Condition: v.Condition,
@@ -130,7 +149,17 @@ function EditInventoryPageContent() {
 
   // Handle form field changes
   const handleFieldChange = (field: keyof VehicleFormData, value: string | number | undefined) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // Apply appropriate text formatting based on field
+    let processedValue = value;
+    if (typeof value === 'string') {
+      if (TITLE_CASE_FIELDS.includes(field)) {
+        processedValue = toTitleCase(value);
+      } else if (UPPERCASE_FIELDS.includes(field)) {
+        processedValue = value.toUpperCase();
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, [field]: processedValue }));
     setHasUnsavedChanges(true);
   };
 
@@ -275,7 +304,7 @@ function EditInventoryPageContent() {
         <div className="max-w-2xl mx-auto">
           <div className="bg-red-50 border border-red-300 rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
                   <span className="text-red-600 text-lg">⚠</span>
                 </div>
@@ -448,6 +477,18 @@ function EditInventoryPageContent() {
             </div>
 
             <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">VIN</label>
+              <input
+                type="text"
+                value={formData.VIN || ''}
+                onChange={(e) => handleFieldChange('VIN', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                placeholder="1234567890ABCDEFG"
+                maxLength={17}
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1">Make</label>
               <input
                 type="text"
@@ -467,6 +508,22 @@ function EditInventoryPageContent() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
                 placeholder="F-150"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">Color</label>
+              <select
+                value={formData.Color || ''}
+                onChange={(e) => handleFieldChange('Color', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+              >
+                <option value="">Select Color</option>
+                {VEHICLE_COLORS.map((color) => (
+                  <option key={color} value={color}>
+                    {color}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

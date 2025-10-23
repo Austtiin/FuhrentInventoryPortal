@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { 
   PhotoIcon, 
   XMarkIcon
 } from '@heroicons/react/24/outline';
-import { getVehicleImageUrl } from '@/lib/imageUtils';
+import { getVehicleImageUrl, checkImageExists } from '@/lib/imageUtils';
+import { LoadingSpinner } from '@/components/ui/Loading';
 
 interface VehicleImage {
   url: string;
@@ -18,62 +19,105 @@ interface SingleVehicleImageProps {
   vin: string | undefined;
   typeId: number;
   className?: string;
+  lazy?: boolean;
 }
 
 export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({ 
   vin, 
   typeId, 
-  className = ''
+  className = '',
+  lazy = true
 }) => {
   const [firstImage, setFirstImage] = useState<VehicleImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<VehicleImage | null>(null);
-  const [imageAttempts, setImageAttempts] = useState<{number: number, extension: string}[]>([]);
-  const [currentAttemptIndex, setCurrentAttemptIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInView, setIsInView] = useState(!lazy);
+  const imageRef = useRef<HTMLDivElement>(null);
 
+  // Intersection Observer for lazy loading
   useEffect(() => {
-    if (!vin) {
+    if (!lazy || !imageRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(imageRef.current);
+    return () => observer.disconnect();
+  }, [lazy, isInView]);
+
+  // Enhanced image loading with URL checking
+  useEffect(() => {
+    if (!vin || (lazy && !isInView)) {
       setFirstImage(null);
       setError(null);
+      setIsLoading(false);
       return;
     }
     
-    // Generate attempts: 1.png, 1.jpg, 1.jpeg, 2.png, 2.jpg, 2.jpeg, etc.
-    const attempts: {number: number, extension: string}[] = [];
-    const extensions = ['png', 'jpg', 'jpeg'];
-    const maxNumbers = 5; // Try first 5 numbers
-    
-    for (let num = 1; num <= maxNumbers; num++) {
-      for (const ext of extensions) {
-        attempts.push({ number: num, extension: ext });
-      }
-    }
-    
-    setImageAttempts(attempts);
-    setCurrentAttemptIndex(0);
-    setError(null);
-    
-    // Start with the first attempt
-    if (attempts.length > 0) {
-      const firstAttempt = attempts[0];
-      const url = getVehicleImageUrl(vin, firstAttempt.number, firstAttempt.extension);
-      setFirstImage({ url, number: firstAttempt.number });
-    }
-  }, [vin, typeId]);
-
-  const tryNextImage = () => {
-    if (currentAttemptIndex < imageAttempts.length - 1) {
-      const nextIndex = currentAttemptIndex + 1;
-      setCurrentAttemptIndex(nextIndex);
-      const nextAttempt = imageAttempts[nextIndex];
-      const url = getVehicleImageUrl(vin!, nextAttempt.number, nextAttempt.extension);
-      setFirstImage({ url, number: nextAttempt.number });
-    } else {
-      // No more attempts, show error
-      setError('No image found');
+    const findAvailableImage = async () => {
+      setIsLoading(true);
+      setError(null);
       setFirstImage(null);
-    }
-  };
+      
+      try {
+        // Generate attempts: 1.png, 1.jpg, 1.jpeg, 2.png, 2.jpg, 2.jpeg, etc.
+        const extensions = ['png', 'jpg', 'jpeg'];
+        const maxNumbers = 5; // Try first 5 numbers
+        
+        for (let num = 1; num <= maxNumbers; num++) {
+          for (const ext of extensions) {
+            const url = getVehicleImageUrl(vin, num, ext);
+            
+            try {
+              // Check if URL exists before trying to load
+              const exists = await checkImageExists(url);
+              if (exists) {
+                setFirstImage({ url, number: num });
+                setIsLoading(false);
+                return; // Found a valid image, exit
+              }
+            } catch (checkError) {
+              // Continue to next attempt if check fails
+              console.log(`Image check failed for ${url}:`, checkError);
+              continue;
+            }
+          }
+        }
+        
+        // No images found after all attempts
+        setError('No image found');
+        setFirstImage(null);
+      } catch (err) {
+        console.error('Error finding available image:', err);
+        setError('Failed to load image');
+        setFirstImage(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    findAvailableImage();
+  }, [vin, typeId, lazy, isInView]);
+
+  // Show loading state
+  if (isLoading || (!firstImage && !error && (lazy ? isInView : true))) {
+    return (
+      <div ref={lazy ? imageRef : undefined} className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>
+        <div className="flex flex-col items-center justify-center p-4">
+          <LoadingSpinner size="md" />
+          <div className="text-xs text-gray-500 mt-2">Loading image...</div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -88,10 +132,10 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
 
   if (!firstImage) {
     return (
-      <div className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>
-        <div className="animate-pulse flex flex-col items-center justify-center p-4">
+      <div ref={lazy ? imageRef : undefined} className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>
+        <div className="flex flex-col items-center justify-center p-4">
           <PhotoIcon className="w-8 h-8 text-gray-400 mb-2" />
-          <div className="text-xs text-gray-500">Loading...</div>
+          <div className="text-xs text-gray-500">No image</div>
         </div>
       </div>
     );
@@ -99,16 +143,25 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
 
   return (
     <>
-      <div className={`relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer ${className}`}>
-        <Image
-          src={firstImage.url}
-          alt={`Vehicle image ${firstImage.number}`}
-          fill
-          className="object-cover hover:scale-105 transition-transform duration-200"
-          onClick={() => setSelectedImage(firstImage)}
-          onError={tryNextImage}
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-        />
+      <div ref={lazy ? imageRef : undefined} className={`relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer ${className}`}>
+        {(!lazy || isInView) && firstImage && (
+          <Image
+            src={firstImage.url}
+            alt={`Vehicle image ${firstImage.number}`}
+            fill
+            className="object-cover hover:scale-105 transition-transform duration-200"
+            onClick={() => setSelectedImage(firstImage)}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
+        )}
+        {lazy && !isInView && (
+          <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center p-4">
+              <LoadingSpinner size="md" />
+              <div className="text-xs text-gray-500 mt-2">Loading...</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Fullscreen Modal */}

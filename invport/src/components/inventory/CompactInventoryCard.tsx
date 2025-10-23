@@ -19,6 +19,7 @@ interface CompactInventoryCardProps {
   onMarkAsAvailable: (item: Vehicle) => void;
   onMarkAsSold: (item: Vehicle) => void;
   onShowNotification?: (type: 'success' | 'error' | 'warning', title: string, message: string) => void;
+  enableImageLoading?: boolean;
 }
 
 const getStatusConfig = (status: string) => {
@@ -57,7 +58,8 @@ export default function CompactInventoryCard({
   onMarkAsPending,
   onMarkAsAvailable,
   onMarkAsSold,
-  onShowNotification
+  onShowNotification,
+  enableImageLoading = true
 }: CompactInventoryCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const statusConfig = getStatusConfig(item.status);
@@ -103,14 +105,24 @@ export default function CompactInventoryCard({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden h-full max-w-xs mx-auto">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden h-full max-w-xs mx-auto lg:max-w-none lg:mx-0">
       {/* Image Section - Fixed Height */}
       <div className="relative h-48 bg-gray-100">
-        <SingleVehicleImage 
-          vin={item.vin}
-          typeId={item.typeId || 2}
-          className="w-full h-full"
-        />
+        {enableImageLoading ? (
+          <SingleVehicleImage 
+            vin={item.vin}
+            typeId={item.typeId || 2}
+            className="w-full h-full"
+            lazy={true}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <div className="text-center">
+              <LoadingSpinner size="md" />
+              <p className="text-xs text-gray-500 mt-2">Loading image...</p>
+            </div>
+          </div>
+        )}
         
         {/* Status Badge Overlay */}
         <div className="absolute top-3 left-3">
@@ -130,7 +142,7 @@ export default function CompactInventoryCard({
       {/* Content Section */}
       <div className="p-4 flex flex-col h-60">
         {/* Vehicle Title */}
-        <h3 className="font-bold text-gray-900 text-base mb-2 leading-tight line-clamp-2 min-h-[2.5rem]">
+        <h3 className="font-bold text-gray-900 text-base mb-2 leading-tight line-clamp-2 min-h-10">
           {item.year} {item.make} {item.model}
         </h3>
 

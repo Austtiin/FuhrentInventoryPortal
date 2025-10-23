@@ -19,7 +19,28 @@ export const ITEM_TYPES = [
   { value: 'Trailer', label: 'Trailer', typeId: 3 },
 ] as const;
 
+export const VEHICLE_COLORS = [
+  'Black',
+  'White',
+  'Silver',
+  'Gray',
+  'Red',
+  'Blue',
+  'Green',
+  'Brown',
+  'Beige',
+  'Gold',
+  'Orange',
+  'Yellow',
+  'Purple',
+  'Maroon',
+  'Navy',
+  'Teal',
+  'Other'
+] as const;
+
 // Type exports for TypeScript
 export type StatusValue = typeof STATUS_OPTIONS[number]['value'];
 export type ConditionValue = typeof CONDITION_OPTIONS[number];
 export type ItemTypeValue = typeof ITEM_TYPES[number]['value'];
+export type VehicleColorValue = typeof VEHICLE_COLORS[number];

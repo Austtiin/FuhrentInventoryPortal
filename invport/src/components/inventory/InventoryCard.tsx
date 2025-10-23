@@ -97,6 +97,11 @@ const InventoryCard: React.FC<InventoryCardProps> = ({ item, onView, onEdit, onD
           <span className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">
             {item.transmission}
           </span>
+          {item.color && (
+            <span className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">
+              {item.color}
+            </span>
+          )}
           <span className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">
             {item.mileage.toLocaleString()} mi
           </span>

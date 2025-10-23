@@ -743,7 +743,7 @@ interface Vehicle {
 1. **Response Times:** Most endpoints respond within 50-250ms
 2. **Batch Operations:** For multiple items, make individual calls with small delays
 3. **Error Handling:** Always check for `error: true` in responses
-4. **VIN Validation:** Always check VIN before adding new vehicles
+4. **VIN Validation:** Always check VIN before We should vveg new vehicles
 5. **Status Updates:** Use dedicated `/SetStatus` endpoint for status changes
 6. **Cache Management:** Purge CDN after significant inventory updates
 

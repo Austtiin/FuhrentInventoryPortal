@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useInventoryDirect } from '@/hooks/useInventoryAPI';
 import CompactInventoryCard from '@/components/inventory/CompactInventoryCard';
 import SkeletonCard from '@/components/ui/SkeletonCard';
@@ -15,6 +15,7 @@ export default function InventoryPageClient() {
   const router = useRouter();
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
   const [notification, setNotification] = useState<{
     type: NotificationType;
     title: string;
@@ -34,6 +35,17 @@ export default function InventoryPageClient() {
     markAsPending,
     markAsAvailable
   } = useInventoryDirect();
+
+  // Trigger image loading after inventory data is loaded
+  useEffect(() => {
+    if (!isLoading && filteredVehicles.length > 0) {
+      // Delay image loading to prioritize inventory data display
+      const timer = setTimeout(() => {
+        setImagesLoaded(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, filteredVehicles.length]);
   const handleViewVehicle = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setIsModalOpen(true);
@@ -232,13 +244,13 @@ export default function InventoryPageClient() {
         {/* Content */}
         <div>
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-3">
               {Array.from({ length: 6 }).map((_, index) => (
                 <SkeletonCard key={index} />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-3">
               {filteredVehicles.map((vehicle) => (
                 <CompactInventoryCard
                   key={vehicle.id}
@@ -249,6 +261,7 @@ export default function InventoryPageClient() {
                   onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
                   onMarkAsSold={() => handleMarkAsSold(vehicle)}
                   onShowNotification={showNotification}
+                  enableImageLoading={imagesLoaded}
                 />
               ))}
             </div>

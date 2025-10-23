@@ -80,7 +80,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         model: String(vehicle.Model || ''),
         make: String(vehicle.Make || ''),
         vin: String(vehicle.VIN || vehicle.vin || ''),
-        color: 'Unknown', // Will be removed from UI
+        color: String(vehicle.Color || ''),
         status: ((vehicle.Status as string)?.toLowerCase() as VehicleStatus) || 'available',
         stock: String(vehicle.StockNo || vehicle.Stock || ''),
         price: parseFloat(String(vehicle.Price)) || 0,

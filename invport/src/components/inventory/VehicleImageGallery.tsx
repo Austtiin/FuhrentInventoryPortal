@@ -282,7 +282,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
 
     if (images.length === 0) {
       return (
-        <div className={`bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 ${className}`} style={{ minHeight: '200px' }}>
+        <div className={`bg-linear-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 ${className}`} style={{ minHeight: '200px' }}>
           <PhotoIcon className="w-12 h-12 mb-2" />
           <span className="text-sm font-medium text-center px-2">No Image Yet</span>
         </div>
@@ -314,6 +314,13 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
             }}
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
+          
+          {/* Thumbnail Indicator for image number 1 */}
+          {currentImage.number === 1 && (
+            <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-semibold shadow-lg border border-blue-700">
+              Thumbnail
+            </div>
+          )}
         </div>
 
         {/* Navigation Controls */}
@@ -350,7 +357,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   key={`${image.name}-${index}`}
                   type="button"
                   onClick={() => setCurrentImageIndex(index)}
-                  className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
+                  className={`relative shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
                     index === currentImageIndex 
                       ? 'border-blue-500 shadow-md' 
                       : 'border-gray-200 hover:border-gray-300'
@@ -363,6 +370,12 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                     height={64}
                     className="w-full h-full object-cover"
                   />
+                  {/* Thumbnail Indicator for image number 1 */}
+                  {image.number === 1 && (
+                    <div className="absolute top-0 left-0 bg-blue-600 text-white px-1 text-xs font-bold rounded-br-md">
+                      T
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -522,6 +535,13 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-semibold">
                     #{image.number}
                   </div>
+
+                  {/* Thumbnail Indicator for image number 1 */}
+                  {image.number === 1 && (
+                    <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold shadow-lg border border-blue-700">
+                      Thumbnail
+                    </div>
+                  )}
 
                   {/* Edit Controls - Only show if editable */}
                   {editable && (
