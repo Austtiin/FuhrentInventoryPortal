@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useInventoryDirect } from '@/hooks/useInventoryAPI';
 import CompactInventoryCard from '@/components/inventory/CompactInventoryCard';
 import SkeletonCard from '@/components/ui/SkeletonCard';
-import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
 import NotificationCard, { NotificationType } from '@/components/ui/NotificationCard';
 import { Layout } from '@/components/layout';
 import { Vehicle } from '@/types';
@@ -13,8 +12,6 @@ import { useRouter } from 'next/navigation';
 
 export default function InventoryPageClient() {
   const router = useRouter();
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [notification, setNotification] = useState<{
     type: NotificationType;
@@ -46,15 +43,6 @@ export default function InventoryPageClient() {
       return () => clearTimeout(timer);
     }
   }, [isLoading, filteredVehicles.length]);
-  const handleViewVehicle = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedVehicle(null);
-  };
 
   const handleEditVehicle = (vehicle: Vehicle) => {
     router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
@@ -255,7 +243,6 @@ export default function InventoryPageClient() {
                 <CompactInventoryCard
                   key={vehicle.id}
                   item={vehicle}
-                  onView={() => handleViewVehicle(vehicle)}
                   onEdit={() => handleEditVehicle(vehicle)}
                   onMarkAsPending={() => handleMarkAsPending(vehicle)}
                   onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
@@ -294,15 +281,6 @@ export default function InventoryPageClient() {
         </div>
       </div>
 
-      {/* Vehicle Details Modal */}
-      {selectedVehicle && (
-        <VehicleDetailsModal
-          vehicle={selectedVehicle}
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-        />
-      )}
-      
       {/* Notification Component */}
       {notification && (
         <NotificationCard

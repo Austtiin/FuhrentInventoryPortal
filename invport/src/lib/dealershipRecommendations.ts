@@ -62,7 +62,7 @@ export const DEALERSHIP_RECOMMENDATIONS = {
  */
 export class DealershipCache {
   private static instance: DealershipCache;
-  private cache = new Map<string, { data: any; expires: number }>();
+  private cache = new Map<string, { data: unknown; expires: number }>();
 
   static getInstance() {
     if (!this.instance) {
@@ -74,7 +74,7 @@ export class DealershipCache {
   /**
    * Only cache truly static data
    */
-  setStatic(key: string, data: any, ttlMinutes: number = 60) {
+  setStatic(key: string, data: unknown, ttlMinutes: number = 60) {
     const expires = Date.now() + (ttlMinutes * 60 * 1000);
     this.cache.set(key, { data, expires });
     console.log(`📦 [Dealership Cache] Cached static data: ${key} (${ttlMinutes}m)`);
@@ -111,3 +111,4 @@ export class DealershipCache {
     };
   }
 }
+

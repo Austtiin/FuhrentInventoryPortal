@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   EyeIcon, 
   PencilIcon, 
@@ -13,7 +14,7 @@ import { Vehicle } from '@/types';
 
 interface CompactInventoryCardProps {
   item: Vehicle;
-  onView: (item: Vehicle) => void;
+  onView?: (item: Vehicle) => void; // Made optional since we're using Link navigation
   onEdit: (item: Vehicle) => void;
   onMarkAsPending: (item: Vehicle) => void;
   onMarkAsAvailable: (item: Vehicle) => void;
@@ -53,7 +54,6 @@ const getStatusConfig = (status: string) => {
 
 export default function CompactInventoryCard({
   item,
-  onView,
   onEdit,
   onMarkAsPending,
   onMarkAsAvailable,
@@ -177,13 +177,13 @@ export default function CompactInventoryCard({
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          <button
-            onClick={() => onView(item)}
+          <Link
+            href={`/inventory/vehicle?id=${item.id || item.unitId}`}
             className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
           >
             <EyeIcon className="h-4 w-4 mr-1" />
             View
-          </button>
+          </Link>
           <button
             onClick={() => onEdit(item)}
             className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
@@ -278,3 +278,4 @@ export default function CompactInventoryCard({
     </div>
   );
 }
+

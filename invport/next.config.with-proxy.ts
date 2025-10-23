@@ -1,17 +1,15 @@
+/** @type {import('next').NextConfig} */
 import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
-  // Enable static export for Azure Static Web Apps with SPA support
-  output: 'export',
+  // Removed static export to enable server-side database functionality
+  // output: 'export',
   trailingSlash: true,
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),
   
-  // Configure for single page application
-  distDir: 'out',
-  
-  // Disable caching for dynamic content
+  // DISABLE ALL CACHING - Force dynamic rendering
   experimental: {
     staleTimes: {
       dynamic: 0,
@@ -24,29 +22,29 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'storageinventoryflatt.blob.core.windows.net',
-        port: '',
-        pathname: '/**',
-      },
-      // Keep previous host for backward compatibility if needed
-      {
-        protocol: 'https',
         hostname: 'flattstorage.blob.core.windows.net',
         port: '',
-        pathname: '/**',
+        pathname: '/invpics/**',
       },
     ],
   },
-  
-  // Enable build caching
-  onDemandEntries: {
-    // period (in ms) where the server will keep pages in the buffer
-    maxInactiveAge: 25 * 1000,
-    // number of pages that should be kept simultaneously without being disposed
-    pagesBufferLength: 5,
-  },
   // Exclude server-side packages from client bundle
   serverExternalPackages: ['mssql', '@azure/storage-blob'],
+  
+  // API Rewrites - Proxy API calls to Azure Functions during development
+  async rewrites() {
+    // In development, proxy /api/* to Azure Functions running on localhost:7071
+    // In production, Azure Static Web Apps handles this automatically
+    if (process.env.NODE_ENV === 'development' && process.env.USE_LOCAL_FUNCTIONS === 'true') {
+      return [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:7071/api/:path*',
+        },
+      ];
+    }
+    return [];
+  },
   
   // Turbopack configuration (for dev mode)
   turbopack: {
@@ -61,26 +59,10 @@ const nextConfig: NextConfig = {
       '.js',
       '.json',
     ],
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
   },
   
   // Webpack configuration (for production builds)
-  webpack: (config, { isServer, dev }) => {
-    // Enable build caching for faster rebuilds
-    if (dev) {
-      config.cache = {
-        type: 'filesystem',
-        buildDependencies: {
-          config: [__filename],
-        },
-      };
-    }
-    
+  webpack: (config, { isServer }) => {
     if (!isServer) {
       // Exclude Node.js modules from client-side bundle
       config.resolve.fallback = {
@@ -97,4 +79,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
