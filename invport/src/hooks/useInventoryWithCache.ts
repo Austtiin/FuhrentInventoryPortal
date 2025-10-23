@@ -2,11 +2,13 @@
  * Enhanced Inventory Hook with Caching Support
  * 
  * This hook provides both cached and real-time inventory data fetching
+ * Caching is opt-in: set `useCache: true` when you explicitly want cached results. By default
+ * `useCache` is false to avoid unexpected cached data in client pages.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Vehicle, InventoryFilters } from '@/types';
-import { getCachedInventory } from '@/lib/cachedApi';
+import { getInventory } from '@/lib/serverApi';
 import { useInventoryDirect } from './useInventoryAPI';
 
 interface UseInventoryWithCacheOptions {
@@ -34,7 +36,8 @@ export const useInventoryWithCache = (
   options: UseInventoryWithCacheOptions = {}
 ): UseInventoryWithCacheReturn => {
   const {
-    useCache = true,
+    // Default useCache to false so callers opt-in to cached behavior explicitly
+    useCache = false,
     fallbackToRealtime = true,
     cacheFirst = true
   } = options;
@@ -63,7 +66,7 @@ export const useInventoryWithCache = (
       setCacheError(null);
       
       console.log('🔄 [Hook] Fetching inventory from cache...');
-      const data = await getCachedInventory();
+  const data = await getInventory();
       
       if (data?.data && Array.isArray(data.data)) {
         const processedVehicles = data.data.map((vehicle): Vehicle => ({
@@ -230,3 +233,4 @@ export const useInventoryWithCache = (
     markAsAvailable,
   };
 };
+

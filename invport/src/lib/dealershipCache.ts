@@ -6,9 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { unstable_cache } from 'next/cache';
-import { apiFetch } from '@/lib/apiClient';
-import { safeResponseJson } from '@/lib/safeJson';
+import { imageExists as serverImageExists, getInventoryShort, getDealershipImageExists as serverGetDealershipImageExists } from '@/lib/serverApi';
 
 /**
  * Cache configuration for dealership environment
@@ -33,103 +31,41 @@ const DEALERSHIP_CACHE_CONFIG = {
  * SHORT-TERM inventory cache - only for reducing rapid successive calls
  * Use case: User refreshing page multiple times, CDN not yet populated
  */
-export const getShortTermInventoryCache = unstable_cache(
-  async () => {
-    console.log('🔄 [Short Cache] Fetching inventory (30s cache)...');
-    
-    const response = await apiFetch('/GrabInventoryAll', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        // Add cache-busting header for critical data
-        'X-Force-Fresh': Date.now().toString(),
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await safeResponseJson(response);
-    console.log('✅ [Short Cache] Inventory cached for 30 seconds');
-    return data;
-  },
-  ['inventory-short-term'],
-  {
-    revalidate: DEALERSHIP_CACHE_CONFIG.INVENTORY_CACHE_DURATION,
-    tags: ['inventory-short'],
-  }
-);
+// getInventoryShort imported from serverApi (fresh, short fetch)
 
 /**
  * Image existence cache - safe to cache longer
  * Images don't change frequently once uploaded
  */
-export const getDealershipImageExists = unstable_cache(
-  async (url: string): Promise<boolean> => {
-    console.log(`🖼️ [Image Cache] Checking: ${url}`);
-    
-    try {
-      const response = await fetch(url, { 
-        method: 'HEAD',
-        signal: AbortSignal.timeout(3000) // Shorter timeout for dealership
-      });
-      
-      return response.ok;
-    } catch {
-      return false;
-    }
-  },
-  ['dealer-image-exists'],
-  {
-    revalidate: DEALERSHIP_CACHE_CONFIG.IMAGE_CACHE_DURATION,
-    tags: ['dealer-images'],
-  }
-);
+// getDealershipImageExists delegates to serverApi
+export const getDealershipImageExists = async (url: string): Promise<boolean> => {
+  return serverGetDealershipImageExists ? serverGetDealershipImageExists(url) : serverImageExists(url);
+};
 
 /**
  * Static configuration cache - safe for long caching
  * Colors, categories, etc. rarely change
  */
-export const getCachedStaticConfig = unstable_cache(
-  async (configType: 'colors' | 'categories' | 'statuses') => {
-    console.log(`⚙️ [Static Cache] Loading ${configType} config`);
-    
-    // This would fetch from your configuration API
-    // For now, return static data
-    switch (configType) {
-      case 'colors':
-        return ['Red', 'Blue', 'Black', 'White', 'Silver', 'Gray'];
-      case 'categories':
-        return ['Sedan', 'SUV', 'Truck', 'Coupe'];
-      case 'statuses':
-        return ['Available', 'Sold', 'Pending'];
-      default:
-        return [];
-    }
-  },
-  ['static-config'],
-  {
-    revalidate: DEALERSHIP_CACHE_CONFIG.STATIC_DATA_CACHE_DURATION,
-    tags: ['static-config'],
-  }
-);
+// getStaticConfig delegated to serverApi
+
+// Backwards-compat alias
+// Keep only the new `getStaticConfig` name to avoid cached-* naming confusion
 
 /**
  * Dealership-specific hook with conservative caching
  */
 export const useDealershipInventory = () => {
   const [useCache, setUseCache] = useState(DEALERSHIP_CACHE_CONFIG.ENABLE_INVENTORY_CACHE);
-  
+
   // Allow runtime toggle of caching
   const toggleCache = useCallback(() => {
     setUseCache((prev: boolean) => !prev);
     console.log(`🔧 [Dealership] Cache ${!useCache ? 'enabled' : 'disabled'}`);
   }, [useCache]);
-  
+
   return {
-    // Use very short cache or no cache for inventory
-    getCachedInventory: useCache ? getShortTermInventoryCache : null,
+    // Expose the short direct fetch for callers when they opt-in
+    getCachedInventory: useCache ? getInventoryShort : null,
     getCachedImageExists: DEALERSHIP_CACHE_CONFIG.ENABLE_IMAGE_CACHE ? getDealershipImageExists : null,
     toggleCache,
     isCacheEnabled: useCache,
@@ -141,23 +77,7 @@ export const useDealershipInventory = () => {
  * Real-time inventory fetcher - always fresh data
  * Use this for critical operations like purchasing decisions
  */
-export const getRealTimeInventory = async () => {
-  console.log('🔴 [Real-Time] Fetching fresh inventory data...');
-  
-  const response = await apiFetch('/GrabInventoryAll', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'X-Timestamp': Date.now().toString(),
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  return await safeResponseJson(response);
-};
+// getRealTimeInventory delegated to serverApi
 
 export { DEALERSHIP_CACHE_CONFIG };
+

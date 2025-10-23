@@ -54,6 +54,7 @@ const getStatusConfig = (status: string) => {
 
 export default function CompactInventoryCard({
   item,
+  onView,
   onEdit,
   onMarkAsPending,
   onMarkAsAvailable,
@@ -177,13 +178,23 @@ export default function CompactInventoryCard({
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          <Link
-            href={`/inventory/vehicle?id=${item.id || item.unitId}`}
-            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            <EyeIcon className="h-4 w-4 mr-1" />
-            View
-          </Link>
+          {onView ? (
+            <button
+              onClick={() => onView(item)}
+              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <EyeIcon className="h-4 w-4 mr-1" />
+              View
+            </button>
+          ) : (
+            <Link
+              href={`/inventory/vehicle?id=${item.id || item.unitId}`}
+              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <EyeIcon className="h-4 w-4 mr-1" />
+              View
+            </Link>
+          )}
           <button
             onClick={() => onEdit(item)}
             className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors shadow-sm"

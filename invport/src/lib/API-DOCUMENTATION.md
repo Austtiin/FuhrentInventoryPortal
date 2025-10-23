@@ -99,7 +99,9 @@ This document provides a comprehensive list of all API endpoints with expected i
 ### 3. Get Fish House Inventory
 **Purpose:** Retrieve only fish houses (TypeID = 1)
 
-**Endpoint:** `GET /GrabInventoryFH`
+**Endpoint:** `GET /api/GrabInventoryAll` (filter by TypeID=1 or use query params to restrict to fish houses)
+
+**Note:** For backward compatibility this previously appeared as `/GrabInventoryFH`. Use `/api/GrabInventoryAll` with filters for client pages.
 
 **Query Parameters:** Same as GrabInventoryAll
 
@@ -767,3 +769,4 @@ For API issues, database connectivity problems, or feature requests, please crea
 **Last Updated:** October 20, 2025
 **Version:** 1.0.0
 **Maintained By:** Flatt Functions Team
+

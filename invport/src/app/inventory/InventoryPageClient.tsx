@@ -9,6 +9,7 @@ import { Layout } from '@/components/layout';
 import { Vehicle } from '@/types';
 import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
+import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
 
 export default function InventoryPageClient() {
   const router = useRouter();
@@ -46,6 +47,19 @@ export default function InventoryPageClient() {
 
   const handleEditVehicle = (vehicle: Vehicle) => {
     router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
+  };
+
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleViewVehicle = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedVehicle(null);
   };
 
   const showNotification = (type: NotificationType, title: string, message: string) => {
@@ -243,6 +257,7 @@ export default function InventoryPageClient() {
                 <CompactInventoryCard
                   key={vehicle.id}
                   item={vehicle}
+                  onView={handleViewVehicle}
                   onEdit={() => handleEditVehicle(vehicle)}
                   onMarkAsPending={() => handleMarkAsPending(vehicle)}
                   onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
@@ -290,6 +305,10 @@ export default function InventoryPageClient() {
           isVisible={notification.isVisible}
           onClose={hideNotification}
         />
+      )}
+      {/* Vehicle details modal (reuses in-memory vehicle data; no extra API calls) */}
+      {selectedVehicle && (
+        <VehicleDetailsModal vehicle={selectedVehicle} isOpen={isModalOpen} onClose={closeModal} />
       )}
       </ErrorBoundary>
     </Layout>

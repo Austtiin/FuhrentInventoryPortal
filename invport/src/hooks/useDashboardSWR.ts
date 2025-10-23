@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR from 'swr';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/apiClient';
 import type { DashboardStats, SystemStatus } from '@/types';
 
@@ -59,18 +59,33 @@ const fetchDashboardStats = async (): Promise<DashboardData> => {
 
 // Custom hook for dashboard data with SWR - NO CACHING
 export function useDashboardSWR() {
-  const { data, error, isLoading, isValidating, mutate } = useSWR(
-    'dashboard-stats',
-    fetchDashboardStats,
-    {
-      refreshInterval: 0, // Disable auto-refresh
-      revalidateOnFocus: false, // Disable revalidation on focus
-      revalidateOnReconnect: false, // Disable revalidation on reconnect
-      dedupingInterval: 0, // No deduplication - always fetch fresh
-      errorRetryCount: 3,
-      errorRetryInterval: 2000
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isValidating, setIsValidating] = useState<boolean>(false);
+
+  const fetchData = useCallback(async () => {
+    setIsValidating(true);
+    try {
+      const result = await fetchDashboardStats();
+      setData(result);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setData(null);
+    } finally {
+      setIsLoading(false);
+      setIsValidating(false);
     }
-  );
+  }, []);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  const mutate = useCallback(() => {
+    return fetchData();
+  }, [fetchData]);
 
   // Process the data to format it properly
   const processedStats: DashboardStats | null = data ? {

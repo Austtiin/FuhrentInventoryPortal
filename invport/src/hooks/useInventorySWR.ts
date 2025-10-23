@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useSWR } from './useSWR';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/apiClient';
 
 // Use the existing Vehicle type from @/types
@@ -106,22 +106,36 @@ const fetchInventory = async (page: number = 1, limit: number = 10): Promise<Inv
   throw new Error('Invalid API response format');
 };
 
-// Custom hook for inventory data with pagination and 5-minute caching
+// Custom hook for inventory data with pagination — direct fetch (no SWR caching)
 export function useInventorySWR(options: PaginationOptions = {}) {
   const { page = 1, limit = 10 } = options;
-  
-  const { data, error, isLoading, isValidating, mutate, refresh } = useSWR(
-    `inventory-${page}-${limit}`,
-    () => fetchInventory(page, limit),
-    {
-      refreshInterval: 0, // No auto-refresh, rely on stale-while-revalidate
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      dedupingInterval: 5000, // 5 seconds deduplication
-      errorRetryCount: 3,
-      errorRetryInterval: 2000
+
+  const [data, setData] = useState<InventoryData | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isValidating, setIsValidating] = useState<boolean>(false);
+
+  const fetchData = useCallback(async (p = page, l = limit) => {
+    setIsValidating(true);
+    try {
+      const result = await fetchInventory(p, l);
+      setData(result);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setData(null);
+    } finally {
+      setIsLoading(false);
+      setIsValidating(false);
     }
-  );
+  }, [page, limit]);
+
+  useEffect(() => {
+    void fetchData(page, limit);
+  }, [fetchData, page, limit]);
+
+  const mutate = useCallback(() => fetchData(page, limit), [fetchData, page, limit]);
+  const refresh = useCallback(() => fetchData(page, limit), [fetchData, page, limit]);
 
   return {
     vehicles: data?.vehicles ?? [],

@@ -17,8 +17,11 @@ export async function GET(request: NextRequest) {
     if (format !== 'json') queryParams.append('format', format);
     if (schema) queryParams.append('schema', 'true');
     
-    const queryString = queryParams.toString();
-    const endpoint = `GrabInventoryFH${queryString ? `?${queryString}` : ''}`;
+  const queryString = queryParams.toString();
+  // Use the unified GrabInventoryAll API and filter for fish houses when needed.
+  // Route uses the local API proxy path (/api/GrabInventoryAll) so that dev/prod environments
+  // are consistent with the rest of the app.
+  const endpoint = `/api/GrabInventoryAll${queryString ? `?${queryString}` : ''}`;
 
     // Call the external API (Azure Functions in dev, production API in prod)
     const response = await callExternalApi(endpoint);
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     const responseTimeMs = Date.now() - startTime;
-    console.error('❌ GrabInventoryFH API error:', error);
+  console.error('❌ GrabInventoryFH (legacy) API error:', error);
     
     return NextResponse.json({
       error: true,
@@ -60,3 +63,4 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
+

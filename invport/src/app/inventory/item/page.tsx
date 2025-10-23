@@ -52,8 +52,19 @@ export default function InventoryItemPage() {
           return;
         }
 
+        // Helper: normalize an object's keys to lowercase for resilient lookups
+        const normalizeKeys = (obj: Record<string, unknown> | null | undefined) => {
+          const out: Record<string, unknown> = {};
+          if (!obj) return out;
+          Object.keys(obj).forEach(k => {
+            out[k.toLowerCase()] = (obj as Record<string, unknown>)[k];
+          });
+          return out;
+        };
+
         const found = resp.find((it: Record<string, unknown>) => {
-          const uid = (it.unitId || it.UnitId || it.id);
+          const l = normalizeKeys(it);
+          const uid = l['unitid'] ?? l['unitid'] ?? l['id'] ?? l['unitid'];
           return uid?.toString() === id;
         });
 
@@ -63,28 +74,29 @@ export default function InventoryItemPage() {
           return;
         }
 
-        // Normalize into our Vehicle shape minimally
+        // Normalize into our Vehicle shape robustly (handles UnitID / UnitId / id and mixed-case keys)
+        const l = normalizeKeys(found as Record<string, unknown>);
         const normalized: Vehicle = {
-          id: (found.unitId || found.UnitId || found.id)?.toString() || String(id),
-          name: `${found.year || ''} ${found.make || ''} ${found.model || ''}`.trim(),
-          model: (found.model as string) || '',
-          year: (found.year as number) || 0,
-          make: (found.make as string) || '',
-          vin: (found.vin as string) || '',
-          mileage: (found.mileage as number) || 0,
-          price: (found.price as number) || 0,
-          status: (((found.status as unknown) as Vehicle['status']) || 'available') as Vehicle['status'],
-          color: (found.color as string) || '',
-          stock: (found.stockNo as string) || (found.StockNo as string) || undefined,
-          fuelType: (((found.fuelType as unknown) as Vehicle['fuelType']) || 'Gasoline') as Vehicle['fuelType'],
-          transmission: (((found.transmission as unknown) as Vehicle['transmission']) || 'Automatic') as Vehicle['transmission'],
+          id: String(l['unitid'] ?? l['id'] ?? id),
+          name: `${l['year'] ?? ''} ${l['make'] ?? ''} ${l['model'] ?? ''}`.trim(),
+          model: String(l['model'] ?? ''),
+          year: Number(l['year'] ?? 0) || 0,
+          make: String(l['make'] ?? ''),
+          vin: String(l['vin'] ?? l['vin'] ?? ''),
+          mileage: Number(l['mileage'] ?? l['miles'] ?? 0) || 0,
+          price: Number(l['price'] ?? l['msrp'] ?? 0) || 0,
+          status: (String(l['status'] ?? 'available').toLowerCase() as Vehicle['status']) || 'available',
+          color: String(l['color'] ?? ''),
+          stock: (l['stockno'] ?? l['stock'] ?? l['stocknum']) ? String(l['stockno'] ?? l['stock'] ?? l['stocknum']) : undefined,
+          fuelType: (String(l['fueltype'] ?? 'Gasoline') as Vehicle['fuelType']),
+          transmission: (String(l['transmission'] ?? 'Automatic') as Vehicle['transmission']),
           category: 'SUV',
-          description: (found.description as string) || '',
-          images: [],
-          dateAdded: (found.createdAt as string) || new Date().toISOString(),
-          lastUpdated: (found.updatedAt as string) || new Date().toISOString(),
-          location: 'Main Lot',
-          dealer: 'Flatt Motors'
+          description: String(l['description'] ?? l['notes'] ?? ''),
+          images: Array.isArray(l['images']) ? (l['images'] as unknown[]).map(i => String(i)) : (Array.isArray(l['photos']) ? (l['photos'] as unknown[]).map(i => String(i)) : []),
+          dateAdded: String(l['createdat'] ?? l['created_at'] ?? new Date().toISOString()),
+          lastUpdated: String(l['updatedat'] ?? l['updated_at'] ?? new Date().toISOString()),
+          location: String(l['location'] ?? 'Main Lot'),
+          dealer: String(l['dealer'] ?? 'Flatt Motors')
         };
 
         setVehicle(normalized);

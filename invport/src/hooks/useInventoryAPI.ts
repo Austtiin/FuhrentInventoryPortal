@@ -74,28 +74,35 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       }
 
       // Transform data to match frontend expectations
-      const transformedVehicles: Vehicle[] = vehiclesData.map((vehicle) => ({
-        id: String(vehicle.UnitID || vehicle.Id || vehicle.id || ''),
-        name: `${vehicle.Make || ''} ${vehicle.Model || ''} ${vehicle.Year || ''}`.trim(),
-        model: String(vehicle.Model || ''),
-        make: String(vehicle.Make || ''),
-        vin: String(vehicle.VIN || vehicle.vin || ''),
-        color: String(vehicle.Color || ''),
-        status: ((vehicle.Status as string)?.toLowerCase() as VehicleStatus) || 'available',
-        stock: String(vehicle.StockNo || vehicle.Stock || ''),
-        price: parseFloat(String(vehicle.Price)) || 0,
-        mileage: 0, // Will be removed from UI
-        year: parseInt(String(vehicle.Year)) || 0,
-        dateAdded: new Date().toISOString(),
-        lastUpdated: new Date().toISOString(),
-        // Add default properties
-        category: 'Sedan',
-        transmission: 'Automatic',
-        location: 'Main Lot',
-        dealer: 'Main Dealer',
-        images: [],
-        fuelType: 'Gasoline'
-      }));
+      const transformedVehicles: Vehicle[] = vehiclesData.map((vehicle) => {
+        // Prefer UnitID (numeric) for canonical unit identifier
+        const unitIdNum = Number(vehicle.UnitID ?? vehicle.Id ?? vehicle.id ?? 0) || 0;
+        const unitIdStr = unitIdNum ? String(unitIdNum) : String(vehicle.UnitID ?? vehicle.Id ?? vehicle.id ?? '');
+
+        return {
+          id: unitIdStr || String(vehicle.UnitID || vehicle.Id || vehicle.id || ''),
+          unitId: unitIdNum || undefined,
+          name: `${vehicle.Make || ''} ${vehicle.Model || ''} ${vehicle.Year || ''}`.trim(),
+          model: String(vehicle.Model || ''),
+          make: String(vehicle.Make || ''),
+          vin: String(vehicle.VIN || vehicle.vin || ''),
+          color: String(vehicle.Color || vehicle.Color || ''),
+          status: ((vehicle.Status as string)?.toLowerCase() as VehicleStatus) || 'available',
+          stock: String(vehicle.StockNo || vehicle.Stock || vehicle.stockNumber || ''),
+          price: parseFloat(String(vehicle.Price || vehicle.listPrice || vehicle.salePrice || 0)) || 0,
+          mileage: Number(vehicle.Mileage || vehicle.mileage || 0) || 0,
+          year: parseInt(String(vehicle.Year || vehicle.year || 0)) || 0,
+          dateAdded: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+          // Add default properties
+          category: 'Sedan',
+          transmission: 'Automatic',
+          location: 'Main Lot',
+          dealer: 'Main Dealer',
+          images: vehicle.images || [],
+          fuelType: 'Gasoline'
+        } as Vehicle;
+      });
 
       setVehicles(transformedVehicles);
       console.log(`✅ Loaded ${transformedVehicles.length} vehicles from API`);
@@ -331,3 +338,4 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
     markAsAvailable
   };
 };
+
