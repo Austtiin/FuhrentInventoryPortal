@@ -57,20 +57,45 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      const result = await safeResponseJson<InventoryApiResponse | Array<Record<string, unknown>>>(response);
+      // Try to parse JSON response robustly. The API sometimes returns
+      // JSON without correct content-type headers or returns a raw array.
+      let result: InventoryApiResponse | Array<Record<string, unknown>> | null = null;
+      try {
+        result = await safeResponseJson<InventoryApiResponse | Array<Record<string, unknown>>>(response);
+      } catch (parseError) {
+        // Fallback: try to read text and parse leniently
+        try {
+          const text = await response.text();
+          // safeJsonParse returns null on failure
+          // import safeJsonParse at top (already available via safeResponseJson import)
+          const { safeJsonParse } = await import('@/lib/safeJson');
+          const parsed = safeJsonParse<Array<Record<string, unknown>> | InventoryApiResponse>(text, null);
+          if (parsed) {
+            result = parsed;
+          } else {
+            throw parseError;
+          }
+        } catch (innerErr) {
+          console.error('❌ [useInventoryAPI] Failed to parse inventory response:', innerErr);
+          throw parseError;
+        }
+      }
 
       // Handle array response from GrabInventoryAll
       let vehiclesData: Array<Record<string, unknown>> = [];
-      
       if (Array.isArray(result)) {
         vehiclesData = result as Array<Record<string, unknown>>;
       } else if (result && typeof result === 'object' && 'success' in result && result.success && result.data) {
         vehiclesData = result.data as Array<Record<string, unknown>>;
       } else if (result && typeof result === 'object' && 'success' in result && result.success && 'vehicles' in result && Array.isArray(result.vehicles)) {
         vehiclesData = result.vehicles as Array<Record<string, unknown>>;
+      } else if (result && typeof result === 'object' && Array.isArray((result as unknown as { data?: unknown }).data)) {
+        // Some responses may not include 'success' flag but contain data array
+        vehiclesData = (result as unknown as { data?: Array<Record<string, unknown>> }).data as Array<Record<string, unknown>>;
       } else {
-        const errorMsg = result && typeof result === 'object' && 'error' in result ? result.error : 'Invalid API response format';
-        throw new Error(errorMsg as string || 'Invalid API response format');
+        const maybeError = (result as unknown as { error?: unknown })?.error;
+        const errorMsg = typeof maybeError === 'string' ? maybeError : 'Invalid API response format';
+        throw new Error(errorMsg);
       }
 
       // Transform data to match frontend expectations
