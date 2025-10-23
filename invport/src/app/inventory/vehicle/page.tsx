@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, ClockIcon, TruckIcon, TagIcon } from '@heroicons/react/24/outline';
 import { Layout } from '@/components/layout';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
@@ -11,12 +11,28 @@ import { apiFetch } from '@/lib/apiClient';
 // Simple vehicle detail page using search params instead of dynamic routes
 export default function VehicleDetailPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const vehicleId = searchParams.get('id');
-  
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Determine vehicleId on client side (from ?id= or last path segment)
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const q = url.searchParams.get('id');
+      if (q) {
+        setVehicleId(q);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length) {
+      setVehicleId(parts[parts.length - 1]);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchVehicleData = async () => {
@@ -25,7 +41,6 @@ export default function VehicleDetailPage() {
         setIsLoading(false);
         return;
       }
-
       try {
         setIsLoading(true);
         setError(null);

@@ -5,6 +5,10 @@
   },
   "routes": [
     {
+      "route": "/inventory/*",
+      "rewrite": "/inventory/item"
+    },
+    {
       "route": "/api/*",
       "allowedRoles": ["anonymous"]
     }
