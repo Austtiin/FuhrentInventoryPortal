@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { initializeErrorHandlers } from '@/lib/globalErrorHandler';
 
@@ -15,8 +15,10 @@ export function ClientProviders({ children }: ClientProvidersProps) {
   }, []);
 
   return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
+    <React.StrictMode>
+      <AuthProvider>
+        {children}
+      </AuthProvider>
+    </React.StrictMode>
   );
 }

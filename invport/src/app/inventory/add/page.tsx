@@ -62,7 +62,12 @@ const AddInventoryPage: React.FC = () => {
   const checkVINExists = async (vin: string): Promise<boolean> => {
     try {
       const response = await apiFetch(`/checkvin/${vin.toUpperCase()}`, {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          // Ensure fresh data for critical VIN checking
+          'Cache-Control': 'no-cache',
+          'X-Timestamp': Date.now().toString(),
+        }
       });
       
       if (!response.ok) return false;
