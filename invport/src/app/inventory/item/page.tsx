@@ -43,8 +43,8 @@ export default function InventoryItemPage() {
           return;
         }
 
-        // Fetch from GrabInventoryFH as requested (returns an array)
-        const resp = await apiFetch('/GrabInventoryFH');
+  // Fetch from GrabInventoryAll as requested (returns an array)
+  const resp = await apiFetch('/GrabInventoryAll');
 
         if (!resp || !Array.isArray(resp)) {
           setError('Failed to load inventory');
