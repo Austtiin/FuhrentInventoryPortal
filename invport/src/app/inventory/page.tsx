@@ -1,8 +1,13 @@
 "use client";
+import React, { Suspense } from 'react';
 import InventoryPageClient from './InventoryPageClient';
 
-// Force client-side rendering to simplify hydration
+// Client-rendered page wrapped in Suspense to satisfy useSearchParams requirements
 export default function InventoryPage() {
-  return <InventoryPageClient />;
+  return (
+    <Suspense fallback={null}>
+      <InventoryPageClient />
+    </Suspense>
+  );
 }
 
