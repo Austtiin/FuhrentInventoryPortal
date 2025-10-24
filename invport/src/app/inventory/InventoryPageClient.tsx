@@ -28,6 +28,7 @@ export default function InventoryPageClient() {
     filteredVehicles, 
     error, 
     isLoading, 
+    debug: hookDebug,
     filters,
     setFilters,
     refreshData,
@@ -217,7 +218,7 @@ export default function InventoryPageClient() {
             </div>
             {debugOpen && (
               <div className="p-3 max-w-[90vw] sm:max-w-[520px] max-h-[70vh] overflow-auto">
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="space-y-1">
                     <div><span className="text-gray-500">Env:</span> <span className="font-mono">{process.env.NODE_ENV}</span></div>
                     <div><span className="text-gray-500">Host:</span> <span className="font-mono">{typeof window !== 'undefined' ? window.location.origin : 'N/A'}</span></div>
@@ -227,8 +228,11 @@ export default function InventoryPageClient() {
                   <div className="space-y-1">
                     <div><span className="text-gray-500">vehicles:</span> {vehicles.length}</div>
                     <div><span className="text-gray-500">filtered:</span> {filteredVehicles.length}</div>
-                    <div><span className="text-gray-500">raw shape:</span> {debugRawShape}</div>
+                      <div><span className="text-gray-500">raw shape:</span> {hookDebug?.rawShape ?? debugRawShape}</div>
                     <div><span className="text-gray-500">debug loading:</span> {String(debugLoading)}</div>
+                      <div><span className="text-gray-500">status:</span> {hookDebug?.status ?? '-'}</div>
+                      <div><span className="text-gray-500">content-type:</span> {hookDebug?.contentType ?? '-'}</div>
+                      <div><span className="text-gray-500">extracted:</span> {hookDebug?.vehiclesExtracted ?? '-'}</div>
                   </div>
                 </div>
 
@@ -237,6 +241,13 @@ export default function InventoryPageClient() {
                     {debugError}
                   </div>
                 )}
+
+                  {hookDebug?.bodyPreview && (
+                    <div className="mt-3">
+                      <div className="text-xs text-gray-600 mb-1">Body preview</div>
+                      <pre className="text-[10px] bg-gray-50 p-2 rounded border border-gray-200 overflow-auto">{hookDebug.bodyPreview}</pre>
+                    </div>
+                  )}
 
                 <div className="mt-3">
                   <div className="text-xs text-gray-600 mb-1">Client-mapped first vehicle</div>

@@ -10,6 +10,15 @@ interface UseInventoryDirectReturn {
   filteredVehicles: Vehicle[];
   isLoading: boolean;
   error: string | null;
+  debug?: {
+    status?: number;
+    statusText?: string;
+    contentType?: string | null;
+    bodyPreview?: string;
+    rawShape?: 'array' | 'object' | 'unknown';
+    vehiclesExtracted?: number;
+    topLevelKeys?: string[];
+  } | null;
   filters: InventoryFilters;
   setFilters: (filters: Partial<InventoryFilters>) => void;
   refreshData: () => void;
@@ -29,6 +38,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debug, setDebug] = useState<UseInventoryDirectReturn['debug']>(null);
   const [filters, setFiltersState] = useState<InventoryFilters>(defaultFilters);
 
   const fetchAllVehicles = useCallback(async () => {
@@ -48,12 +58,23 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
 
       // Tolerant parsing: accept text/plain JSON bodies and strip BOM/whitespace
       const rawText = await response.text();
+      const contentType = response.headers.get('content-type');
       const normalized = rawText.replace(/^\uFEFF/, '').trim();
+      // Pre-populate debug basic metadata
+      setDebug({
+        status: response.status,
+        statusText: response.statusText,
+        contentType,
+        bodyPreview: normalized.substring(0, 200),
+        rawShape: 'unknown',
+        vehiclesExtracted: 0,
+      });
       const parsed = safeJsonParse<InventoryApiResponse | Array<Record<string, unknown>>>(normalized, null);
       if (!parsed) {
         console.warn('[inventory] Empty or unparsable JSON. Body preview:', normalized.substring(0, 300));
         // Do not hard-fail UI in PRD; treat as empty inventory and exit gracefully
         setVehicles([]);
+        setDebug((d) => d ? { ...d, rawShape: 'unknown', vehiclesExtracted: 0 } : d);
         setIsLoading(false);
         return;
       }
@@ -61,6 +82,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       let vehiclesData: Array<Record<string, unknown>> = [];
       if (Array.isArray(parsed)) {
         vehiclesData = parsed;
+        setDebug((d) => d ? { ...d, rawShape: 'array' } : d);
       } else if (parsed && typeof parsed === 'object') {
         const r = (parsed as unknown) as Record<string, unknown>;
         const vehiclesProp = r['vehicles'];
@@ -90,6 +112,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
             }
           }
         }
+        setDebug((d) => d ? { ...d, rawShape: 'object' } : d);
       }
 
       const transformedVehicles: Vehicle[] = vehiclesData.map((objRaw) => {
@@ -138,12 +161,13 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         } as Vehicle;
       });
 
-      if (!vehiclesData.length) {
+      if (!vehiclesData.length && parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         // Help diagnose mapping issues in PRD without failing UI
-        const topKeys = (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
-          ? Object.keys((parsed as unknown as Record<string, unknown>))
-          : [];
+        const topKeys = Object.keys((parsed as unknown as Record<string, unknown>));
         console.warn('[inventory] No vehicles extracted. Top-level keys:', topKeys);
+        setDebug((d) => d ? { ...d, topLevelKeys: topKeys, vehiclesExtracted: 0 } : d);
+      } else {
+        setDebug((d) => d ? { ...d, vehiclesExtracted: vehiclesData.length } : d);
       }
       setVehicles(transformedVehicles);
       console.log(`✅ Loaded ${transformedVehicles.length} vehicles`);
@@ -153,6 +177,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch vehicles';
       setError(errorMessage);
       setVehicles([]);
+      setDebug((d) => d ? { ...d } : d);
     } finally {
       setIsLoading(false);
     }
@@ -360,6 +385,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
     filteredVehicles,
     isLoading,
     error,
+    debug,
     filters,
     setFilters,
     refreshData,
