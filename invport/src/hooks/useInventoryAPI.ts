@@ -56,7 +56,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      // Parse the response body once, regardless of content-type.
+  // Parse the response body once, regardless of content-type.
       // Production sometimes returns JSON with text/plain content-type.
       const rawText = await response.text();
       let result: InventoryApiResponse | Array<Record<string, unknown>> | null = null;
@@ -69,9 +69,11 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         result = null;
       }
       if (!result) {
-        throw new Error(
-          `Invalid API response format. Body preview: ${rawText.substring(0, 200)}`
-        );
+        console.warn('[useInventoryAPI] Empty/invalid JSON. Body preview:', rawText.substring(0, 300));
+        // Treat as empty inventory instead of fatal error to avoid blocking the UI.
+        setVehicles([]);
+        setIsLoading(false);
+        return;
       }
 
       // Handle flexible response shapes from GrabInventoryAll/inventory
@@ -111,12 +113,30 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         else if ('data' in r && Array.isArray(r.data as unknown[])) {
           vehiclesData = r.data as Array<Record<string, unknown>>;
         } else {
-          const maybeError = (r.error as unknown) as string | undefined;
-          const errorMsg = typeof maybeError === 'string' ? maybeError : 'Invalid API response format';
-          throw new Error(errorMsg);
+          // Fallback: find the first array-like property that looks like vehicles
+          const firstArrayKey = Object.keys(r).find(k => Array.isArray((r as Record<string, unknown>)[k] as unknown[]));
+          if (firstArrayKey) {
+            const candidate = (r as Record<string, unknown>)[firstArrayKey] as unknown[];
+            const first = (candidate[0] ?? {}) as Record<string, unknown>;
+            const keys = Object.keys(first).map(k => k.toLowerCase());
+            const looksLikeVehicle = ['vin','make','model','year','unitid','id'].some(h => keys.includes(h));
+            if (looksLikeVehicle) {
+              console.warn('[useInventoryAPI] Using fallback vehicles from key:', firstArrayKey);
+              vehiclesData = candidate as Array<Record<string, unknown>>;
+            }
+          }
+
+          if (vehiclesData.length === 0) {
+            // Non-fatal: log rich diagnostics and continue with empty list
+            const maybeError = (r.error as unknown) as string | undefined;
+            const errorMsg = typeof maybeError === 'string' ? maybeError : 'Invalid API response format';
+            console.warn('[useInventoryAPI] No vehicles extracted from response object. Reason:', errorMsg, 'Keys:', Object.keys(r));
+            vehiclesData = [];
+          }
         }
       } else {
-        throw new Error('Invalid API response format (not array/object)');
+        console.warn('[useInventoryAPI] Invalid API response format (not array/object). Treating as empty.');
+        vehiclesData = [];
       }
 
       // Transform data to match frontend expectations (robust to key casing)
