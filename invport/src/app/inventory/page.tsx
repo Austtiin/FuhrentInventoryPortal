@@ -1,12 +1,8 @@
-import React, { Suspense } from 'react';
+"use client";
 import InventoryPageClient from './InventoryPageClient';
 
-// Static export - all data fetching happens client-side via Azure Functions
+// Force client-side rendering to simplify hydration
 export default function InventoryPage() {
-  return (
-    <Suspense fallback={null}>
-      <InventoryPageClient />
-    </Suspense>
-  );
+  return <InventoryPageClient />;
 }
 

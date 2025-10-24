@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Vehicle, VehicleStatus, InventoryFilters } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
 import type { InventoryApiResponse } from '@/types/apiResponses';
-import { rateLimiter, RATE_LIMITS } from '@/lib/rateLimiter';
+// Rate limiter not required for the simplified approach
 import { safeJsonParse } from '@/lib/safeJson';
 
 interface UseInventoryDirectReturn {
@@ -31,113 +31,46 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFiltersState] = useState<InventoryFilters>(defaultFilters);
 
-  const fetchFromEndpoint = useCallback(async (endpoint: string): Promise<Vehicle[]> => {
+  const fetchAllVehicles = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      console.log('🔄 Fetching inventory via API endpoint:', endpoint);
+      console.log('🔄 Fetching inventory via API endpoint: /GrabInventoryAll');
 
-      // Rate limit: Max 5 calls per 10 seconds
-      await rateLimiter.throttle('inventory', RATE_LIMITS.INVENTORY);
+      // Optionally throttle; comment out to keep ultra-simple and immediate
+      // await rateLimiter.throttle('inventory', RATE_LIMITS.INVENTORY);
 
-      // Create timeout promise
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout - please check your connection')), 30000)
-      );
-
-      // Race between fetch and timeout
-      const response = await Promise.race([
-        apiFetch(endpoint),
-        timeoutPromise
-      ]) as Response;
-      
+      const response = await apiFetch('/GrabInventoryAll');
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      // Parse the response body once, regardless of content-type.
-      // Production sometimes returns JSON with text/plain content-type.
+      // Tolerant parsing: accept text/plain JSON bodies
       const rawText = await response.text();
-      let result: InventoryApiResponse | Array<Record<string, unknown>> | null = null;
-      try {
-        result = safeJsonParse<Array<Record<string, unknown>> | InventoryApiResponse>(rawText, null);
-      } catch (e) {
-        // Should not happen (safeJsonParse catches), but guard anyway
-        console.error('❌ [useInventoryAPI] Unexpected parse wrapper error:', e);
-        result = null;
-      }
-      if (!result) {
-        console.warn('[useInventoryAPI] Empty/invalid JSON. Body preview:', rawText.substring(0, 300));
-        // Treat as empty list; upstream caller may decide to try a fallback endpoint.
-        return [] as Vehicle[];
+      const parsed = safeJsonParse<InventoryApiResponse | Array<Record<string, unknown>>>(rawText, null);
+      if (!parsed) {
+        throw new Error('Invalid or empty JSON response');
       }
 
-      // Handle flexible response shapes from GrabInventoryAll/inventory
       let vehiclesData: Array<Record<string, unknown>> = [];
-      if (Array.isArray(result)) {
-        // Raw array
-        vehiclesData = result as Array<Record<string, unknown>>;
-      } else if (result && typeof result === 'object') {
-  const r = result as unknown as Record<string, unknown>;
-        // Case: { success: true, vehicles: [...] }
-        if ('vehicles' in r && Array.isArray(r.vehicles)) {
-          vehiclesData = r.vehicles as Array<Record<string, unknown>>;
-        }
-        // Case: { success: true, data: [...] }
-        else if ('data' in r && Array.isArray((r.data as unknown))) {
+      if (Array.isArray(parsed)) {
+        vehiclesData = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        const r = (parsed as unknown) as Record<string, unknown>;
+        if (Array.isArray(r.vehicles)) {
+          vehiclesData = r.vehicles;
+        } else if (r.data && Array.isArray(r.data)) {
           vehiclesData = r.data as Array<Record<string, unknown>>;
-        }
-        // Case: { success: true, data: { vehicles: [...], pagination: {...} } }
-        else if (
-          'data' in r &&
-          r.data &&
-          typeof r.data === 'object' &&
-          Array.isArray((r.data as Record<string, unknown>).vehicles)
+        } else if (
+          r.data && typeof r.data === 'object' && Array.isArray((r.data as Record<string, unknown>).vehicles)
         ) {
           vehiclesData = (r.data as Record<string, unknown>).vehicles as Array<Record<string, unknown>>;
         }
-        // Case: { data: { vehicles: [...] } } (without success flag)
-        else if (
-          'data' in r &&
-          r.data &&
-          typeof r.data === 'object' &&
-          Array.isArray((r.data as Record<string, unknown>).vehicles)
-        ) {
-          vehiclesData = (r.data as Record<string, unknown>).vehicles as Array<Record<string, unknown>>;
-        }
-        // Case: { data: [...] } (without success flag)
-        else if ('data' in r && Array.isArray(r.data as unknown[])) {
-          vehiclesData = r.data as Array<Record<string, unknown>>;
-        } else {
-          // Fallback: find the first array-like property that looks like vehicles
-          const firstArrayKey = Object.keys(r).find(k => Array.isArray((r as Record<string, unknown>)[k] as unknown[]));
-          if (firstArrayKey) {
-            const candidate = (r as Record<string, unknown>)[firstArrayKey] as unknown[];
-            const first = (candidate[0] ?? {}) as Record<string, unknown>;
-            const keys = Object.keys(first).map(k => k.toLowerCase());
-            const looksLikeVehicle = ['vin','make','model','year','unitid','id'].some(h => keys.includes(h));
-            if (looksLikeVehicle) {
-              console.warn('[useInventoryAPI] Using fallback vehicles from key:', firstArrayKey);
-              vehiclesData = candidate as Array<Record<string, unknown>>;
-            }
-          }
-
-          if (vehiclesData.length === 0) {
-            // Non-fatal: log rich diagnostics and continue with empty list
-            const maybeError = (r.error as unknown) as string | undefined;
-            const errorMsg = typeof maybeError === 'string' ? maybeError : 'Invalid API response format';
-            console.warn('[useInventoryAPI] No vehicles extracted from response object. Reason:', errorMsg, 'Keys:', Object.keys(r));
-            vehiclesData = [];
-          }
-        }
-      } else {
-        console.warn('[useInventoryAPI] Invalid API response format (not array/object). Treating as empty.');
-        vehiclesData = [];
       }
 
-      // Transform data to match frontend expectations (robust to key casing)
-      const transformedVehicles: Vehicle[] = vehiclesData.map((v) => {
-        const obj = v as Record<string, unknown>;
-        // Helpers to read values with multiple possible key casings
+      const transformedVehicles: Vehicle[] = vehiclesData.map((objRaw) => {
+        const obj = objRaw as Record<string, unknown>;
         const pick = (...keys: string[]) => {
           for (const k of keys) {
             const val = obj[k];
@@ -154,81 +87,39 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         const model = String(pick('Model', 'model') ?? '');
         const yearNum = Number(pick('Year', 'year') ?? 0) || 0;
         const vin = String(pick('VIN', 'vin') ?? '');
-        const color = String(pick('Color', 'color') ?? '');
         const status = String(pick('Status', 'status') ?? 'available').toLowerCase() as VehicleStatus;
         const stock = String(pick('StockNo', 'Stock', 'stockNumber', 'stock') ?? '');
         const price = Number(pick('Price', 'price', 'listPrice', 'salePrice') ?? 0) || 0;
-        const mileage = Number(pick('Mileage', 'mileage', 'Odometer') ?? 0) || 0;
-        const dateAdded = String(pick('dateAdded', 'DateAdded') ?? '') || new Date().toISOString();
-        const lastUpdated = String(pick('lastUpdated', 'LastUpdated') ?? '') || new Date().toISOString();
-        const name = String(pick('name') ?? `${make} ${model} ${yearNum}`.trim());
-        const images = (pick('images') as string[] | undefined) ?? [];
 
         return {
           id: idStr,
           unitId: unitIdNum || undefined,
-          name,
+          name: `${make} ${model} ${yearNum}`.trim(),
           model,
           make,
           vin,
-          color,
+          color: String(pick('Color', 'color') ?? ''),
           status,
           stock,
           price,
-          mileage,
+          mileage: Number(pick('Mileage', 'mileage', 'Odometer') ?? 0) || 0,
           year: yearNum,
-          dateAdded,
-          lastUpdated,
-          // Reasonable defaults (unused in many UIs but typed on Vehicle)
-          category: (pick('Category', 'category') as string) || 'Sedan',
-          transmission: (pick('Transmission', 'transmission') as string) || 'Automatic',
-          location: (pick('Location', 'location') as string) || 'Main Lot',
-          dealer: (pick('Dealer', 'dealer') as string) || 'Main Dealer',
-          images,
-          fuelType: (pick('FuelType', 'fuelType') as string) || 'Gasoline',
+          dateAdded: String(pick('dateAdded', 'DateAdded') ?? '') || new Date().toISOString(),
+          lastUpdated: String(pick('lastUpdated', 'LastUpdated') ?? '') || new Date().toISOString(),
+          category: (pick('Category', 'category') as string) || 'Vehicle',
+          transmission: (pick('Transmission', 'transmission') as string) || '',
+          location: (pick('Location', 'location') as string) || '',
+          dealer: (pick('Dealer', 'dealer') as string) || '',
+          images: (pick('images') as string[] | undefined) ?? [],
+          fuelType: (pick('FuelType', 'fuelType') as string) || '',
         } as Vehicle;
       });
 
-      console.log(`✅ Parsed ${transformedVehicles.length} vehicles from endpoint ${endpoint}`);
-      return transformedVehicles;
-    } catch (err) {
-      console.error(`❌ Failed to fetch from endpoint ${endpoint}:`, err);
-      throw err;
-    }
-  }, []);
-
-  const fetchAllVehicles = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // Primary endpoint
-      let transformed = await fetchFromEndpoint('/GrabInventoryAll');
-      // Fallback to alternate endpoint if primary fails or returns empty
-      if (!transformed || transformed.length === 0) {
-        console.warn('⚠️ Primary endpoint returned no vehicles. Trying fallback /inventory');
-        try {
-          transformed = await fetchFromEndpoint('/inventory');
-        } catch (fallbackErr) {
-          console.error('❌ Fallback /inventory also failed:', fallbackErr);
-        }
-      }
-
-      setVehicles(transformed ?? []);
-      console.log(`✅ Loaded ${transformed?.length ?? 0} vehicles (after fallback if needed)`);
+      setVehicles(transformedVehicles);
+      console.log(`✅ Loaded ${transformedVehicles.length} vehicles`);
     } catch (err) {
       console.error('❌ Failed to fetch vehicles:', err);
-      let errorMessage = 'Failed to fetch vehicles';
-
-      if (err instanceof Error) {
-        if (err.message.includes('timeout')) {
-          errorMessage = 'Connection timeout - please check your network and try again';
-        } else if (err.message.includes('HTTP error')) {
-          errorMessage = 'Server error - please try again later';
-        } else {
-          errorMessage = err.message;
-        }
-      }
-
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch vehicles';
       setError(errorMessage);
       setVehicles([]);
     } finally {
