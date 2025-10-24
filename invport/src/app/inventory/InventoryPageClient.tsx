@@ -10,13 +10,11 @@ import { Vehicle } from '@/types';
 import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
-import { useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/apiClient';
 import { safeJsonParse } from '@/lib/safeJson';
 
 export default function InventoryPageClient() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [notification, setNotification] = useState<{
     type: NotificationType;
@@ -171,17 +169,18 @@ export default function InventoryPageClient() {
     }
   };
 
-  // Auto-open debug if ?debug=1
+  // Auto-open debug if ?debug=1 (client-only, no useSearchParams to avoid SSR/Suspense requirements)
   useEffect(() => {
-    const dbg = searchParams?.get('debug');
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const dbg = params.get('debug');
     if (dbg === '1' || dbg === 'true') {
       setDebugOpen(true);
-      // defer to allow page to settle
       setTimeout(() => {
         void loadDebugSnapshot();
       }, 0);
     }
-  }, [searchParams]);
+  }, []);
 
   if (error) {
     return (
