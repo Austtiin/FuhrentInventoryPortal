@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Vehicle, VehicleStatus, InventoryFilters } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
-import { safeResponseJson } from '@/lib/safeJson';
 import type { InventoryApiResponse } from '@/types/apiResponses';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rateLimiter';
 
@@ -57,28 +56,22 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      // Try to parse JSON response robustly. The API sometimes returns
-      // JSON without correct content-type headers or returns a raw array.
+      // Parse the response body once, regardless of content-type.
+      // Production sometimes returns JSON with text/plain content-type.
+      const rawText = await response.text();
       let result: InventoryApiResponse | Array<Record<string, unknown>> | null = null;
       try {
-        result = await safeResponseJson<InventoryApiResponse | Array<Record<string, unknown>>>(response);
-      } catch (parseError) {
-        // Fallback: try to read text and parse leniently
-        try {
-          const text = await response.text();
-          // safeJsonParse returns null on failure
-          // import safeJsonParse at top (already available via safeResponseJson import)
-          const { safeJsonParse } = await import('@/lib/safeJson');
-          const parsed = safeJsonParse<Array<Record<string, unknown>> | InventoryApiResponse>(text, null);
-          if (parsed) {
-            result = parsed;
-          } else {
-            throw parseError;
-          }
-        } catch (innerErr) {
-          console.error('❌ [useInventoryAPI] Failed to parse inventory response:', innerErr);
-          throw parseError;
-        }
+        const { safeJsonParse } = await import('@/lib/safeJson');
+        result = safeJsonParse<Array<Record<string, unknown>> | InventoryApiResponse>(rawText, null);
+      } catch (e) {
+        // Should not happen (safeJsonParse catches), but guard anyway
+        console.error('❌ [useInventoryAPI] Unexpected parse wrapper error:', e);
+        result = null;
+      }
+      if (!result) {
+        throw new Error(
+          `Invalid API response format. Body preview: ${rawText.substring(0, 200)}`
+        );
       }
 
       // Handle flexible response shapes from GrabInventoryAll/inventory
@@ -123,7 +116,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
           throw new Error(errorMsg);
         }
       } else {
-        throw new Error('Invalid API response format');
+        throw new Error('Invalid API response format (not array/object)');
       }
 
       // Transform data to match frontend expectations (robust to key casing)
