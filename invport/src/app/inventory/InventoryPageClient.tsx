@@ -13,7 +13,7 @@ import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
 import { apiFetch } from '@/lib/apiClient';
 import { safeJsonParse } from '@/lib/safeJson';
 
-export default function InventoryPageClient() {
+function InventoryPageClientInner() {
   const router = useRouter();
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [notification, setNotification] = useState<{
@@ -549,5 +549,13 @@ export default function InventoryPageClient() {
       </ErrorBoundary>
     </Layout>
   );
+}
+
+export default function InventoryPageClient() {
+  // Hydration guard to avoid SSR vs CSR markup differences in SWA
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return <InventoryPageClientInner />;
 }
 
