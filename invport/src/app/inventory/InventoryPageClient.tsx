@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
 import { useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/apiClient';
-import { safeResponseJson } from '@/lib/safeJson';
+import { safeJsonParse } from '@/lib/safeJson';
 
 export default function InventoryPageClient() {
   const router = useRouter();
@@ -126,7 +126,17 @@ export default function InventoryPageClient() {
         const txt = await res.text();
         throw new Error(`HTTP ${res.status}: ${txt}`);
       }
-      const data = await safeResponseJson<unknown>(res);
+      // Try tolerant parse: read text then JSON-parse safely (handles text/plain)
+      const contentType = res.headers.get('content-type') || '';
+      const bodyText = await res.text();
+      const data = safeJsonParse<unknown>(bodyText, null);
+      if (data === null) {
+        setDebugRawShape('unknown');
+        setDebugFirstItem(null);
+        setDebugFirstItemKeys([]);
+        setDebugError(`Non-JSON or unparsable body (Content-Type: ${contentType}). Body preview: ${bodyText.substring(0, 200)}`);
+        return;
+      }
       if (Array.isArray(data)) {
         setDebugRawShape('array');
         const first = (data[0] ?? null) as Record<string, unknown> | null;

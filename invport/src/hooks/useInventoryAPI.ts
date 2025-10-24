@@ -3,6 +3,7 @@ import { Vehicle, VehicleStatus, InventoryFilters } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
 import type { InventoryApiResponse } from '@/types/apiResponses';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rateLimiter';
+import { safeJsonParse } from '@/lib/safeJson';
 
 interface UseInventoryDirectReturn {
   vehicles: Vehicle[];
@@ -30,12 +31,9 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFiltersState] = useState<InventoryFilters>(defaultFilters);
 
-  const fetchAllVehicles = useCallback(async () => {
+  const fetchFromEndpoint = useCallback(async (endpoint: string): Promise<Vehicle[]> => {
     try {
-      setIsLoading(true);
-      setError(null);
-
-      console.log('🔄 Fetching all inventory via API...');
+      console.log('🔄 Fetching inventory via API endpoint:', endpoint);
 
       // Rate limit: Max 5 calls per 10 seconds
       await rateLimiter.throttle('inventory', RATE_LIMITS.INVENTORY);
@@ -47,7 +45,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
 
       // Race between fetch and timeout
       const response = await Promise.race([
-        apiFetch('/GrabInventoryAll'),
+        apiFetch(endpoint),
         timeoutPromise
       ]) as Response;
       
@@ -56,12 +54,11 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-  // Parse the response body once, regardless of content-type.
+      // Parse the response body once, regardless of content-type.
       // Production sometimes returns JSON with text/plain content-type.
       const rawText = await response.text();
       let result: InventoryApiResponse | Array<Record<string, unknown>> | null = null;
       try {
-        const { safeJsonParse } = await import('@/lib/safeJson');
         result = safeJsonParse<Array<Record<string, unknown>> | InventoryApiResponse>(rawText, null);
       } catch (e) {
         // Should not happen (safeJsonParse catches), but guard anyway
@@ -70,10 +67,8 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       }
       if (!result) {
         console.warn('[useInventoryAPI] Empty/invalid JSON. Body preview:', rawText.substring(0, 300));
-        // Treat as empty inventory instead of fatal error to avoid blocking the UI.
-        setVehicles([]);
-        setIsLoading(false);
-        return;
+        // Treat as empty list; upstream caller may decide to try a fallback endpoint.
+        return [] as Vehicle[];
       }
 
       // Handle flexible response shapes from GrabInventoryAll/inventory
@@ -194,13 +189,36 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         } as Vehicle;
       });
 
-      setVehicles(transformedVehicles);
-      console.log(`✅ Loaded ${transformedVehicles.length} vehicles from API`);
+      console.log(`✅ Parsed ${transformedVehicles.length} vehicles from endpoint ${endpoint}`);
+      return transformedVehicles;
+    } catch (err) {
+      console.error(`❌ Failed to fetch from endpoint ${endpoint}:`, err);
+      throw err;
+    }
+  }, []);
 
+  const fetchAllVehicles = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Primary endpoint
+      let transformed = await fetchFromEndpoint('/GrabInventoryAll');
+      // Fallback to alternate endpoint if primary fails or returns empty
+      if (!transformed || transformed.length === 0) {
+        console.warn('⚠️ Primary endpoint returned no vehicles. Trying fallback /inventory');
+        try {
+          transformed = await fetchFromEndpoint('/inventory');
+        } catch (fallbackErr) {
+          console.error('❌ Fallback /inventory also failed:', fallbackErr);
+        }
+      }
+
+      setVehicles(transformed ?? []);
+      console.log(`✅ Loaded ${transformed?.length ?? 0} vehicles (after fallback if needed)`);
     } catch (err) {
       console.error('❌ Failed to fetch vehicles:', err);
       let errorMessage = 'Failed to fetch vehicles';
-      
+
       if (err instanceof Error) {
         if (err.message.includes('timeout')) {
           errorMessage = 'Connection timeout - please check your network and try again';
@@ -210,7 +228,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
           errorMessage = err.message;
         }
       }
-      
+
       setError(errorMessage);
       setVehicles([]);
     } finally {
