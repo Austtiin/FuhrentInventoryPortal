@@ -704,13 +704,7 @@ function EditInventoryPageContent() {
 
 export default function EditInventoryPage() {
   return (
-    <Suspense fallback={
-      <Layout>
-        <div className="flex items-center justify-center h-96">
-          <LoadingSpinner size="xl" />
-        </div>
-      </Layout>
-    }>
+    <Suspense fallback={null}>
       <EditInventoryPageContent />
     </Suspense>
   );
