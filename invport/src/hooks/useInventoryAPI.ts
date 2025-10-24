@@ -58,14 +58,32 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         vehiclesData = parsed;
       } else if (parsed && typeof parsed === 'object') {
         const r = (parsed as unknown) as Record<string, unknown>;
-        if (Array.isArray(r.vehicles)) {
-          vehiclesData = r.vehicles;
-        } else if (r.data && Array.isArray(r.data)) {
-          vehiclesData = r.data as Array<Record<string, unknown>>;
-        } else if (
-          r.data && typeof r.data === 'object' && Array.isArray((r.data as Record<string, unknown>).vehicles)
-        ) {
-          vehiclesData = (r.data as Record<string, unknown>).vehicles as Array<Record<string, unknown>>;
+        const vehiclesProp = r['vehicles'];
+        const dataProp = r['data'];
+        if (Array.isArray(vehiclesProp)) {
+          vehiclesData = vehiclesProp as Array<Record<string, unknown>>;
+        } else if (Array.isArray(dataProp)) {
+          vehiclesData = dataProp as Array<Record<string, unknown>>;
+        } else if (dataProp && typeof dataProp === 'object') {
+          const dataObj = dataProp as Record<string, unknown>;
+          const nestedVehicles = dataObj['vehicles'];
+          if (Array.isArray(nestedVehicles)) {
+            vehiclesData = nestedVehicles as Array<Record<string, unknown>>;
+          }
+        }
+        if (vehiclesData.length === 0) {
+          // Last-resort: pick first array-like property that looks like vehicles
+          const firstArrayKey = Object.keys(r).find((k) => Array.isArray(r[k] as unknown[]));
+          if (firstArrayKey) {
+            const candidate = r[firstArrayKey] as unknown[];
+            const first = (candidate?.[0] ?? {}) as Record<string, unknown>;
+            const keys = Object.keys(first).map((k) => k.toLowerCase());
+            const looksLikeVehicle = ['vin', 'make', 'model', 'year', 'unitid', 'id'].some((h) => keys.includes(h));
+            if (looksLikeVehicle) {
+              console.warn('[inventory] Using fallback array property:', firstArrayKey);
+              vehiclesData = candidate as Array<Record<string, unknown>>;
+            }
+          }
         }
       }
 
@@ -115,6 +133,13 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         } as Vehicle;
       });
 
+      if (!vehiclesData.length) {
+        // Help diagnose mapping issues in PRD without failing UI
+        const topKeys = (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+          ? Object.keys((parsed as unknown as Record<string, unknown>))
+          : [];
+        console.warn('[inventory] No vehicles extracted. Top-level keys:', topKeys);
+      }
       setVehicles(transformedVehicles);
       console.log(`✅ Loaded ${transformedVehicles.length} vehicles`);
     } catch (err) {
