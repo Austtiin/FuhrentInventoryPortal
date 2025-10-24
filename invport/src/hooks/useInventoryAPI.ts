@@ -134,8 +134,12 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         const yearNum = Number(pick('Year', 'year') ?? 0) || 0;
         const vin = String(pick('VIN', 'vin') ?? '');
         const status = String(pick('Status', 'status') ?? 'available').toLowerCase() as VehicleStatus;
-        const stock = String(pick('StockNo', 'Stock', 'stockNumber', 'stock') ?? '');
+        const stock = String(pick('StockNo', 'stockNo', 'Stock', 'stockNumber', 'stock') ?? '');
         const price = Number(pick('Price', 'price', 'listPrice', 'salePrice') ?? 0) || 0;
+        const typeIdVal = Number(pick('TypeID', 'typeId') ?? 0) || undefined;
+        const createdAt = String(pick('createdAt', 'CreatedAt', 'dateAdded', 'DateAdded') ?? '');
+        const updatedAt = String(pick('updatedAt', 'UpdatedAt', 'lastUpdated', 'LastUpdated') ?? '');
+        const description = (pick('description', 'Description') as string) || undefined;
 
         return {
           id: idStr,
@@ -150,14 +154,16 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
           price,
           mileage: Number(pick('Mileage', 'mileage', 'Odometer') ?? 0) || 0,
           year: yearNum,
-          dateAdded: String(pick('dateAdded', 'DateAdded') ?? '') || new Date().toISOString(),
-          lastUpdated: String(pick('lastUpdated', 'LastUpdated') ?? '') || new Date().toISOString(),
+          dateAdded: createdAt || new Date().toISOString(),
+          lastUpdated: updatedAt || new Date().toISOString(),
           category: (pick('Category', 'category') as string) || 'Vehicle',
           transmission: (pick('Transmission', 'transmission') as string) || '',
           location: (pick('Location', 'location') as string) || '',
           dealer: (pick('Dealer', 'dealer') as string) || '',
           images: (pick('images') as string[] | undefined) ?? [],
           fuelType: (pick('FuelType', 'fuelType') as string) || '',
+          typeId: typeIdVal,
+          description,
         } as Vehicle;
       });
 
