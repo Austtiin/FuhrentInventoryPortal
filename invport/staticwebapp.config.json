@@ -1,13 +1,13 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/images/*.{png,jpg,gif,ico,svg}", "/api/*"]
+    "exclude": [
+      "/api/*",
+      "/_next/*",
+      "/**/*.{js,css,ico,png,jpg,jpeg,gif,svg,webp,json,txt,woff,woff2}"
+    ]
   },
   "routes": [
-    {
-      "route": "/inventory/*",
-      "rewrite": "/inventory/item"
-    },
     {
       "route": "/api/*",
       "allowedRoles": ["anonymous"]
