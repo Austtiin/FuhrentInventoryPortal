@@ -46,11 +46,16 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
-      // Tolerant parsing: accept text/plain JSON bodies
+      // Tolerant parsing: accept text/plain JSON bodies and strip BOM/whitespace
       const rawText = await response.text();
-      const parsed = safeJsonParse<InventoryApiResponse | Array<Record<string, unknown>>>(rawText, null);
+      const normalized = rawText.replace(/^\uFEFF/, '').trim();
+      const parsed = safeJsonParse<InventoryApiResponse | Array<Record<string, unknown>>>(normalized, null);
       if (!parsed) {
-        throw new Error('Invalid or empty JSON response');
+        console.warn('[inventory] Empty or unparsable JSON. Body preview:', normalized.substring(0, 300));
+        // Do not hard-fail UI in PRD; treat as empty inventory and exit gracefully
+        setVehicles([]);
+        setIsLoading(false);
+        return;
       }
 
       let vehiclesData: Array<Record<string, unknown>> = [];
@@ -144,6 +149,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       console.log(`✅ Loaded ${transformedVehicles.length} vehicles`);
     } catch (err) {
       console.error('❌ Failed to fetch vehicles:', err);
+      // Only surface "error" for true network/HTTP failures. For parse/shape cases we already returned gracefully.
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch vehicles';
       setError(errorMessage);
       setVehicles([]);
