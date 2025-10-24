@@ -126,34 +126,58 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         throw new Error('Invalid API response format');
       }
 
-      // Transform data to match frontend expectations
-      const transformedVehicles: Vehicle[] = vehiclesData.map((vehicle) => {
-        // Prefer UnitID (numeric) for canonical unit identifier
-        const unitIdNum = Number(vehicle.UnitID ?? vehicle.Id ?? vehicle.id ?? 0) || 0;
-        const unitIdStr = unitIdNum ? String(unitIdNum) : String(vehicle.UnitID ?? vehicle.Id ?? vehicle.id ?? '');
+      // Transform data to match frontend expectations (robust to key casing)
+      const transformedVehicles: Vehicle[] = vehiclesData.map((v) => {
+        const obj = v as Record<string, unknown>;
+        // Helpers to read values with multiple possible key casings
+        const pick = (...keys: string[]) => {
+          for (const k of keys) {
+            const val = obj[k];
+            if (val !== undefined && val !== null && val !== '') return val;
+          }
+          return undefined;
+        };
+
+        const idAny = pick('UnitID', 'unitId', 'Id', 'ID', 'id');
+        const unitIdNum = Number(idAny ?? 0) || 0;
+        const idStr = unitIdNum ? String(unitIdNum) : String(idAny ?? '');
+
+        const make = String(pick('Make', 'make') ?? '');
+        const model = String(pick('Model', 'model') ?? '');
+        const yearNum = Number(pick('Year', 'year') ?? 0) || 0;
+        const vin = String(pick('VIN', 'vin') ?? '');
+        const color = String(pick('Color', 'color') ?? '');
+        const status = String(pick('Status', 'status') ?? 'available').toLowerCase() as VehicleStatus;
+        const stock = String(pick('StockNo', 'Stock', 'stockNumber', 'stock') ?? '');
+        const price = Number(pick('Price', 'price', 'listPrice', 'salePrice') ?? 0) || 0;
+        const mileage = Number(pick('Mileage', 'mileage', 'Odometer') ?? 0) || 0;
+        const dateAdded = String(pick('dateAdded', 'DateAdded') ?? '') || new Date().toISOString();
+        const lastUpdated = String(pick('lastUpdated', 'LastUpdated') ?? '') || new Date().toISOString();
+        const name = String(pick('name') ?? `${make} ${model} ${yearNum}`.trim());
+        const images = (pick('images') as string[] | undefined) ?? [];
 
         return {
-          id: unitIdStr || String(vehicle.UnitID || vehicle.Id || vehicle.id || ''),
+          id: idStr,
           unitId: unitIdNum || undefined,
-          name: `${vehicle.Make || ''} ${vehicle.Model || ''} ${vehicle.Year || ''}`.trim(),
-          model: String(vehicle.Model || ''),
-          make: String(vehicle.Make || ''),
-          vin: String(vehicle.VIN || vehicle.vin || ''),
-          color: String(vehicle.Color || vehicle.Color || ''),
-          status: ((vehicle.Status as string)?.toLowerCase() as VehicleStatus) || 'available',
-          stock: String(vehicle.StockNo || vehicle.Stock || vehicle.stockNumber || ''),
-          price: parseFloat(String(vehicle.Price || vehicle.listPrice || vehicle.salePrice || 0)) || 0,
-          mileage: Number(vehicle.Mileage || vehicle.mileage || 0) || 0,
-          year: parseInt(String(vehicle.Year || vehicle.year || 0)) || 0,
-          dateAdded: new Date().toISOString(),
-          lastUpdated: new Date().toISOString(),
-          // Add default properties
-          category: 'Sedan',
-          transmission: 'Automatic',
-          location: 'Main Lot',
-          dealer: 'Main Dealer',
-          images: vehicle.images || [],
-          fuelType: 'Gasoline'
+          name,
+          model,
+          make,
+          vin,
+          color,
+          status,
+          stock,
+          price,
+          mileage,
+          year: yearNum,
+          dateAdded,
+          lastUpdated,
+          // Reasonable defaults (unused in many UIs but typed on Vehicle)
+          category: (pick('Category', 'category') as string) || 'Sedan',
+          transmission: (pick('Transmission', 'transmission') as string) || 'Automatic',
+          location: (pick('Location', 'location') as string) || 'Main Lot',
+          dealer: (pick('Dealer', 'dealer') as string) || 'Main Dealer',
+          images,
+          fuelType: (pick('FuelType', 'fuelType') as string) || 'Gasoline',
         } as Vehicle;
       });
 
