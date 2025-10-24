@@ -81,21 +81,49 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         }
       }
 
-      // Handle array response from GrabInventoryAll
+      // Handle flexible response shapes from GrabInventoryAll/inventory
       let vehiclesData: Array<Record<string, unknown>> = [];
       if (Array.isArray(result)) {
+        // Raw array
         vehiclesData = result as Array<Record<string, unknown>>;
-      } else if (result && typeof result === 'object' && 'success' in result && result.success && result.data) {
-        vehiclesData = result.data as Array<Record<string, unknown>>;
-      } else if (result && typeof result === 'object' && 'success' in result && result.success && 'vehicles' in result && Array.isArray(result.vehicles)) {
-        vehiclesData = result.vehicles as Array<Record<string, unknown>>;
-      } else if (result && typeof result === 'object' && Array.isArray((result as unknown as { data?: unknown }).data)) {
-        // Some responses may not include 'success' flag but contain data array
-        vehiclesData = (result as unknown as { data?: Array<Record<string, unknown>> }).data as Array<Record<string, unknown>>;
+      } else if (result && typeof result === 'object') {
+  const r = result as unknown as Record<string, unknown>;
+        // Case: { success: true, vehicles: [...] }
+        if ('vehicles' in r && Array.isArray(r.vehicles)) {
+          vehiclesData = r.vehicles as Array<Record<string, unknown>>;
+        }
+        // Case: { success: true, data: [...] }
+        else if ('data' in r && Array.isArray((r.data as unknown))) {
+          vehiclesData = r.data as Array<Record<string, unknown>>;
+        }
+        // Case: { success: true, data: { vehicles: [...], pagination: {...} } }
+        else if (
+          'data' in r &&
+          r.data &&
+          typeof r.data === 'object' &&
+          Array.isArray((r.data as Record<string, unknown>).vehicles)
+        ) {
+          vehiclesData = (r.data as Record<string, unknown>).vehicles as Array<Record<string, unknown>>;
+        }
+        // Case: { data: { vehicles: [...] } } (without success flag)
+        else if (
+          'data' in r &&
+          r.data &&
+          typeof r.data === 'object' &&
+          Array.isArray((r.data as Record<string, unknown>).vehicles)
+        ) {
+          vehiclesData = (r.data as Record<string, unknown>).vehicles as Array<Record<string, unknown>>;
+        }
+        // Case: { data: [...] } (without success flag)
+        else if ('data' in r && Array.isArray(r.data as unknown[])) {
+          vehiclesData = r.data as Array<Record<string, unknown>>;
+        } else {
+          const maybeError = (r.error as unknown) as string | undefined;
+          const errorMsg = typeof maybeError === 'string' ? maybeError : 'Invalid API response format';
+          throw new Error(errorMsg);
+        }
       } else {
-        const maybeError = (result as unknown as { error?: unknown })?.error;
-        const errorMsg = typeof maybeError === 'string' ? maybeError : 'Invalid API response format';
-        throw new Error(errorMsg);
+        throw new Error('Invalid API response format');
       }
 
       // Transform data to match frontend expectations

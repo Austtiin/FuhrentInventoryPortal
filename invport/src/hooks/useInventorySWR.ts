@@ -68,7 +68,7 @@ const fetchInventory = async (page: number = 1, limit: number = 10): Promise<Inv
     throw new Error(`API request failed with status ${response.status}: ${errorText}`);
   }
 
-  const data = await safeResponseJson<InventoryApiResponse | Array<Record<string, unknown>>>(response);
+  const data = await safeResponseJson<InventoryApiResponse | Array<Record<string, unknown>> | Record<string, unknown>>(response);
   
   // Handle array response from GrabInventoryAll
   if (Array.isArray(data)) {
@@ -84,25 +84,68 @@ const fetchInventory = async (page: number = 1, limit: number = 10): Promise<Inv
     };
   }
   
-  // Handle wrapped response format
-  if (data && typeof data === 'object' && 'success' in data) {
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to fetch inventory');
+  // Handle wrapped response formats
+  if (data && typeof data === 'object') {
+    const r = data as Record<string, unknown>;
+    // If "success" flag present and false, surface error
+    if ('success' in r && r.success === false) {
+      const err = (r.error as string) || 'Failed to fetch inventory';
+      throw new Error(err);
     }
-    
-    const vehicles = (data.data || []) as unknown as VehicleData[];
-    return {
-      success: true,
-      vehicles,
-      total: vehicles.length,
-      page,
-      limit,
-      totalPages: Math.ceil(vehicles.length / limit),
-      hasNext: page * limit < vehicles.length,
-      hasPrev: page > 1
-    };
+
+    // Case: { success: true, vehicles: [...] }
+    if ('vehicles' in r && Array.isArray(r.vehicles)) {
+      const vehicles = r.vehicles as VehicleData[];
+      return {
+        success: true,
+        vehicles,
+        total: vehicles.length,
+        page,
+        limit,
+        totalPages: Math.ceil(vehicles.length / limit),
+        hasNext: page * limit < vehicles.length,
+        hasPrev: page > 1
+      };
+    }
+
+    // Case: { success: true, data: [...] }
+    if ('data' in r && Array.isArray(r.data as unknown[])) {
+      const vehicles = r.data as VehicleData[];
+      return {
+        success: true,
+        vehicles,
+        total: vehicles.length,
+        page,
+        limit,
+        totalPages: Math.ceil(vehicles.length / limit),
+        hasNext: page * limit < vehicles.length,
+        hasPrev: page > 1
+      };
+    }
+
+    // Case: { success: true, data: { vehicles: [...], pagination: {...} } }
+    if (
+      'data' in r &&
+      r.data &&
+      typeof r.data === 'object' &&
+      Array.isArray((r.data as Record<string, unknown>).vehicles)
+    ) {
+      const payload = r.data as { vehicles: VehicleData[]; pagination?: { total?: number } };
+      const vehicles = payload.vehicles ?? [];
+      const total = payload.pagination?.total ?? vehicles.length;
+      return {
+        success: true,
+        vehicles,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      };
+    }
   }
-  
+
   throw new Error('Invalid API response format');
 };
 
