@@ -10,9 +10,13 @@ import { Vehicle } from '@/types';
 import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
+import { useSearchParams } from 'next/navigation';
+import { apiFetch } from '@/lib/apiClient';
+import { safeResponseJson } from '@/lib/safeJson';
 
 export default function InventoryPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [notification, setNotification] = useState<{
     type: NotificationType;
@@ -104,6 +108,70 @@ export default function InventoryPageClient() {
       showNotification('error', 'Update Failed', 'Failed to mark vehicle as available. Please try again.');
     }
   };
+
+  // --- Debug panel state ---
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugError, setDebugError] = useState<string | null>(null);
+  const [debugRawShape, setDebugRawShape] = useState<'array' | 'object' | 'unknown'>('unknown');
+  const [debugFirstItem, setDebugFirstItem] = useState<Record<string, unknown> | null>(null);
+  const [debugFirstItemKeys, setDebugFirstItemKeys] = useState<string[]>([]);
+
+  const loadDebugSnapshot = async () => {
+    try {
+      setDebugLoading(true);
+      setDebugError(null);
+      const res = await apiFetch('/GrabInventoryAll', { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status}: ${txt}`);
+      }
+      const data = await safeResponseJson<unknown>(res);
+      if (Array.isArray(data)) {
+        setDebugRawShape('array');
+        const first = (data[0] ?? null) as Record<string, unknown> | null;
+        setDebugFirstItem(first);
+        setDebugFirstItemKeys(first ? Object.keys(first) : []);
+      } else if (data && typeof data === 'object') {
+        setDebugRawShape('object');
+        // Try common wrappers
+        const r = data as Record<string, unknown>;
+        const vehiclesCandidate = (r as { vehicles?: unknown }).vehicles;
+        const dataCandidate = (r as { data?: unknown }).data;
+        const nestedVehiclesCandidate = (dataCandidate as { vehicles?: unknown } | undefined)?.vehicles;
+        const arr = Array.isArray(vehiclesCandidate)
+          ? (vehiclesCandidate as unknown[])
+          : Array.isArray(dataCandidate)
+          ? (dataCandidate as unknown[])
+          : Array.isArray(nestedVehiclesCandidate)
+          ? (nestedVehiclesCandidate as unknown[])
+          : [];
+        const first = (arr[0] ?? null) as Record<string, unknown> | null;
+        setDebugFirstItem(first);
+        setDebugFirstItemKeys(first ? Object.keys(first) : []);
+      } else {
+        setDebugRawShape('unknown');
+        setDebugFirstItem(null);
+        setDebugFirstItemKeys([]);
+      }
+    } catch (e) {
+      setDebugError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
+  // Auto-open debug if ?debug=1
+  useEffect(() => {
+    const dbg = searchParams?.get('debug');
+    if (dbg === '1' || dbg === 'true') {
+      setDebugOpen(true);
+      // defer to allow page to settle
+      setTimeout(() => {
+        void loadDebugSnapshot();
+      }, 0);
+    }
+  }, [searchParams]);
 
   if (error) {
     return (
@@ -310,6 +378,80 @@ export default function InventoryPageClient() {
       {selectedVehicle && (
         <VehicleDetailsModal vehicle={selectedVehicle} isOpen={isModalOpen} onClose={closeModal} />
       )}
+
+      {/* Floating Debug Panel */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="bg-white border border-gray-300 rounded-lg shadow-lg">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200">
+            <span className="text-sm font-medium text-gray-700">Inventory Debug</span>
+            <div className="flex items-center gap-2">
+              <button
+                className="text-xs px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
+                onClick={() => {
+                  setDebugOpen((v) => !v);
+                  if (!debugOpen) {
+                    void loadDebugSnapshot();
+                  }
+                }}
+              >
+                {debugOpen ? 'Hide' : 'Show'}
+              </button>
+            </div>
+          </div>
+          {debugOpen && (
+            <div className="p-3 max-w-[90vw] sm:max-w-[520px] max-h-[70vh] overflow-auto">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="space-y-1">
+                  <div><span className="text-gray-500">Env:</span> <span className="font-mono">{process.env.NODE_ENV}</span></div>
+                  <div><span className="text-gray-500">Host:</span> <span className="font-mono">{typeof window !== 'undefined' ? window.location.origin : 'N/A'}</span></div>
+                  <div><span className="text-gray-500">isLoading:</span> {String(isLoading)}</div>
+                  <div><span className="text-gray-500">error:</span> {error ? String(error) : 'null'}</div>
+                </div>
+                <div className="space-y-1">
+                  <div><span className="text-gray-500">vehicles:</span> {vehicles.length}</div>
+                  <div><span className="text-gray-500">filtered:</span> {filteredVehicles.length}</div>
+                  <div><span className="text-gray-500">raw shape:</span> {debugRawShape}</div>
+                  <div><span className="text-gray-500">debug loading:</span> {String(debugLoading)}</div>
+                </div>
+              </div>
+
+              {debugError && (
+                <div className="mt-2 p-2 bg-red-50 text-red-700 rounded border border-red-200">
+                  {debugError}
+                </div>
+              )}
+
+              <div className="mt-3">
+                <div className="text-xs text-gray-600 mb-1">Client-mapped first vehicle</div>
+                <pre className="text-[10px] bg-gray-50 p-2 rounded border border-gray-200 overflow-auto">
+{JSON.stringify(filteredVehicles[0] ?? vehicles[0] ?? null, null, 2)}
+                </pre>
+              </div>
+
+              <div className="mt-3">
+                <div className="text-xs text-gray-600 mb-1">Raw API first item keys</div>
+                <div className="flex flex-wrap gap-1">
+                  {debugFirstItemKeys.length > 0 ? debugFirstItemKeys.map(k => (
+                    <span key={k} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">{k}</span>
+                  )) : <span className="text-gray-500">(none)</span>}
+                </div>
+                <pre className="mt-2 text-[10px] bg-gray-50 p-2 rounded border border-gray-200 overflow-auto">
+{JSON.stringify(debugFirstItem, null, 2)}
+                </pre>
+              </div>
+
+              <div className="mt-2 text-right">
+                <button
+                  className="text-xs px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
+                  onClick={() => void loadDebugSnapshot()}
+                >
+                  Refresh snapshot
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       </ErrorBoundary>
     </Layout>
   );
