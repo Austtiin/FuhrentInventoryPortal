@@ -30,6 +30,7 @@ interface VehicleData {
   Model?: string;
   Color?: string;
   Price?: number;
+  MSRP?: number;
   StockNo?: string;
   Condition?: string;
   Category?: string;
@@ -47,6 +48,7 @@ interface VehicleFormData {
   VIN?: string;
   Color?: string;
   Price?: number;
+  MSRP?: number;
   StockNo?: string;
   Condition?: string;
   Category?: string;
@@ -123,6 +125,8 @@ function EditInventoryPageContent() {
       if (!v?.UnitID && !v?.VIN) throw new Error('Invalid vehicle data');
       setVehicle(v);
       // Initialize form data with current vehicle data
+      const rawMsrp = (v as unknown as Record<string, unknown>)['MSRP'] ?? (v as unknown as Record<string, unknown>)['msrp'];
+      const msrpNum = typeof rawMsrp === 'number' ? rawMsrp : rawMsrp != null ? Number(rawMsrp) : undefined;
       setFormData({
         Year: v.Year,
         Make: v.Make,
@@ -130,6 +134,7 @@ function EditInventoryPageContent() {
         VIN: v.VIN,
         Color: v.Color,
         Price: v.Price,
+        MSRP: msrpNum,
         StockNo: v.StockNo,
         Condition: v.Condition,
         Category: v.Category,
@@ -169,10 +174,11 @@ function EditInventoryPageContent() {
     
     setIsSaving(true);
     try {
-      // Convert TypeID to typeId for API compatibility
-      const { TypeID, ...restFormData } = formData;
+      // Convert TypeID to typeId for API compatibility and map MSRP to msrp
+      const { TypeID, MSRP, ...restFormData } = formData;
       const apiPayload = {
         ...restFormData,
+        msrp: typeof MSRP === 'number' ? MSRP : null,
         typeId: TypeID,
       };
       
@@ -275,7 +281,7 @@ function EditInventoryPageContent() {
         setConfirmDialog((d) => ({ ...d, isOpen: false }));
         setIsDeleting(true);
         try {
-          const res = await apiFetch(`/vehicles/${unitId}`, { method: 'DELETE' });
+              const res = await apiFetch(`/vehicles/delete/${unitId}`, { method: 'DELETE' });
           const result = await res.json();
           if (!result?.success) throw new Error(result?.error || 'Delete failed');
           success('Unit Deleted', 'The unit has been deleted.');
@@ -543,6 +549,18 @@ function EditInventoryPageContent() {
                 type="number"
                 value={formData.Price || ''}
                 onChange={(e) => handleFieldChange('Price', parseFloat(e.target.value) || undefined)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                placeholder="35000"
+                step="0.01"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-1">MSRP</label>
+              <input
+                type="number"
+                value={formData.MSRP || ''}
+                onChange={(e) => handleFieldChange('MSRP', parseFloat(e.target.value) || undefined)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
                 placeholder="35000"
                 step="0.01"

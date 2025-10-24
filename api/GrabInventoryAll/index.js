@@ -65,6 +65,7 @@ module.exports = async function (context, req) {
         Color as color,
         Status as status,
         Price as price,
+        MSRP as msrp,
         Mileage as mileage,
         DateAdded as dateAdded,
         LastUpdated as lastUpdated,
@@ -95,6 +96,7 @@ module.exports = async function (context, req) {
     const transformedVehicles = vehicles.map(vehicle => ({
       ...vehicle,
       price: parseFloat(vehicle.price) || 0,
+      msrp: vehicle.msrp != null ? parseFloat(vehicle.msrp) || 0 : undefined,
       mileage: parseInt(vehicle.mileage) || 0,
       year: parseInt(vehicle.year) || 0,
       dateAdded: vehicle.dateAdded ? new Date(vehicle.dateAdded).toISOString() : new Date().toISOString(),

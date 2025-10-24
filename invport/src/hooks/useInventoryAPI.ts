@@ -135,7 +135,8 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
         const vin = String(pick('VIN', 'vin') ?? '');
         const status = String(pick('Status', 'status') ?? 'available').toLowerCase() as VehicleStatus;
         const stock = String(pick('StockNo', 'stockNo', 'Stock', 'stockNumber', 'stock') ?? '');
-        const price = Number(pick('Price', 'price', 'listPrice', 'salePrice') ?? 0) || 0;
+  const price = Number(pick('Price', 'price', 'listPrice', 'salePrice') ?? 0) || 0;
+  const msrp = Number(pick('MSRP', 'msrp', 'Msrp') ?? 0) || undefined;
         const typeIdVal = Number(pick('TypeID', 'typeId') ?? 0) || undefined;
         const createdAt = String(pick('createdAt', 'CreatedAt', 'dateAdded', 'DateAdded') ?? '');
         const updatedAt = String(pick('updatedAt', 'UpdatedAt', 'lastUpdated', 'LastUpdated') ?? '');
@@ -152,6 +153,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
           status,
           stock,
           price,
+          msrp,
           mileage: Number(pick('Mileage', 'mileage', 'Odometer') ?? 0) || 0,
           year: yearNum,
           dateAdded: createdAt || new Date().toISOString(),

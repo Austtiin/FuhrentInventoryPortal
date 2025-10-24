@@ -91,6 +91,7 @@ module.exports = async function (context, req) {
           Model,
           Year,
           Price,
+          MSRP,
           Status,
           Description,
           TypeID,

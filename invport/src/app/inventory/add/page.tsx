@@ -38,6 +38,7 @@ const AddInventoryPage: React.FC = () => {
     width: '',
     length: '',
     price: '',
+    msrp: '',
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -86,6 +87,12 @@ const AddInventoryPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      // Basic required validations
+      if (!formData.stockNo || !formData.stockNo.trim()) {
+        setError('Stock Number is required');
+        setIsSubmitting(false);
+        return;
+      }
       // Check if VIN already exists
       const vinExists = await checkVINExists(formData.vin);
       
@@ -98,7 +105,22 @@ const AddInventoryPage: React.FC = () => {
       // Determine TypeID based on itemType
       const typeId = itemType === 'FishHouse' ? 1 : itemType === 'Vehicle' ? 2 : 3;
       
-      const submissionData = {
+      const submissionData: {
+        vin: string;
+        year: number;
+        make: string;
+        model: string;
+        typeId: number;
+        price: number;
+        status: string;
+        color: string;
+        stockNo: string;
+        condition: string;
+        category: string;
+        widthCategory: string;
+        sizeCategory: string;
+        msrp: number | null;
+      } = {
         vin: formData.vin,
         year: parseInt(formData.year) || 0,
         make: formData.make,
@@ -112,6 +134,7 @@ const AddInventoryPage: React.FC = () => {
         category: formData.category,
         widthCategory: formData.width,
         sizeCategory: formData.length,
+        msrp: formData.msrp !== '' && !Number.isNaN(parseFloat(formData.msrp)) ? parseFloat(formData.msrp) : null,
       };
       
       // Submit to API
@@ -126,6 +149,14 @@ const AddInventoryPage: React.FC = () => {
       const result = await response.json();
       
       if (result.success) {
+        // Best-effort: ensure storage folder exists for this VIN
+        try {
+          if (formData.vin) {
+            await apiFetch(`/ensureVinFolder/${encodeURIComponent(formData.vin)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, skipRetry: true });
+          }
+        } catch (e) {
+          console.warn('ensureVinFolder failed (non-fatal):', e);
+        }
         // Success! Redirect to inventory page
         window.location.href = '/inventory';
       } else {
@@ -333,10 +364,31 @@ const AddInventoryPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Stock Number - Optional */}
+                {/* MSRP - Optional */}
+                <div>
+                  <label htmlFor="msrp" className="block text-sm font-medium text-gray-900 mb-2">
+                    MSRP (Optional)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-600 font-medium">$</span>
+                    <input
+                      type="number"
+                      id="msrp"
+                      name="msrp"
+                      value={formData.msrp}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                      className="w-full pl-8 pr-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {/* Stock Number - Required */}
                 <div>
                   <label htmlFor="stockNo" className="block text-sm font-medium text-gray-900 mb-2">
-                    Stock No (Optional)
+                    Stock No <span className="text-red-600">*</span>
                   </label>
                   <input
                     type="text"
@@ -344,6 +396,7 @@ const AddInventoryPage: React.FC = () => {
                     name="stockNo"
                     value={formData.stockNo}
                     onChange={handleInputChange}
+                    required
                     className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent uppercase"
                     placeholder="Enter stock number"
                   />
@@ -447,7 +500,7 @@ const AddInventoryPage: React.FC = () => {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">3. Photos</h2>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>

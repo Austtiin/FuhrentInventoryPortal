@@ -7,6 +7,7 @@ export interface Vehicle {
   vin: string;
   mileage: number;
   price: number;
+  msrp?: number;
   status: VehicleStatus;
   color: string;
   stock?: string;

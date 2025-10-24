@@ -106,7 +106,7 @@ export default function CompactInventoryCard({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden h-full max-w-xs mx-auto lg:max-w-none lg:mx-0">
+  <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden max-w-xs mx-auto lg:max-w-none lg:mx-0">
       {/* Image Section - Fixed Height */}
       <div className="relative h-48 bg-gray-100">
         {enableImageLoading ? (
@@ -141,7 +141,7 @@ export default function CompactInventoryCard({
       </div>
 
       {/* Content Section */}
-      <div className="p-4 flex flex-col h-60">
+  <div className="p-4 flex flex-col">
         {/* Vehicle Title */}
         <h3 className="font-bold text-gray-900 text-base mb-2 leading-tight line-clamp-2 min-h-10">
           {item.year} {item.make} {item.model}
@@ -176,8 +176,8 @@ export default function CompactInventoryCard({
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
+        {/* Action Buttons Row (View + Status) */}
+        <div className="flex gap-2 flex-wrap">
           {onView ? (
             <button
               onClick={() => onView(item)}
@@ -195,14 +195,7 @@ export default function CompactInventoryCard({
               View
             </Link>
           )}
-          <button
-            onClick={() => onEdit(item)}
-            className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
-          >
-            <PencilIcon className="h-4 w-4 mr-1" />
-            Edit
-          </button>
-          
+
           {/* Conditional Status Buttons */}
           {item.status?.toLowerCase() === 'available' && (
             <button
@@ -225,7 +218,7 @@ export default function CompactInventoryCard({
               )}
             </button>
           )}
-          
+
           {item.status?.toLowerCase() === 'pending' && (
             <>
               <button
@@ -285,6 +278,15 @@ export default function CompactInventoryCard({
             </button>
           )}
         </div>
+
+        {/* Edit Button - Full width at bottom */}
+        <button
+          onClick={() => onEdit(item)}
+          className="mt-2 w-full flex items-center justify-center px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
+        >
+          <PencilIcon className="h-4 w-4 mr-1" />
+          Edit
+        </button>
       </div>
     </div>
   );
