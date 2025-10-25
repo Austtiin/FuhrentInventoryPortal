@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Layout } from '@/components/layout';
 import Link from 'next/link';
@@ -17,7 +17,8 @@ const toTitleCase = (str: string): string => {
 };
 
 // Fields that should be capitalized
-const TITLE_CASE_FIELDS = ['make', 'model', 'category'];
+// Note: exclude 'category' to preserve exact option values like 'RV'
+const TITLE_CASE_FIELDS = ['make', 'model'];
 const UPPERCASE_FIELDS = ['vin', 'stockNo'];
 
 const AddInventoryPage: React.FC = () => {
@@ -40,6 +41,56 @@ const AddInventoryPage: React.FC = () => {
     price: '',
     msrp: '',
   });
+
+  // Category options
+  const BASE_CATEGORY_OPTIONS = ['RV', 'No Water', 'Toy Hauler', 'Snowmobile Trailer', 'Skid House'];
+  const VEHICLE_CATEGORY_OPTIONS = [
+    'Car',
+    'Truck',
+    'SUV',
+    'Sedan',
+    'Coupe',
+    'Van',
+    'Hatchback',
+    'Convertible',
+    'Box Truck',
+    'Pickup Truck',
+    'Wagon',
+    'Crossover',
+  ];
+
+  const categoryOptions = itemType === 'Vehicle'
+    ? VEHICLE_CATEGORY_OPTIONS
+    : BASE_CATEGORY_OPTIONS;
+
+  // Ensure category remains valid when item type changes
+  useEffect(() => {
+    if (formData.category && !categoryOptions.includes(formData.category)) {
+      setFormData(prev => ({ ...prev, category: '' }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemType]);
+
+  // Make quick suggestions (free-text remains allowed)
+  const MAKE_SUGGESTIONS = [
+    'Ice Castle Fish House',
+    'Aluma-Light',
+    'Toyota',
+    'BMW',
+    'Chevy',
+    'Ford',
+    'Honda',
+  ];
+
+  const [showMakeSuggestions, setShowMakeSuggestions] = useState(false);
+  const filteredMakeSuggestions = MAKE_SUGGESTIONS.filter(s =>
+    !formData.make ? true : s.toLowerCase().includes(formData.make.toLowerCase())
+  );
+
+  // Derived: what will be sent for MSRP
+  const msrpToSend = formData.msrp !== '' && !Number.isNaN(parseFloat(formData.msrp))
+    ? parseFloat(formData.msrp)
+    : null;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -120,6 +171,7 @@ const AddInventoryPage: React.FC = () => {
         widthCategory: string;
         sizeCategory: string;
         msrp: number | null;
+        MSRP?: number | null;
       } = {
         vin: formData.vin,
         year: parseInt(formData.year) || 0,
@@ -136,6 +188,8 @@ const AddInventoryPage: React.FC = () => {
         sizeCategory: formData.length,
         msrp: formData.msrp !== '' && !Number.isNaN(parseFloat(formData.msrp)) ? parseFloat(formData.msrp) : null,
       };
+      // Duplicate with uppercase for compatibility with backends expecting 'MSRP'
+      submissionData.MSRP = submissionData.msrp;
       
       // Submit to API
       const response = await apiFetch('/vehicles/add', {
@@ -270,8 +324,8 @@ const AddInventoryPage: React.FC = () => {
                   />
                 </div>
 
-                {/* Make - Required */}
-                <div>
+                {/* Make - Required with quick suggestions */}
+                <div className="relative overflow-visible">
                   <label htmlFor="make" className="block text-sm font-medium text-gray-900 mb-2">
                     Make <span className="text-red-600">*</span>
                   </label>
@@ -280,11 +334,44 @@ const AddInventoryPage: React.FC = () => {
                     id="make"
                     name="make"
                     value={formData.make}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      setShowMakeSuggestions(true);
+                    }}
+                    onFocus={() => setShowMakeSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowMakeSuggestions(false), 150)}
                     required
+                    list="make-suggestions"
                     className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                     placeholder="Enter make"
                   />
+                  <datalist id="make-suggestions">
+                    <option value="Ice Castle Fish House" />
+                    <option value="Toyota" />
+                    <option value="BMW" />
+                    <option value="Chevy" />
+                    <option value="Ford" />
+                    <option value="Honda" />
+                  </datalist>
+
+                  {showMakeSuggestions && filteredMakeSuggestions.length > 0 && (
+                    <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                      {filteredMakeSuggestions.map((opt) => (
+                        <li
+                          key={opt}
+                          className="cursor-pointer px-3 py-2 text-sm text-gray-900 hover:bg-gray-100"
+                          onMouseDown={(e) => {
+                            // onMouseDown to avoid blur before click
+                            e.preventDefault();
+                            setFormData(prev => ({ ...prev, make: opt }));
+                            setShowMakeSuggestions(false);
+                          }}
+                        >
+                          {opt}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 {/* Model - Required */}
@@ -307,13 +394,14 @@ const AddInventoryPage: React.FC = () => {
                 {/* Color */}
                 <div>
                   <label htmlFor="color" className="block text-sm font-medium text-gray-900 mb-2">
-                    Color
+                    Color <span className="text-red-600">*</span>
                   </label>
                   <select
                     id="color"
                     name="color"
                     value={formData.color}
                     onChange={handleInputChange}
+                    required
                     className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   >
                     <option value="">Select Color</option>
@@ -383,6 +471,9 @@ const AddInventoryPage: React.FC = () => {
                       placeholder="0.00"
                     />
                   </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Will send: <span className="font-medium">msrp</span> = {msrpToSend === null ? 'null' : msrpToSend} and <span className="font-medium">MSRP</span> = {msrpToSend === null ? 'null' : msrpToSend}
+                  </p>
                 </div>
 
                 {/* Stock Number - Required */}
@@ -454,10 +545,9 @@ const AddInventoryPage: React.FC = () => {
                     className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   >
                     <option value="">Select a category</option>
-                    <option value="RV">RV</option>
-                    <option value="No Water">No Water</option>
-                    <option value="Toy Hauler">Toy Hauler</option>
-                    <option value="Snowmobile Trailer">Snowmobile Trailer</option>
+                    {categoryOptions.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -495,9 +585,25 @@ const AddInventoryPage: React.FC = () => {
               </div>
             </div>
 
+              {/* Features Info - Managed on Edit */}
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">4. Features</h2>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zM9 9V5h2v4H9zm0 2h2v4H9v-4z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <h3 className="font-semibold text-amber-900">Add features once unit is created</h3>
+                      <p className="text-sm text-amber-800 mt-1">You can manage features on the Edit Inventory page after creating this item.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             {/* Photo Upload Information */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">3. Photos</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">5. Photos</h2>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -11,7 +11,7 @@ export const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', color: 'yellow' },
 ] as const;
 
-export const CONDITION_OPTIONS = ['New', 'Used', 'Certified'] as const;
+export const CONDITION_OPTIONS = ['New', 'Pre-Owned', 'Certified'] as const;
 
 export const ITEM_TYPES = [
   { value: 'FishHouse', label: 'Fish House', typeId: 1 },
@@ -29,11 +29,13 @@ export const VEHICLE_COLORS = [
   'Green',
   'Brown',
   'Beige',
+  'Tan',
   'Gold',
   'Orange',
   'Yellow',
   'Purple',
   'Maroon',
+  'Brandywine',
   'Navy',
   'Teal',
   'Other'

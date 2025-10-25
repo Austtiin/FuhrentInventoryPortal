@@ -40,7 +40,7 @@ const getStatusColor = (status: string) => {
 const InventoryCard: React.FC<InventoryCardProps> = ({ item, onView, onEdit, onDelete }) => {
   return (
     <div className="group bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-blue-300/50">
-      <div className="relative h-48 overflow-hidden lg:h-56 bg-gradient-to-br from-gray-100 to-gray-200">
+  <div className="relative h-48 overflow-hidden lg:h-56 bg-linear-to-br from-gray-100 to-gray-200">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-gray-400 text-center">
             <svg className="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
@@ -66,13 +66,18 @@ const InventoryCard: React.FC<InventoryCardProps> = ({ item, onView, onEdit, onD
         </div>
 
         <div className="mb-6 space-y-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="w-8 h-8 bg-primary-mint/10 rounded-lg flex items-center justify-center">
               <span className="text-primary-mint font-bold text-sm">$</span>
             </div>
             <span className="font-bold text-primary-mint text-lg">
               ${item.price.toLocaleString()}
             </span>
+            {typeof item.msrp === 'number' && !Number.isNaN(item.msrp) && (
+              <span className="text-xs text-slate-600 font-medium">
+                MSRP: ${item.msrp.toLocaleString()}
+              </span>
+            )}
           </div>
           
           <div className="flex items-center gap-3 text-sm text-slate-600">

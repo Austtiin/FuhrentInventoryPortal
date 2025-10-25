@@ -169,11 +169,18 @@ export default function CompactInventoryCard({
           )}
         </div>
 
-        {/* Price */}
+        {/* Price + MSRP */}
         <div className="mb-3">
-          <p className="text-xl font-bold text-emerald-600">
-            {formatPrice(item.price)}
-          </p>
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <p className="text-xl font-bold text-emerald-600 m-0">
+              {formatPrice(item.price)}
+            </p>
+            {typeof item.msrp === 'number' && !Number.isNaN(item.msrp) && (
+              <span className="text-xs text-gray-600 font-medium">
+                MSRP: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(item.msrp)}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Action Buttons Row (View + Status) */}

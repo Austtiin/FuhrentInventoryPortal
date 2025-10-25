@@ -13,7 +13,7 @@ const DEBUG_ENABLED = true; // Always enabled to help debug production issues
 const DEBUG_RESPONSE_BODY = true; // Always show response body for debugging
 
 // Retry configuration
-const DEFAULT_MAX_RETRIES = 3; // Default number of retry attempts
+const DEFAULT_MAX_RETRIES = 2; // Default number of retry attempts
 const DEFAULT_RETRY_DELAY = 1000; // Default delay between retries (ms)
 const RETRY_STATUS_CODES = [408, 429, 500, 502, 503, 504]; // Status codes that trigger retry
 

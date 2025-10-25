@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, Suspense } from 'react';
+import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Layout } from '@/components/layout';
@@ -12,6 +12,8 @@ import { LoadingSpinner } from '@/components/ui/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ArrowLeftIcon, ArrowPathIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { VEHICLE_COLORS } from '@/constants/inventory';
+import { FEATURE_CATEGORIES } from '@/constants/features';
+import FeaturesSelector from '@/components/inventory/FeaturesSelector';
 
 // Utility function to capitalize first letter of each word
 const toTitleCase = (str: string): string => {
@@ -59,9 +61,9 @@ interface VehicleFormData {
   TypeID?: number;
 }
 
-// Fields that should be capitalized
-const TITLE_CASE_FIELDS: (keyof VehicleFormData)[] = ['Make', 'Model', 'Category'];
-const UPPERCASE_FIELDS: (keyof VehicleFormData)[] = ['VIN'];
+// Fields that should be capitalized / uppercased when editing
+const TITLE_CASE_FIELDS: (keyof VehicleFormData)[] = ['Make', 'Model'];
+const UPPERCASE_FIELDS: (keyof VehicleFormData)[] = ['VIN', 'StockNo'];
 
 function EditInventoryPageContent() {
   const router = useRouter();
@@ -80,10 +82,14 @@ function EditInventoryPageContent() {
     confirmColor: 'blue' as 'blue' | 'green' | 'yellow' | 'red',
     onConfirm: () => {},
   });
-
   const [vehicle, setVehicle] = useState<VehicleData | null>(null);
   const [formData, setFormData] = useState<VehicleFormData>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const msrpToSend = typeof formData.MSRP === 'number' ? formData.MSRP : (formData.MSRP != null ? Number(formData.MSRP) : null);
+
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([]);
+  const initialFeatureIdsRef = useRef<number[]>([]);
+  const [isSavingFeatures, setIsSavingFeatures] = useState(false);
 
   const itemType = useMemo<'FishHouse' | 'Vehicle' | 'Trailer'>(() => {
     if (!vehicle?.TypeID) return 'Vehicle';
@@ -152,6 +158,100 @@ function EditInventoryPageContent() {
     }
   };
 
+  // Load existing features for the unit from canonical endpoint
+  const fetchUnitFeatures = async (unitIdStr: string) => {
+    try {
+      const res = await apiFetch(`/units/${unitIdStr}/features`, { cache: 'no-store', skipRetry: true });
+      if (!res.ok) {
+        setSelectedFeatureIds([]);
+        initialFeatureIdsRef.current = [];
+        return;
+      }
+      const text = await res.text();
+      let ids: number[] = [];
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        if (Array.isArray(parsed)) {
+          if (parsed.length && typeof parsed[0] === 'number') {
+            ids = parsed as number[];
+          } else {
+            const objects = parsed as Array<Record<string, unknown>>;
+            ids = objects
+              .filter(o => {
+                const isActive = (o['Active'] ?? o['active'] ?? true) as boolean;
+                return isActive !== false;
+              })
+              .map(o => Number((o['FeatureID'] ?? o['featureId'] ?? o['id']) as number | string | undefined) || 0)
+              .filter(n => n > 0);
+          }
+        } else if (parsed && typeof parsed === 'object') {
+          const obj = parsed as Record<string, unknown>;
+          const arr = (obj['features'] || obj['data'] || obj['items']) as unknown;
+          if (Array.isArray(arr)) {
+            ids = (arr as unknown[])
+              .map((v: unknown) => typeof v === 'number' ? v : Number((v as Record<string, unknown>)['FeatureID'] ?? (v as Record<string, unknown>)['featureId'] ?? (v as Record<string, unknown>)['id'] ?? 0))
+              .filter((n: number) => n > 0);
+          }
+        }
+      } catch (e) {
+        console.warn('Feature JSON parse failed:', e, text?.slice(0, 200));
+      }
+      setSelectedFeatureIds(ids);
+      initialFeatureIdsRef.current = [...ids];
+    } catch {
+      setSelectedFeatureIds([]);
+      initialFeatureIdsRef.current = [];
+    }
+  };
+
+  const hasFeatureChanges = useMemo(() => {
+    const a = new Set(initialFeatureIdsRef.current);
+    const b = new Set(selectedFeatureIds);
+    if (a.size !== b.size) return true;
+    for (const id of a) if (!b.has(id)) return true;
+    return false;
+  }, [selectedFeatureIds]);
+
+  const saveFeatures = async () => {
+    if (!vehicle?.UnitID) return;
+    setIsSavingFeatures(true);
+    try {
+      // Backend expects either { featureIds: number[] } or a raw array [1,2,3]
+      let res = await apiFetch(`/units/${vehicle.UnitID}/features`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featureIds: selectedFeatureIds }),
+        skipRetry: true,
+      });
+
+      // If the server rejects the object wrapper, retry with raw array
+      if (!res.ok && res.status === 400) {
+        try {
+          res = await apiFetch(`/units/${vehicle.UnitID}/features`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(selectedFeatureIds),
+            skipRetry: true,
+          });
+        } catch {
+          // Fall through to error handling below
+        }
+      }
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        throw new Error(`Update features failed: ${res.status} ${txt?.slice(0, 200)}`);
+      }
+      initialFeatureIdsRef.current = [...selectedFeatureIds];
+      success('Features Updated', 'Unit features have been saved');
+    } catch (e) {
+      error('Save Failed', e instanceof Error ? e.message : 'Failed to update features');
+      throw e;
+    } finally {
+      setIsSavingFeatures(false);
+    }
+  };
+
   // Handle form field changes
   const handleFieldChange = (field: keyof VehicleFormData, value: string | number | undefined) => {
     // Apply appropriate text formatting based on field
@@ -175,12 +275,31 @@ function EditInventoryPageContent() {
     setIsSaving(true);
     try {
       // Convert TypeID to typeId for API compatibility and map MSRP to msrp
-      const { TypeID, MSRP, ...restFormData } = formData;
-      const apiPayload = {
-        ...restFormData,
-        msrp: typeof MSRP === 'number' ? MSRP : null,
+      const { TypeID, MSRP } = formData;
+      // Map formData (mixed case keys) to API's expected camelCase schema
+      const apiPayload: Record<string, unknown> = {
+        vin: formData.VIN,
+        year: formData.Year,
+        make: formData.Make,
+        model: formData.Model,
+        color: formData.Color,
+        price: typeof formData.Price === 'number' ? formData.Price : null,
+        stockNo: formData.StockNo,
+        condition: formData.Condition,
+        category: formData.Category,
+        status: formData.Status,
+        description: formData.Description,
+        widthCategory: formData.WidthCategory,
+        sizeCategory: formData.SizeCategory,
         typeId: TypeID,
+        msrp: typeof MSRP === 'number' ? MSRP : null,
       };
+      // Also include uppercase MSRP to support backends expecting DB column casing
+      if (typeof MSRP === 'number') {
+        apiPayload.MSRP = MSRP;
+      } else {
+        apiPayload.MSRP = null;
+      }
       
       console.log('Saving vehicle with payload:', apiPayload);
       
@@ -193,6 +312,11 @@ function EditInventoryPageContent() {
       console.log('Save response:', result);
       if (!result?.success) throw new Error(result?.error || 'Save failed');
       
+      // Persist feature updates if there are changes
+      if (hasFeatureChanges) {
+        await saveFeatures();
+      }
+
       // Refresh vehicle data
       await fetchVehicle(unitId);
       setHasUnsavedChanges(false);
@@ -226,6 +350,8 @@ function EditInventoryPageContent() {
         
         setUnitId(actualUnitId);
         await fetchVehicle(actualUnitId);
+        // Load unit features after basic vehicle load
+        await fetchUnitFeatures(actualUnitId);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Failed to load vehicle');
         setIsLoading(false);
@@ -374,11 +500,11 @@ function EditInventoryPageContent() {
             </button>
             <button
               onClick={saveVehicle}
-              disabled={isSaving || !hasUnsavedChanges}
+              disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
               className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckIcon className="w-4 h-4" />
-              {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+              {isSaving || isSavingFeatures ? 'Saving...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'Saved'}
             </button>
           </div>
         </div>
@@ -565,6 +691,9 @@ function EditInventoryPageContent() {
                 placeholder="35000"
                 step="0.01"
               />
+              <p className="mt-1 text-xs text-gray-500">
+                Will send: <span className="font-medium">msrp</span> = {msrpToSend === null ? 'null' : msrpToSend} and <span className="font-medium">MSRP</span> = {msrpToSend === null ? 'null' : msrpToSend}
+              </p>
             </div>
 
             <div>
@@ -691,28 +820,32 @@ function EditInventoryPageContent() {
 
         {/* 4) Unit Features */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Unit Features</h2>
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <p className="text-sm text-blue-800 mb-2">🚧 <strong className="font-semibold">Coming Soon:</strong> Feature management system</p>
-            <p className="text-sm text-blue-700">This section will allow you to add, edit, and manage vehicle features like:</p>
-            <ul className="text-sm text-blue-700 mt-2 list-disc list-inside space-y-1">
-              <li>Safety features (ABS, Airbags, etc.)</li>
-              <li>Comfort features (A/C, Heated seats, etc.)</li>
-              <li>Technology features (Bluetooth, GPS, etc.)</li>
-              <li>Performance features (Engine specs, etc.)</li>
-            </ul>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold text-gray-900">Unit Features</h2>
+            {hasFeatureChanges && (
+              <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">Unsaved feature changes</span>
+            )}
           </div>
+          <FeaturesSelector
+            title="Select Features"
+            selected={selectedFeatureIds}
+            onChange={setSelectedFeatureIds}
+            lazy
+            defaultOpen
+            small
+            categoryConfig={FEATURE_CATEGORIES}
+          />
         </div>
 
         {/* Bottom Save Button */}
         <div className="flex justify-end">
           <button
             onClick={saveVehicle}
-            disabled={isSaving || !hasUnsavedChanges}
+            disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
             className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CheckIcon className="w-5 h-5" />
-            {isSaving ? 'Saving Changes...' : hasUnsavedChanges ? 'Save Changes' : 'All Changes Saved'}
+            {isSaving || isSavingFeatures ? 'Saving Changes...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'All Changes Saved'}
           </button>
         </div>
       </div>
