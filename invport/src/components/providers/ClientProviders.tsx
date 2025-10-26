@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { initializeErrorHandlers } from '@/lib/globalErrorHandler';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 interface ClientProvidersProps {
   children: React.ReactNode;
@@ -17,7 +18,9 @@ export function ClientProviders({ children }: ClientProvidersProps) {
   return (
     <React.StrictMode>
       <AuthProvider>
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </AuthProvider>
     </React.StrictMode>
   );

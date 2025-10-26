@@ -8,9 +8,6 @@ import {
   CubeIcon,
   PlusCircleIcon,
   ChartBarIcon,
-  XMarkIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   ChevronDownIcon,
   ListBulletIcon
 } from '@heroicons/react/24/outline';
@@ -18,8 +15,6 @@ import {
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
 }
 
 interface NavigationItem {
@@ -59,7 +54,7 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggleCollapse }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
@@ -99,44 +94,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
       {/* Mobile overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          className="fixed inset-0 bg-slate-200/70 z-30 lg:hidden"
           onClick={onClose}
         />
       )}
       
       <aside className={`
-        fixed top-20 left-0 h-[calc(100vh-5rem)] bg-gradient-to-b from-slate-900 to-blue-900 border-r border-blue-800/30
+        fixed top-20 left-0 h-[calc(100vh-5rem)] bg-linear-to-b from-slate-900 to-blue-900 border-r border-blue-800/30
         transform transition-all duration-300 z-40 flex flex-col shadow-xl
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)]
-        ${isCollapsed ? 'lg:w-16' : 'lg:w-64'}
-        w-64
+        lg:w-64 w-64
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-blue-800/30 bg-gradient-to-r from-blue-900 to-indigo-900">
-          {!isCollapsed && (
-            <h2 className="text-lg font-bold text-white tracking-tight">Inventory Portal</h2>
-          )}
-          <div className="flex items-center gap-2">
-            <button 
-              className="hidden lg:flex items-center justify-center w-8 h-8 bg-white/10 hover:bg-white/20 border-none rounded-md cursor-pointer transition-colors backdrop-blur-sm"
-              onClick={onToggleCollapse}
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {isCollapsed ? (
-                <ChevronRightIcon className="w-4 h-4 text-white" />
-              ) : (
-                <ChevronLeftIcon className="w-4 h-4 text-white" />
-              )}
-            </button>
-            <button 
-              className="flex lg:hidden items-center justify-center w-8 h-8 bg-white/10 hover:bg-white/20 border-none rounded-md cursor-pointer transition-colors backdrop-blur-sm"
-              onClick={onClose}
-              aria-label="Close menu"
-            >
-              <XMarkIcon className="w-4 h-4 text-white" />
-            </button>
-          </div>
+        <div className="flex items-center justify-between p-4 border-b border-blue-800/30 bg-linear-to-r from-blue-900 to-indigo-900 relative">
+          <h2 className="text-lg font-bold text-white tracking-tight">Inventory Portal</h2>
+          <div className="flex items-center gap-2" />
         </div>
         
         {/* Navigation */}
@@ -179,57 +152,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
                       href={item.href}
                       className={`
                         group relative flex items-center transition-all duration-300 cursor-pointer
-                        ${isCollapsed ? 'justify-center px-3 py-3 mx-2' : 'gap-3 px-4 py-3 mx-3'}
+                        gap-3 px-4 py-3 mx-3
                         rounded-md
                         ${
                           isActive 
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
+                            ? 'bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
                             : isSubItemActive
                             ? 'bg-white/5 text-blue-100'
                             : 'text-blue-100 hover:bg-white/10 hover:text-white'
                         }
                       `}
                       onClick={(e) => {
-                        if (hasSubItems && !isCollapsed) {
+                        if (hasSubItems) {
                           e.preventDefault();
                           toggleExpand(item.name);
                         } else {
                           onClose();
                         }
                       }}
-                      title={isCollapsed ? item.name : undefined}
+                      title={undefined}
                     >
-                      <item.icon className={`flex-shrink-0 transition-colors ${
-                        isCollapsed ? 'w-6 h-6' : 'w-5 h-5'
-                      }`} />
-                      {!isCollapsed && (
-                        <>
-                          <span className="font-medium text-sm tracking-wide flex-1">{item.name}</span>
-                          {hasSubItems && (
-                            <ChevronDownIcon 
-                              className={`w-4 h-4 transition-transform duration-300 ${
-                                isExpanded ? 'rotate-180' : ''
-                              }`}
-                            />
-                          )}
-                        </>
-                      )}
-                      {isCollapsed && (
-                        <div className="absolute left-full ml-3 px-3 py-2 bg-slate-800 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-50">
-                          {item.name}
-                          <div className="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45"></div>
-                        </div>
-                      )}
+                      <item.icon className={`shrink-0 transition-colors w-5 h-5`} />
+                      <>
+                        <span className="font-medium text-sm tracking-wide flex-1">{item.name}</span>
+                        {hasSubItems && (
+                          <ChevronDownIcon 
+                            className={`w-4 h-4 transition-transform duration-300 ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                          />
+                        )}
+                      </>
                     </Link>
 
                     {/* Animated white indicator bar */}
-                    {(isActive || isSubItemActive) && !isCollapsed && (
+                    {(isActive || isSubItemActive) && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full shadow-lg shadow-white/50"></div>
                     )}
                   </div>
 
                   {/* Sub Items - Animated Dropdown */}
-                  {hasSubItems && !isCollapsed && (
+                  {hasSubItems && (
                     <div 
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
                         isExpanded ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0'
@@ -248,21 +211,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
                                   transition-all duration-200 cursor-pointer
                                   ${
                                     isSubActive
-                                      ? 'bg-gradient-to-r from-white to-blue-50 text-blue-900 shadow-2xl font-bold scale-105 border-2 border-blue-500'
+                                      ? 'bg-linear-to-r from-white to-blue-50 text-blue-900 shadow-2xl font-bold scale-105 border-2 border-blue-500'
                                       : 'text-blue-100 hover:bg-white/10 hover:text-white hover:translate-x-1 border-2 border-transparent'
                                   }
                                 `}
                                 onClick={onClose}
                               >
                                 {/* Active indicator dot */}
-                                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all ${
+                                <div className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all ${
                                   isSubActive 
                                     ? 'bg-blue-600 ring-4 ring-blue-300 shadow-lg shadow-blue-500/50' 
                                     : 'bg-blue-400/50'
                                 }`}></div>
                                 
                                 {/* Icon */}
-                                <subItem.icon className={`w-5 h-5 flex-shrink-0 transition-all ${
+                                <subItem.icon className={`w-5 h-5 shrink-0 transition-all ${
                                   isSubActive ? 'text-blue-700 scale-110' : 'text-blue-300'
                                 }`} />
                                 
@@ -284,7 +247,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
 
                               {/* Animated vertical indicator bar for active sub-item */}
                               {isSubActive && (
-                                <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-blue-600 to-blue-500 rounded-r-full shadow-lg shadow-blue-600/50"></div>
+                                <div className="absolute left-0 top-0 bottom-0 w-2 bg-linear-to-r from-blue-600 to-blue-500 rounded-r-full shadow-lg shadow-blue-600/50"></div>
                               )}
                             </li>
                           );
@@ -299,18 +262,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
         </nav>
         
         {/* Footer */}
-        <div className={`border-t border-blue-800/30 bg-slate-800/50 ${
-          isCollapsed ? 'p-3' : 'p-4'
-        }`}>
-          <div className={`flex items-center ${
-            isCollapsed ? 'justify-center' : 'gap-3'
-          }`}>
-            <div className={`bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-md flex items-center justify-center font-bold cursor-pointer hover:shadow-lg transition-all ${
-              isCollapsed ? 'w-10 h-10 text-sm' : 'w-12 h-12 text-base'
-            }`}>
+        <div className={`border-t border-blue-800/30 bg-slate-800/50 p-4`}>
+          <div className={`flex items-center gap-3`}>
+            <div className={`bg-linear-to-br from-blue-600 to-indigo-600 text-white rounded-md flex items-center justify-center font-bold cursor-pointer hover:shadow-lg transition-all w-12 h-12 text-base`}>
               FE
             </div>
-            {!isCollapsed && (
+            {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white m-0 truncate">
                   Dealer Portal
@@ -319,7 +276,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isCollapsed, onToggl
                   Inventory System
                 </p>
               </div>
-            )}
+            }
           </div>
         </div>
       </aside>

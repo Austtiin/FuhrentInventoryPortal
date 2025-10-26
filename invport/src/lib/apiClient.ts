@@ -8,9 +8,9 @@
 
 import { safeResponseJson, safeJsonParse } from './safeJson';
 
-// Control debug output - ALWAYS ENABLED for troubleshooting
-const DEBUG_ENABLED = true; // Always enabled to help debug production issues
-const DEBUG_RESPONSE_BODY = true; // Always show response body for debugging
+// Control debug output - keep verbose logs in development only
+const DEBUG_ENABLED = process.env.NODE_ENV !== 'production';
+const DEBUG_RESPONSE_BODY = process.env.NODE_ENV === 'development';
 
 // Retry configuration
 const DEFAULT_MAX_RETRIES = 2; // Default number of retry attempts
@@ -92,14 +92,16 @@ export function getApiBaseUrl(): string {
   const isDevelopment = process.env.NODE_ENV === 'development';
   const baseUrl = isDevelopment ? 'http://localhost:7071/api' : '/api';
   
-  // Enhanced logging for production debugging
-  console.log('🔧 [API Config] Environment:', {
-    NODE_ENV: process.env.NODE_ENV,
-    isDevelopment,
-    baseUrl,
-    hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
-    origin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
-  });
+  // Log environment in development only
+  if (DEBUG_ENABLED) {
+    console.log('🔧 [API Config] Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      isDevelopment,
+      baseUrl,
+      hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
+      origin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
+    });
+  }
   
   return baseUrl;
 }
@@ -123,13 +125,15 @@ export function buildApiUrl(endpoint: string): string {
     finalUrl = `${baseUrl}/${cleanEndpoint}`;
   }
   
-  // Log URL construction for debugging
-  console.log('🔗 [API URL] Building:', {
-    endpoint,
-    cleanEndpoint,
-    baseUrl,
-    finalUrl,
-  });
+  // Log URL construction for debugging (dev only)
+  if (DEBUG_ENABLED) {
+    console.log('🔗 [API URL] Building:', {
+      endpoint,
+      cleanEndpoint,
+      baseUrl,
+      finalUrl,
+    });
+  }
   
   return finalUrl;
 }
@@ -163,34 +167,38 @@ export async function apiFetch(
     }
   }
   
-  // Log the request
-  debugLog.request(method, url, requestBody);
+  // Log the request (dev only)
+  if (DEBUG_ENABLED) debugLog.request(method, url, requestBody);
   
   let lastError: Error | null = null;
   
   // Retry loop
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`🔄 [API Fetch] Attempt ${attempt + 1}/${maxRetries + 1}:`, {
-        url,
-        method,
-        headers: options?.headers,
-        hasBody: !!options?.body,
-      });
+      if (DEBUG_ENABLED) {
+        console.log(`🔄 [API Fetch] Attempt ${attempt + 1}/${maxRetries + 1}:`, {
+          url,
+          method,
+          headers: options?.headers,
+          hasBody: !!options?.body,
+        });
+      }
       
       const startTime = performance.now();
       const response = await fetch(url, options);
       const duration = Math.round(performance.now() - startTime);
       
-      console.log(`📡 [API Response] ${response.status} ${response.statusText}:`, {
-        url,
-        method,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        duration: `${duration}ms`,
-        ok: response.ok,
-      });
+      if (DEBUG_ENABLED) {
+        console.log(`📡 [API Response] ${response.status} ${response.statusText}:`, {
+          url,
+          method,
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          duration: `${duration}ms`,
+          ok: response.ok,
+        });
+      }
       
       // Clone response to read body for logging without consuming it
       const responseClone = response.clone();
@@ -201,12 +209,18 @@ export async function apiFetch(
         const contentType = response.headers.get('content-type');
         if (contentType?.includes('application/json')) {
           responseData = await safeResponseJson(responseClone);
-          console.log('📦 [API Response Body]:', responseData);
+          if (DEBUG_RESPONSE_BODY) {
+            console.log('📦 [API Response Body]:', responseData);
+          }
         } else {
-          console.log('📦 [API Response Body]: Non-JSON content type:', contentType);
+          if (DEBUG_ENABLED) {
+            console.log('📦 [API Response Body]: Non-JSON content type:', contentType);
+          }
         }
       } catch (parseError) {
-        console.warn('⚠️ [API Response Body] Failed to parse:', parseError);
+        if (DEBUG_ENABLED) {
+          console.warn('⚠️ [API Response Body] Failed to parse:', parseError);
+        }
         responseData = '[Response body not JSON or failed to parse]';
       }
       
@@ -222,8 +236,10 @@ export async function apiFetch(
       
       // Check if we should retry based on status code
       if (RETRY_STATUS_CODES.includes(response.status) && attempt < maxRetries) {
-        console.warn(`🔄 [API Retry] Status ${response.status} - Retrying in ${retryDelay}ms`);
-        debugLog.retry(attempt + 1, maxRetries, url, retryDelay);
+        if (DEBUG_ENABLED) {
+          console.warn(`🔄 [API Retry] Status ${response.status} - Retrying in ${retryDelay}ms`);
+          debugLog.retry(attempt + 1, maxRetries, url, retryDelay);
+        }
         await sleep(retryDelay);
         continue;
       }
@@ -241,14 +257,16 @@ export async function apiFetch(
       
       // If this is not the last attempt, retry
       if (attempt < maxRetries) {
-        console.warn(`🔄 [API Retry] Error occurred - Retrying in ${retryDelay}ms`);
-        debugLog.retry(attempt + 1, maxRetries, url, retryDelay);
+        if (DEBUG_ENABLED) {
+          console.warn(`🔄 [API Retry] Error occurred - Retrying in ${retryDelay}ms`);
+          debugLog.retry(attempt + 1, maxRetries, url, retryDelay);
+        }
         await sleep(retryDelay);
         continue;
       }
       
       // Last attempt failed, log and throw
-      debugLog.error(method, url, error);
+      if (DEBUG_ENABLED) debugLog.error(method, url, error);
       console.error(`❌ [API Fatal] All ${maxRetries + 1} attempts failed for ${url}`);
       throw error;
     }
@@ -261,7 +279,7 @@ export async function apiFetch(
 /**
  * Initialize API client with diagnostic logging
  */
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && DEBUG_ENABLED) {
   console.log('🚀 [API Client] Initializing in browser:', {
     environment: process.env.NODE_ENV,
     hostname: window.location.hostname,

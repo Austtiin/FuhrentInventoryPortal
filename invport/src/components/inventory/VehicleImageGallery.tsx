@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { 
@@ -13,14 +13,16 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
-import { useVehicleImages, VehicleImage } from '@/hooks/useVehicleImages';
-import { useVehicleImagesDirect } from '@/hooks/useVehicleImagesDirect';
+import { useUnitImages, UnitImage } from '@/hooks/useUnitImages';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { apiFetch } from '@/lib/apiClient';
 
 interface VehicleImageGalleryProps {
   vin: string | undefined;
   typeId: number;
   mode?: 'single' | 'gallery';
   editable?: boolean;
+  unitId?: string | number;
   maxImages?: number;
   onNotification?: (type: 'success' | 'error' | 'warning', title: string, message?: string) => void;
   className?: string;
@@ -34,27 +36,123 @@ interface UploadStatus {
 
 export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({ 
   vin, 
-  typeId, 
   mode = 'gallery',
   editable = false,
+  unitId,
   maxImages = 10,
   onNotification,
   className = ''
 }) => {
-  // Use direct blob probing for read-only views; use API hook for editable mode
-  const direct = useVehicleImagesDirect(vin, maxImages);
-  const api = useVehicleImages(editable ? vin : undefined, typeId);
-  const images = editable ? api.images : direct.images;
-  const isLoading = editable ? api.isLoading : direct.isLoading;
-  const error = editable ? api.error : direct.error;
+  // Resolve UnitID for API-backed image listing (avoid direct blob probing)
+  const [resolvedUnitId, setResolvedUnitId] = useState<string | number | undefined>(unitId);
+  const [resolvingId, setResolvingId] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolve() {
+      if (unitId != null && unitId !== '') {
+        setResolvedUnitId(unitId);
+        setResolveError(null);
+        return;
+      }
+      if (!vin) {
+        setResolvedUnitId(undefined);
+        setResolveError('Missing unit id or VIN');
+        return;
+      }
+      setResolvingId(true);
+      setResolveError(null);
+      try {
+        const res = await apiFetch(`/checkvin/${encodeURIComponent(vin)}`, { cache: 'no-store', skipRetry: true });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '');
+          throw new Error(`VIN lookup failed: ${res.status} ${txt?.slice(0,120)}`);
+        }
+        const data = await res.json().catch(() => ({}));
+        const id = data?.unitId ?? data?.UnitID ?? data?.id;
+        if (!id && !cancelled) {
+          setResolveError('VIN not found');
+          setResolvedUnitId(undefined);
+        } else if (!cancelled) {
+          setResolvedUnitId(id);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setResolveError(e instanceof Error ? e.message : 'VIN lookup failed');
+          setResolvedUnitId(undefined);
+        }
+      } finally {
+        if (!cancelled) setResolvingId(false);
+      }
+    }
+    resolve();
+    return () => { cancelled = true; };
+  }, [unitId, vin]);
+
+  // Use API hook for image listing/actions
+  const api = useUnitImages(resolvedUnitId);
+  const images = api.images as UnitImage[];
+  const isLoading = api.isLoading || resolvingId;
+  const error = api.error || resolveError;
   const uploadImage = api.uploadImage;
   const deleteImage = api.deleteImage;
-  const reorderImages = api.reorderImages;
-  const [selectedImage, setSelectedImage] = useState<VehicleImage | null>(null);
+  const renameImage = api.renameImage;
+  const [selectedImage, setSelectedImage] = useState<UnitImage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatuses, setUploadStatuses] = useState<UploadStatus[]>([]);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isReordering, setIsReordering] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; imageNumber?: number }>(
+    { open: false }
+  );
+  // Cache-busting for image URLs to ensure fresh loads after operations
+  const [cacheBuster, setCacheBuster] = useState(0);
+  const withCacheBuster = (url: string) => {
+    if (!url) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}cb=${cacheBuster}`;
+  };
+
+  // Local display state derived from API + post-refresh animations
+  const [displayImages, setDisplayImages] = useState<UnitImage[]>([]);
+  useEffect(() => {
+    setDisplayImages(images as UnitImage[]);
+    // If a rename just succeeded, animate/highlight the target tile now that images are fresh
+    if (successTargetRef.current) {
+      const { number, dir } = successTargetRef.current;
+      const idx = (images as UnitImage[]).findIndex(img => img.number === number);
+      if (idx >= 0) {
+        requestAnimationFrame(() => {
+          const el = itemRefs.current[idx];
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          }
+          setHighlightIndex(idx);
+          setMoveAnim({ key: (images as UnitImage[])[idx].name, dir });
+          setTimeout(() => setMoveAnim(null), 500);
+          setTimeout(() => setHighlightIndex(null), 1200);
+          if (onNotification) {
+            onNotification('success', 'image moved');
+          }
+        });
+        // Clear the target only after we've found and animated it
+        successTargetRef.current = null;
+      }
+    }
+  }, [images, onNotification]);
+
+  // Refs for scrolling/focus after move
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const setItemRef = (index: number) => (el: HTMLDivElement | null) => {
+    itemRefs.current[index] = el;
+  };
+  const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
+  const [moveAnim, setMoveAnim] = useState<{ key: string; dir: 'up' | 'down' } | null>(null);
+  // When a rename succeeds, we animate/highlight the target index after the list refreshes
+  const successTargetRef = useRef<{ number: number; dir: 'up' | 'down' } | null>(null);
+
+  // Removed optimistic helpers; movement is applied after backend success and refresh
 
   // Validate file is an image
   const validateImageFile = (file: File): string | null => {
@@ -95,7 +193,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
       if (onNotification) {
         onNotification('warning', 'Invalid Files', validationErrors.join('\n'));
       } else {
-        alert('Some files were invalid:\n\n' + validationErrors.join('\n'));
+        console.warn('Invalid files:', validationErrors);
       }
       if (validFiles.length === 0) {
         event.target.value = '';
@@ -105,12 +203,8 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
 
     const filesToUpload = Math.min(validFiles.length, maxImages - images.length);
     
-    if (filesToUpload < validFiles.length) {
-      if (onNotification) {
-        onNotification('warning', 'Upload Limit', `Only uploading ${filesToUpload} files to stay within the ${maxImages} image limit.`);
-      } else {
-        alert(`Only uploading ${filesToUpload} files to stay within the ${maxImages} image limit.`);
-      }
+    if (filesToUpload < validFiles.length && onNotification) {
+      onNotification('warning', 'Upload Limit', `Only uploading ${filesToUpload} files to stay within the ${maxImages} image limit.`);
     }
 
     setIsUploading(true);
@@ -130,7 +224,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           )
         );
         
-        const success = await uploadImage(file);
+  const success = await uploadImage(file);
         
         setUploadStatuses((prev: UploadStatus[]) => 
           prev.map((s, idx) => 
@@ -141,14 +235,14 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
         );
       }
       
+      // Bust cache so images re-render with fresh URLs
+      setCacheBuster((b) => b + 1);
       // Show success notification
       if (onNotification) {
         onNotification('success', 'Upload Complete', `Successfully uploaded ${filesToUpload} image${filesToUpload > 1 ? 's' : ''}`);
       }
     } catch {
-      if (onNotification) {
-        onNotification('error', 'Upload Failed', 'Failed to upload images. Please try again.');
-      }
+      if (onNotification) onNotification('error', 'Upload Failed', 'Failed to upload images. Please try again.');
     } finally {
       setIsUploading(false);
       setUploadStatuses([]);
@@ -156,89 +250,76 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
     }
   };
 
-  const handleDelete = async (imageNumber: number) => {
-    const confirmed = confirm('Are you sure you want to delete this image? This action cannot be undone.');
-    if (!confirmed) return;
-
+  const confirmAndDelete = async () => {
+    const imageNumber = confirmDelete.imageNumber;
+    if (!imageNumber && imageNumber !== 0) return;
     const success = await deleteImage(imageNumber);
     if (!success) {
-      if (onNotification) {
-        onNotification('error', 'Delete Failed', 'Failed to delete image. Please try again.');
-      } else {
-        alert('Failed to delete image');
-      }
+      if (onNotification) onNotification('error', 'Delete Failed', 'Failed to delete image. Please try again.');
     } else {
+      setDisplayImages(prev => prev.filter(img => img.number !== imageNumber));
+      setCacheBuster((b) => b + 1);
       if (onNotification) {
         onNotification('success', 'Image Deleted', 'Image has been successfully deleted.');
       }
     }
+    setConfirmDelete({ open: false, imageNumber: undefined });
   };
 
   const handleMoveUp = async (index: number) => {
     if (index === 0) return;
-
-    const newOrder = images.map(img => img.number);
-    // Swap with previous
-    [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
-    
-    const success = await reorderImages(newOrder);
+    const movedImage = displayImages[index];
+    if (isReordering) return;
+    setIsReordering(true);
+    const oldNumber = movedImage.number;
+    // Target the previous neighbor's actual number to guarantee a valid destination
+    const neighborNumber = displayImages[index - 1]?.number;
+    const newNumber = neighborNumber ?? Math.max(1, oldNumber - 1);
+    const success = await renameImage(oldNumber, newNumber);
     if (!success) {
-      if (onNotification) {
-        onNotification('error', 'Reorder Failed', 'Failed to reorder images. Please try again.');
-      } else {
-        alert('Failed to reorder images');
-      }
+      if (onNotification) onNotification('error', 'Reorder Failed', 'Failed to reorder images.');
+      setIsReordering(false);
+      return;
     }
+    // Mark the target for post-refresh animation/highlight
+    successTargetRef.current = { number: newNumber, dir: 'up' };
+    // Bust cache so updated order is reflected immediately
+    setCacheBuster((b) => b + 1);
+    // Ensure images refresh occurs now and with a couple of lazy follow-ups for eventual consistency
+    api.refreshImages?.();
+    setTimeout(() => api.refreshImages?.(), 400);
+    setTimeout(() => api.refreshImages?.(), 1200);
+    // Extra cache-bust shortly after to refresh both old and new positions in client render
+    setTimeout(() => setCacheBuster((b) => b + 1), 300);
+    // Release reorder lock slightly after the first refresh tick
+    setTimeout(() => setIsReordering(false), 350);
   };
 
   const handleMoveDown = async (index: number) => {
-    if (index === images.length - 1) return;
-
-    const newOrder = images.map(img => img.number);
-    // Swap with next
-    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    
-    const success = await reorderImages(newOrder);
+    if (index === displayImages.length - 1) return;
+    const movedImage = displayImages[index];
+    if (isReordering) return;
+    setIsReordering(true);
+    const oldNumber = movedImage.number;
+    // Target the next neighbor's actual number to guarantee a valid destination
+    const neighborNumber = displayImages[index + 1]?.number;
+    const newNumber = neighborNumber ?? (oldNumber + 1);
+    const success = await renameImage(oldNumber, newNumber);
     if (!success) {
-      if (onNotification) {
-        onNotification('error', 'Reorder Failed', 'Failed to reorder images. Please try again.');
-      } else {
-        alert('Failed to reorder images');
-      }
-    }
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
+      if (onNotification) onNotification('error', 'Reorder Failed', 'Failed to reorder images.');
+      setIsReordering(false);
       return;
     }
-
-    const newOrder = images.map(img => img.number);
-    const draggedNumber = newOrder[draggedIndex];
-    newOrder.splice(draggedIndex, 1);
-    newOrder.splice(dropIndex, 0, draggedNumber);
-
-    const success = await reorderImages(newOrder);
-    if (!success) {
-      if (onNotification) {
-        onNotification('error', 'Reorder Failed', 'Failed to reorder images. Please try again.');
-      } else {
-        alert('Failed to reorder images');
-      }
-    }
-    setDraggedIndex(null);
+    successTargetRef.current = { number: newNumber, dir: 'down' };
+    setCacheBuster((b) => b + 1);
+    api.refreshImages?.();
+    setTimeout(() => api.refreshImages?.(), 400);
+    setTimeout(() => api.refreshImages?.(), 1200);
+    setTimeout(() => setCacheBuster((b) => b + 1), 300);
+    setTimeout(() => setIsReordering(false), 350);
   };
+
+  // Drag & Drop removed: only arrow-based single-step renames are supported for now
 
   // Navigation functions for single mode
   const goToPrevious = () => {
@@ -249,14 +330,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
     setCurrentImageIndex((prev: number) => prev === images.length - 1 ? 0 : prev + 1);
   };
 
-  if (!vin) {
-    return (
-      <div className={`bg-gray-50 border border-gray-200 rounded-lg p-6 text-center ${className}`}>
-        <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-        <p className="text-gray-600">VIN required to load images</p>
-      </div>
-    );
-  }
+  // If we're missing identifiers and have an error, show it
 
   if (error && images.length === 0) {
     return (
@@ -303,7 +377,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           onClick={() => setSelectedImage(currentImage)}
         >
           <Image
-            src={currentImage.url}
+            src={withCacheBuster(currentImage.url)}
             alt={`Vehicle image ${currentImage.number}`}
             width={800}
             height={600}
@@ -364,7 +438,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   }`}
                 >
                   <Image
-                    src={image.url}
+                    src={withCacheBuster(image.url)}
                     alt={`Thumbnail ${image.number}`}
                     width={64}
                     height={64}
@@ -397,7 +471,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
             </button>
             <div className="relative w-full h-full flex items-center justify-center">
               <Image
-                src={selectedImage.url}
+                src={withCacheBuster(selectedImage.url)}
                 alt={`Vehicle image ${selectedImage.number}`}
                 width={1200}
                 height={1200}
@@ -420,8 +494,8 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
     <div className={`space-y-4 ${className}`}>
       {/* Upload Section - Only show if editable */}
       {editable && (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-600 transition-colors bg-gray-50">
-          <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 md:p-3 text-center hover:border-blue-600 transition-colors bg-gray-50">
+          <PhotoIcon className="w-10 h-10 md:w-8 md:h-8 text-gray-400 mx-auto mb-3" />
           
           {/* Upload Progress */}
           {isUploading && uploadStatuses.length > 0 ? (
@@ -451,13 +525,13 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
             </div>
           ) : (
             <>
-              <p className="text-gray-700 mb-2 font-medium">
+              <p className="text-gray-700 mb-2 font-medium text-sm">
                 {images.length === 0 
                   ? 'No images found. Upload photos for this vehicle'
                   : `Upload additional photos (${images.length}/${maxImages})`
                 }
               </p>
-              <p className="text-sm text-gray-600 mb-4">PNG, JPG, GIF, WEBP up to 10MB each</p>
+              <p className="text-xs md:text-xs text-gray-600 mb-3">PNG, JPG, GIF, WEBP up to 10MB each</p>
             </>
           )}
           
@@ -472,7 +546,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           />
           <label
             htmlFor="image-upload"
-            className={`inline-block px-4 py-2 rounded-md cursor-pointer transition-colors font-medium ${
+            className={`inline-block px-3 py-2 rounded-md cursor-pointer transition-colors font-medium text-sm ${
               isUploading || images.length >= maxImages
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-white text-gray-900 border border-gray-300 hover:bg-gray-100'
@@ -495,27 +569,24 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
       )}
 
       {/* Image Grid */}
-      {images.length > 0 && (
+      {displayImages.length > 0 && (
         <div className="space-y-2">
           {editable && (
             <p className="text-sm text-gray-600 italic">
-              💡 Tip: Drag and drop images to reorder them, or use the arrow buttons
+              💡 Tip: Use the arrow buttons to move images one position at a time
             </p>
           )}
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {images.map((image, index) => (
+              {displayImages.map((image, index) => (
                 <div 
-                  key={`${image.name}-${image.number}-${index}`} 
-                  draggable={editable}
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
+                  key={image.name}
+                  ref={setItemRef(index)}
                   className={`relative group bg-white border-2 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
-                    draggedIndex === index 
-                      ? 'border-blue-500 opacity-50 scale-95' 
+                    highlightIndex === index
+                      ? 'border-blue-500 ring-2 ring-blue-300'
                       : 'border-gray-200'
-                  } ${editable ? 'cursor-move' : ''}`}
+                  } ${moveAnim && moveAnim.key === image.name ? (moveAnim.dir === 'up' ? 'animate-slide-up' : 'animate-slide-down') : ''}`}
                 >
                   {/* Image */}
                   <div 
@@ -523,7 +594,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                     onClick={() => setSelectedImage(image)}
                   >
                     <Image
-                      src={image.url}
+                      src={withCacheBuster(image.url)}
                       alt={`Vehicle image ${image.number}`}
                       fill
                       className="object-cover"
@@ -551,7 +622,8 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                         <button
                           type="button"
                           onClick={() => handleMoveUp(index)}
-                          className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                          disabled={isReordering}
+                          className={`p-2 rounded-md transition-colors text-white ${isReordering ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                           title="Move up"
                         >
                           <ArrowUpIcon className="w-4 h-4" />
@@ -559,11 +631,12 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                       )}
 
                       {/* Move Down */}
-                      {index < images.length - 1 && (
+                      {index < displayImages.length - 1 && (
                         <button
                           type="button"
                           onClick={() => handleMoveDown(index)}
-                          className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                          disabled={isReordering}
+                          className={`p-2 rounded-md transition-colors text-white ${isReordering ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                           title="Move down"
                         >
                           <ArrowDownIcon className="w-4 h-4" />
@@ -573,7 +646,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                       {/* Delete */}
                       <button
                         type="button"
-                        onClick={() => handleDelete(image.number)}
+                        onClick={() => setConfirmDelete({ open: true, imageNumber: image.number })}
                         className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                         title="Delete"
                       >
@@ -611,7 +684,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           </button>
           <div className="relative w-full h-full flex items-center justify-center">
             <Image
-              src={selectedImage.url}
+              src={withCacheBuster(selectedImage.url)}
               alt={`Vehicle image ${selectedImage.number}`}
               width={1200}
               height={1200}
@@ -625,6 +698,29 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
         </div>,
         document.body
       )}
+      {/* Component-scoped animations for gallery */}
+      <style jsx>{`
+        .animate-slide-up { animation: slide-up 220ms ease-out; }
+        .animate-slide-down { animation: slide-down 220ms ease-out; }
+        .animate-revert-up { animation: revert-up 260ms ease-out; }
+        .animate-revert-down { animation: revert-down 260ms ease-out; }
+        @keyframes slide-up { from { transform: translateY(12px); } to { transform: translateY(0); } }
+        @keyframes slide-down { from { transform: translateY(-12px); } to { transform: translateY(0); } }
+        @keyframes revert-up { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
+        @keyframes revert-down { 0% { transform: translateY(0); } 50% { transform: translateY(10px); } 100% { transform: translateY(0); } }
+      `}</style>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        isOpen={confirmDelete.open}
+        title="Delete image?"
+        message={'Are you sure you want to delete this image? This action cannot be undone.'}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+        onConfirm={confirmAndDelete}
+        onCancel={() => setConfirmDelete({ open: false, imageNumber: undefined })}
+      />
     </div>
   );
 };

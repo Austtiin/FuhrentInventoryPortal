@@ -11,7 +11,7 @@ import { apiFetch } from '@/lib/apiClient';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ArrowLeftIcon, ArrowPathIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { VEHICLE_COLORS } from '@/constants/inventory';
+import { VEHICLE_COLORS, STATUS_OPTIONS } from '@/constants/inventory';
 import { FEATURE_CATEGORIES } from '@/constants/features';
 import FeaturesSelector from '@/components/inventory/FeaturesSelector';
 
@@ -65,6 +65,22 @@ interface VehicleFormData {
 const TITLE_CASE_FIELDS: (keyof VehicleFormData)[] = ['Make', 'Model'];
 const UPPERCASE_FIELDS: (keyof VehicleFormData)[] = ['VIN', 'StockNo'];
 
+// Suggestions and category options similar to Add page
+const MAKE_SUGGESTIONS = [
+  'Ice Castle Fish House',
+  'Aluma-Light',
+  'Toyota',
+  'BMW',
+  'Chevy',
+  'Ford',
+  'Honda',
+];
+
+const BASE_CATEGORY_OPTIONS = ['RV', 'No Water', 'Toy Hauler', 'Snowmobile Trailer', 'Skid House'];
+const VEHICLE_CATEGORY_OPTIONS = [
+  'Car', 'Truck', 'SUV', 'Sedan', 'Coupe', 'Van', 'Hatchback', 'Convertible', 'Box Truck', 'Pickup Truck', 'Wagon', 'Crossover',
+];
+
 function EditInventoryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -73,6 +89,7 @@ function EditInventoryPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [loadError, setLoadError] = useState<string>('');
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -82,14 +99,30 @@ function EditInventoryPageContent() {
     confirmColor: 'blue' as 'blue' | 'green' | 'yellow' | 'red',
     onConfirm: () => {},
   });
+
+  // Detect mobile viewport to adjust default open state for Features
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(max-width: 640px)');
+    const listener = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mq.matches);
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', listener);
+      return () => mq.removeEventListener('change', listener);
+    } else if (typeof mq.addListener === 'function') {
+      mq.addListener(listener);
+      return () => mq.removeListener(listener);
+    }
+  }, []);
   const [vehicle, setVehicle] = useState<VehicleData | null>(null);
   const [formData, setFormData] = useState<VehicleFormData>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const msrpToSend = typeof formData.MSRP === 'number' ? formData.MSRP : (formData.MSRP != null ? Number(formData.MSRP) : null);
 
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([]);
   const initialFeatureIdsRef = useRef<number[]>([]);
   const [isSavingFeatures, setIsSavingFeatures] = useState(false);
+  // Track initial status to detect changes saved via the form control
+  const initialStatusRef = useRef<string>('');
 
   const itemType = useMemo<'FishHouse' | 'Vehicle' | 'Trailer'>(() => {
     if (!vehicle?.TypeID) return 'Vehicle';
@@ -97,6 +130,7 @@ function EditInventoryPageContent() {
   }, [vehicle?.TypeID]);
 
   const typeId = useMemo(() => (itemType === 'FishHouse' ? 1 : itemType === 'Trailer' ? 3 : 2), [itemType]);
+  const categoryOptions = useMemo(() => itemType === 'Vehicle' ? VEHICLE_CATEGORY_OPTIONS : BASE_CATEGORY_OPTIONS, [itemType]);
 
   // Look up UnitID by VIN
   const getUnitIdByVin = async (vin: string): Promise<string> => {
@@ -150,6 +184,8 @@ function EditInventoryPageContent() {
         SizeCategory: v.SizeCategory,
         TypeID: v.TypeID,
       });
+      // Capture initial status in normalized (lowercase) form
+      initialStatusRef.current = (v.Status || '').toString().toLowerCase();
       setHasUnsavedChanges(false);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Failed to load vehicle');
@@ -257,6 +293,10 @@ function EditInventoryPageContent() {
     // Apply appropriate text formatting based on field
     let processedValue = value;
     if (typeof value === 'string') {
+      // Normalize Status values to lowercase to match API/option values
+      if (field === 'Status') {
+        processedValue = value.toLowerCase().trim();
+      }
       if (TITLE_CASE_FIELDS.includes(field)) {
         processedValue = toTitleCase(value);
       } else if (UPPERCASE_FIELDS.includes(field)) {
@@ -274,6 +314,29 @@ function EditInventoryPageContent() {
     
     setIsSaving(true);
     try {
+      // If status changed via the form, update it through dedicated endpoint first for reliability
+      const newStatusRaw = (formData.Status ?? '').toString();
+      const newStatus = newStatusRaw ? newStatusRaw.toLowerCase() : '';
+      const statusChanged = !!newStatus && newStatus !== initialStatusRef.current;
+      if (statusChanged) {
+        const statusRes = await apiFetch(`/SetStatus/${vehicle.UnitID}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus as 'available' | 'pending' | 'sold' }),
+        });
+        let statusResult: { success?: boolean; error?: string } = {};
+        try {
+          statusResult = await statusRes.json();
+        } catch {
+          statusResult = {};
+        }
+        if (!statusRes.ok || !statusResult?.success) {
+          throw new Error(statusResult?.error || `Status update failed (${statusRes.status})`);
+        }
+        initialStatusRef.current = newStatus;
+        success('Status Updated', `Unit marked as ${newStatus}`);
+      }
+
       // Convert TypeID to typeId for API compatibility and map MSRP to msrp
       const { TypeID, MSRP } = formData;
       // Map formData (mixed case keys) to API's expected camelCase schema
@@ -287,7 +350,7 @@ function EditInventoryPageContent() {
         stockNo: formData.StockNo,
         condition: formData.Condition,
         category: formData.Category,
-        status: formData.Status,
+  status: (formData.Status ?? '').toString().toLowerCase() || undefined,
         description: formData.Description,
         widthCategory: formData.WidthCategory,
         sizeCategory: formData.SizeCategory,
@@ -464,7 +527,7 @@ function EditInventoryPageContent() {
     );
   }
 
-  const status = (vehicle.Status || 'Available').toLowerCase();
+  const status = ((formData.Status ?? vehicle.Status) || 'Available').toString().toLowerCase();
 
   return (
     <Layout>
@@ -482,26 +545,26 @@ function EditInventoryPageContent() {
 
       <div className="space-y-6">
         {/* Header with Save Button */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/inventory" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <Link href="/inventory" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors shrink-0">
               <ArrowLeftIcon className="w-5 h-5" /> Back to Inventory
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate" title={`${vehicle?.Year ?? ''} ${vehicle?.Make ?? ''} ${vehicle?.Model ?? ''}`}>
               Edit {vehicle?.Year} {vehicle?.Make} {vehicle?.Model}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
               onClick={() => fetchVehicle(unitId)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200"
+              className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200"
             >
               <ArrowPathIcon className="w-5 h-5" /> Refresh
             </button>
             <button
               onClick={saveVehicle}
               disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckIcon className="w-4 h-4" />
               {isSaving || isSavingFeatures ? 'Saving...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'Saved'}
@@ -567,15 +630,13 @@ function EditInventoryPageContent() {
         {/* 2) Photo Gallery - First main section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Photo Gallery</h2>
-          <div className="mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-300 rounded-md p-3">
-            💡 <strong className="font-semibold">Note:</strong> Image upload/management requires Azure Functions to be running. Currently showing read-only gallery.
-          </div>
           {vehicle.VIN ? (
             <VehicleImageGallery
               vin={vehicle.VIN}
               typeId={typeId}
               mode="gallery"
-              editable={false}
+              editable
+              unitId={vehicle.UnitID}
               maxImages={20}
               onNotification={(type, title, message) => {
                 if (type === 'success') success(title, message || '');
@@ -595,7 +656,7 @@ function EditInventoryPageContent() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Unit Information</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Basic Information */}
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-1">Year</label>
@@ -626,9 +687,15 @@ function EditInventoryPageContent() {
                 type="text"
                 value={formData.Make || ''}
                 onChange={(e) => handleFieldChange('Make', e.target.value)}
+                list="make-options"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
                 placeholder="Ford"
               />
+              <datalist id="make-options">
+                {MAKE_SUGGESTIONS.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
             </div>
 
             <div>
@@ -691,9 +758,6 @@ function EditInventoryPageContent() {
                 placeholder="35000"
                 step="0.01"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Will send: <span className="font-medium">msrp</span> = {msrpToSend === null ? 'null' : msrpToSend} and <span className="font-medium">MSRP</span> = {msrpToSend === null ? 'null' : msrpToSend}
-              </p>
             </div>
 
             <div>
@@ -715,9 +779,15 @@ function EditInventoryPageContent() {
                 type="text"
                 value={formData.Category || ''}
                 onChange={(e) => handleFieldChange('Category', e.target.value)}
+                list="category-options"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
                 placeholder="Truck"
               />
+              <datalist id="category-options">
+                {categoryOptions.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </div>
 
             <div>
@@ -740,6 +810,20 @@ function EditInventoryPageContent() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
                 placeholder="Full Size"
               />
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1">Status</label>
+                <select
+                  value={(formData.Status ?? vehicle.Status ?? '').toString().toLowerCase()}
+                  onChange={(e) => handleFieldChange('Status', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                >
+                  <option value="">Select Status</option>
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -799,8 +883,8 @@ function EditInventoryPageContent() {
           {/* Read-only info */}
           <div className="mt-6 pt-4 border-t border-gray-200">
             <h3 className="text-md font-semibold text-gray-900 mb-3">Read-Only Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div><span className="font-semibold text-gray-800">VIN:</span> <span className="ml-1 font-mono text-sm text-gray-900 bg-gray-100 px-2 py-1 rounded">{vehicle.VIN}</span></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div><span className="font-semibold text-gray-800">VIN:</span> <span className="ml-1 font-mono text-sm text-gray-900 bg-gray-100 px-2 py-1 rounded break-all">{vehicle.VIN}</span></div>
               <div><span className="font-semibold text-gray-800">Unit ID:</span> <span className="ml-1 text-gray-900 font-medium">{vehicle.UnitID}</span></div>
             </div>
           </div>
@@ -831,7 +915,7 @@ function EditInventoryPageContent() {
             selected={selectedFeatureIds}
             onChange={setSelectedFeatureIds}
             lazy
-            defaultOpen
+            defaultOpen={!isMobile}
             small
             categoryConfig={FEATURE_CATEGORIES}
           />

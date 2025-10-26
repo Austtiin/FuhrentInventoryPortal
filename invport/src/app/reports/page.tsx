@@ -73,31 +73,6 @@ const ReportsPage: React.FC = () => {
       description: 'Comprehensive overview of all inventory items with current values and status',
       format: ['PDF', 'Excel', 'CSV'],
     },
-    {
-      title: 'Sales Performance Report',
-      description: 'Analysis of vehicle sales trends and performance metrics',
-      format: ['PDF', 'Excel'],
-    },
-    {
-      title: 'Category Breakdown Report',
-      description: 'Detailed breakdown of inventory by vehicle categories and types',
-      format: ['PDF', 'Excel', 'CSV'],
-    },
-    {
-      title: 'Location Analysis Report',
-      description: 'Geographic distribution and performance analysis by location',
-      format: ['PDF', 'Excel'],
-    },
-    {
-      title: 'Financial Overview Report',
-      description: 'Financial metrics including total value, pricing trends, and profitability',
-      format: ['PDF', 'Excel'],
-    },
-    {
-      title: 'Custom Report Builder',
-      description: 'Create custom reports with specific filters and data points',
-      format: ['PDF', 'Excel', 'CSV'],
-    },
   ];
 
   const generateReport = (reportType: string, format: string) => {
@@ -130,15 +105,6 @@ const ReportsPage: React.FC = () => {
               <ArrowTrendingUpIcon className="w-5 h-5" />
               <span className="text-white">{isLoading ? 'Loading...' : 'Refresh Data'}</span>
             </button>
-            <select 
-              value={dateRange} 
-              onChange={(e) => setDateRange(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="7">Last 7 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="365">Last year</option>
-            </select>
           </div>
         </div>
 

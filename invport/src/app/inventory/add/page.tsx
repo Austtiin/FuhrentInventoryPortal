@@ -87,10 +87,7 @@ const AddInventoryPage: React.FC = () => {
     !formData.make ? true : s.toLowerCase().includes(formData.make.toLowerCase())
   );
 
-  // Derived: what will be sent for MSRP
-  const msrpToSend = formData.msrp !== '' && !Number.isNaN(parseFloat(formData.msrp))
-    ? parseFloat(formData.msrp)
-    : null;
+  // NOTE: MSRP is optional; the value is sent directly from form state where needed.
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -471,9 +468,6 @@ const AddInventoryPage: React.FC = () => {
                       placeholder="0.00"
                     />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Will send: <span className="font-medium">msrp</span> = {msrpToSend === null ? 'null' : msrpToSend} and <span className="font-medium">MSRP</span> = {msrpToSend === null ? 'null' : msrpToSend}
-                  </p>
                 </div>
 
                 {/* Stock Number - Required */}

@@ -8,6 +8,20 @@ const nextConfig: NextConfig = {
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),
   
+  // Allow accessing the dev server from LAN devices (Next.js 16+)
+  // This silences the cross-origin warning when opening via your machine's IP
+  // Customize via env NEXT_ALLOWED_DEV_ORIGINS (comma-separated) if needed
+  ...(process.env.NODE_ENV === 'development' && {
+    allowedDevOrigins: (process.env.NEXT_ALLOWED_DEV_ORIGINS
+      ? process.env.NEXT_ALLOWED_DEV_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+      : [
+          'http://localhost:3000',
+          'http://127.0.0.1:3000',
+          'http://0.0.0.0:3000',
+          'http://192.168.1.16:3000',
+        ]) as unknown as any,
+  }),
+  
   // Configure for single page application
   distDir: 'out',
   

@@ -13,6 +13,9 @@ This document provides a comprehensive list of all API endpoints with expected i
 4. [Validation Endpoints](#validation-endpoints)
 5. [Dashboard & Reports Endpoints](#dashboard--reports-endpoints)
 6. [CDN Management Endpoints](#cdn-management-endpoints)
+7. [Reference Data Endpoints](#reference-data-endpoints)
+8. [Unit Features Endpoints](#unit-features-endpoints)
+9. [Image Management Endpoints](#image-management-endpoints)
 
 ---
 
@@ -99,9 +102,7 @@ This document provides a comprehensive list of all API endpoints with expected i
 ### 3. Get Fish House Inventory
 **Purpose:** Retrieve only fish houses (TypeID = 1)
 
-**Endpoint:** `GET /api/GrabInventoryAll` (filter by TypeID=1 or use query params to restrict to fish houses)
-
-**Note:** For backward compatibility this previously appeared as `/GrabInventoryFH`. Use `/api/GrabInventoryAll` with filters for client pages.
+**Endpoint:** `GET /GrabInventoryFH`
 
 **Query Parameters:** Same as GrabInventoryAll
 
@@ -197,6 +198,7 @@ This document provides a comprehensive list of all API endpoints with expected i
   "model": "Camry",
   "vin": "4T1B11HK5PU123456",
   "price": 28000.00,
+  "msrp": 31000.00,
   "status": "available",
   "mileage": 15000,
   "color": "Silver",
@@ -242,7 +244,8 @@ This document provides a comprehensive list of all API endpoints with expected i
   "validationErrors": [
     "StockNo is required",
     "VIN is required",
-    "Price must be greater than 0"
+    "Price must be greater than 0",
+    "MSRP must be 0 or greater"
   ],
   "statusCode": 400
 }
@@ -271,6 +274,7 @@ This document provides a comprehensive list of all API endpoints with expected i
 ```json
 {
   "price": 27000.00,
+  "msrp": 30500.00,
   "mileage": 16500,
   "status": "pending",
   "description": "Updated description"
@@ -298,6 +302,147 @@ This document provides a comprehensive list of all API endpoints with expected i
   "statusCode": 404
 }
 ```
+
+
+## Image Management Endpoints
+
+Images are stored in Azure Blob Storage under a VIN-based folder using a path prefix. The standard layout is:
+
+- Container: derived from configuration (e.g., `invpics`)
+- Path prefix: `invpics/units/` (configurable)
+- Per unit folder: `{VIN}/`
+- Filenames: sequential numbers starting at 1 with an image file extension (e.g., `1.jpg`, `2.png`)
+
+Notes:
+- When you upload an image, the API auto-assigns the next available integer filename.
+- URLs in responses are constructed from your configured public Blob base URL when available.
+- Rename operations avoid overwriting existing images.
+
+### 19. List Unit Images
+**Purpose:** List all images for a unit, sorted numerically by filename
+
+**Endpoint:** `GET /units/{id}/images`
+
+**Path Parameters:**
+- `id` (required): UnitID (integer)
+
+**Response:**
+```json
+[
+  {
+    "name": "1.jpg",
+    "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/1.jpg"
+  },
+  {
+    "name": "2.jpg",
+    "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/2.jpg"
+  }
+]
+```
+
+**Error Response (Invalid ID):**
+```json
+{
+  "error": true,
+  "message": "Invalid UnitID format. Must be a positive number.",
+  "statusCode": 400
+}
+```
+
+### 20. Get Unit Image (Redirect)
+**Purpose:** Resolve a specific image for a unit and redirect to the blob URL
+
+**Endpoint:** `GET /units/{id}/images/{name}`
+
+**Behavior:** Returns HTTP 302 redirect to the image URL. The `{name}` must include the extension (e.g., `1.jpg`).
+
+**Error Response (Not Found):**
+```json
+{
+  "error": true,
+  "message": "Image not found",
+  "statusCode": 404
+}
+```
+
+### 21. Upload Unit Image (Auto-number)
+**Purpose:** Upload a new image for a unit; assigns the next numeric filename automatically
+
+**Endpoint:** `POST /units/{id}/images`
+
+**Headers:**
+- `Content-Type`: Image MIME type (e.g., `image/jpeg`, `image/png`)
+
+**Query Parameters (optional):**
+- `ext`: Force an extension (e.g., `jpg`, `png`). If omitted, the server maps from `Content-Type`.
+
+**Body:** Raw binary image.
+
+**Response:**
+```json
+{
+  "success": true,
+  "name": "3.jpg",
+  "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/3.jpg"
+}
+```
+
+**Error Response (Unsupported Media Type):**
+```json
+{
+  "error": true,
+  "message": "Unsupported image content type",
+  "statusCode": 415
+}
+```
+
+### 22. Delete Unit Image
+**Purpose:** Delete a specific image for a unit
+
+**Endpoint:** `DELETE /units/{id}/images/{name}`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Image deleted"
+}
+```
+
+**Error Response (Not Found):**
+```json
+{
+  "error": true,
+  "message": "Image not found",
+  "statusCode": 404
+}
+```
+
+### 23. Rename Unit Image
+**Purpose:** Rename an existing image; prevents overwrite if the destination exists
+
+**Endpoint:** `PUT /units/{id}/images/{oldName}/rename/{newName}`
+
+**Notes:**
+- Both `oldName` and `newName` must include the extension (e.g., `1.jpg`).
+- If `oldName` and `newName` are identical (case-insensitive), the operation is a no-op and returns 200 with `moved: false`.
+- Reordering is supported. When moving an image from index `A` to `B`, the API automatically shifts images in between to avoid collisions:
+  - If `A < B` (move down): `A+1 -> A`, `A+2 -> A+1`, …, `B -> B-1`, and finally `A -> B`.
+  - If `A > B` (move up): `A-1 -> A`, `A-2 -> A-1`, …, `B -> B+1`, and finally `A -> B`.
+  - Each file keeps its own extension while its numeric index changes (e.g., `3.png` moved to position 2 becomes `2.png`).
+  - The operation uses a safe two-phase temp copy to avoid overwrite errors, so it's atomic with respect to collisions.
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "message": "Image renamed",
+  "from": "1.jpg",
+  "to": "2.jpg"
+}
+```
+
+> Note: When reordering, a pre-existing destination index is expected and will be shifted automatically; you should not see a 409 in normal reorder scenarios.
 
 ### 8. Set Vehicle Status
 **Purpose:** Update the status of a specific vehicle
@@ -579,6 +724,89 @@ This document provides a comprehensive list of all API endpoints with expected i
 
 ---
 
+## Vehicle Deletion Endpoint
+
+### 14. Delete Vehicle
+**Purpose:** Permanently delete a vehicle from inventory by UnitID
+
+**Endpoint:**
+- `DELETE /vehicles/delete/{id}`
+- Also available for convenience/testing: `GET /vehicles/delete/{id}` (performs the same delete)
+
+**Path Parameters:**
+- `id` (required): UnitID of the vehicle (integer)
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "message": "Vehicle deleted successfully",
+  "unitId": 145,
+  "responseTimeMs": 42,
+  "timestamp": "2025-10-24T10:30:00Z"
+}
+```
+
+**Error Response (Not Found):**
+```json
+{
+  "error": true,
+  "message": "Vehicle with UnitID 999 not found",
+  "statusCode": 404
+}
+```
+
+**Error Response (Invalid ID):**
+```json
+{
+  "error": true,
+  "message": "Invalid UnitID format. Must be a number.",
+  "statusCode": 400
+}
+```
+
+> Note: This operation is destructive. Consider purging related CDN entries after deletion if the item was publicly listed.
+
+---
+
+## Reference Data Endpoints
+
+### 15. Get Features
+**Purpose:** Retrieve all available features from the `dbo.FeatureList` lookup table
+
+**Endpoint:** `GET /features`
+
+**Input:** None
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "featureId": 1,
+      "name": "Heated Seats",
+      "category": "Comfort",
+      "isActive": true
+    },
+    {
+      "featureId": 2,
+      "name": "Bluetooth",
+      "category": "Audio",
+      "isActive": true
+    }
+  ],
+  "count": 2,
+  "responseTimeMs": 42,
+  "timestamp": "2025-10-20T10:30:00Z"
+}
+```
+
+Notes:
+- The response dynamically includes all columns from `dbo.FeatureList`.
+- CORS headers are included as with other endpoints.
+
+
 ## Common Response Patterns
 
 ### CORS Headers
@@ -607,6 +835,127 @@ Access-Control-Allow-Headers: Content-Type
 - `500 Internal Server Error` - Server-side error
 
 ---
+
+## Unit Features Endpoints
+
+### 16. Get Features For Unit
+**Purpose:** Retrieve all feature mappings attached to the specified unit
+
+**Endpoint:** `GET /units/{id}/features`
+
+**Path Parameters:**
+- `id` (required): UnitID (integer)
+
+**Input:** None
+
+**Response:**
+```json
+[
+  {
+    "unitId": 145,
+    "featureId": 2,
+    "name": "Bluetooth",
+    "category": "Audio",
+    "isActive": true
+  }
+]
+```
+
+Notes:
+- The response dynamically includes all columns from `dbo.UnitFeatures` (and any joins if added in the future). Currently it returns the raw mapping rows from `UnitFeatures`.
+
+**Error Response (Invalid ID):**
+```json
+{
+  "error": true,
+  "message": "Invalid UnitID format. Must be a positive number.",
+  "statusCode": 400
+}
+```
+
+### 17. Get All Unit Features
+**Purpose:** Retrieve the entire `dbo.UnitFeatures` table
+
+**Endpoint:** `GET /unit-features`
+
+**Input:** None
+
+**Response:**
+```json
+[
+  {
+    "unitId": 145,
+    "featureId": 1
+  },
+  {
+    "unitId": 146,
+    "featureId": 3
+  }
+]
+```
+
+Notes:
+- The response dynamically includes all columns from `dbo.UnitFeatures`.
+- CORS headers are included as with other endpoints.
+
+### 18. Update Unit Features (Replace)
+**Purpose:** Replace all features for a given unit. Deletes any existing rows in `dbo.UnitFeatures` for the unit and inserts the provided FeatureIDs.
+
+**Endpoint:** `PUT /units/{id}/features`
+
+**Path Parameters:**
+- `id` (required): UnitID (integer)
+
+**Request Body:**
+You can send either an object with `featureIds` or a raw array.
+
+Option A (recommended):
+```json
+{
+  "featureIds": [1, 4, 7]
+}
+```
+
+Option B (raw array):
+```json
+[1, 4, 7]
+```
+
+Behavior:
+- If the list is empty (`[]`), all existing features for the unit are removed.
+- Duplicate or non-positive FeatureIDs are ignored (the list is de-duplicated and filtered to positive integers).
+- Operation runs in a single transaction: delete existing then insert new rows.
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "message": "Unit features updated successfully",
+  "unitId": 145,
+  "deletedCount": 3,
+  "insertedCount": 3,
+  "featureIds": [1, 4, 7]
+}
+```
+
+**Error Response (Invalid ID):**
+```json
+{
+  "error": true,
+  "message": "Invalid UnitID format. Must be a positive number.",
+  "statusCode": 400
+}
+```
+
+**Error Response (Not Found):**
+```json
+{
+  "error": true,
+  "message": "Vehicle with UnitID 999 not found",
+  "statusCode": 404
+}
+```
+
 
 ## Bot Implementation Examples
 
@@ -721,6 +1070,7 @@ interface Vehicle {
   model: string;
   vin: string;
   price: number; // decimal
+  msrp?: number; // decimal (optional)
   status: 'available' | 'pending' | 'sold' | 'reserved' | 'maintenance';
   mileage?: number;
   color?: string;
@@ -745,7 +1095,7 @@ interface Vehicle {
 1. **Response Times:** Most endpoints respond within 50-250ms
 2. **Batch Operations:** For multiple items, make individual calls with small delays
 3. **Error Handling:** Always check for `error: true` in responses
-4. **VIN Validation:** Always check VIN before We should vveg new vehicles
+4. **VIN Validation:** Always check VIN before adding new vehicles
 5. **Status Updates:** Use dedicated `/SetStatus` endpoint for status changes
 6. **Cache Management:** Purge CDN after significant inventory updates
 
@@ -760,6 +1110,22 @@ Required environment variables for full functionality:
 - `AZURE_FD_PROFILE` - Front Door profile (CDN purge)
 - `AZURE_FD_ENDPOINT` - Front Door endpoint (CDN purge)
 
+Blob storage settings (images):
+- `BlobConnectionString` - Storage account connection string (preferred for server-side operations)
+- `BlobContainerName` - Container name when using connection string (e.g., `invpics`) — optional if derivable from base URL
+- `BlobBaseURL` or `Blob_URL` - Public base URL to construct image links; may include container and optional path prefix
+- `BlobPathPrefix` - Optional override of the path inside the container preceding the VIN folders (e.g., `units/`). If omitted, the service derives it from the `BlobBaseURL` path after the container name.
+
+Example (public dev):
+```json
+{
+  "Blob_URL": "https://storageinventoryflatt.blob.core.windows.net/invpics/units/",
+  "BlobConnectionString": "<connection string>",
+  "BlobContainerName": "invpics",
+  "BlobPathPrefix": "units/"
+}
+```
+
 ---
 
 ## Support & Contact
@@ -769,4 +1135,3 @@ For API issues, database connectivity problems, or feature requests, please crea
 **Last Updated:** October 20, 2025
 **Version:** 1.0.0
 **Maintained By:** Flatt Functions Team
-
