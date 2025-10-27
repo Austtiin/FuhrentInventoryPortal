@@ -7,7 +7,9 @@ import {
   PhotoIcon, 
   XMarkIcon
 } from '@heroicons/react/24/outline';
-import { getVehicleImageUrl, checkImageExists } from '@/lib/imageUtils';
+// Removed legacy blob probing utilities; rely on API-backed unit image listing
+import { useUnitImages } from '@/hooks/useUnitImages';
+import { buildApiUrl } from '@/lib/apiClient';
 import { LoadingSpinner } from '@/components/ui/Loading';
 
 interface VehicleImage {
@@ -18,6 +20,7 @@ interface VehicleImage {
 interface SingleVehicleImageProps {
   vin: string | undefined;
   typeId: number;
+  unitId?: string | number;
   className?: string;
   lazy?: boolean;
 }
@@ -25,15 +28,21 @@ interface SingleVehicleImageProps {
 export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({ 
   vin, 
   typeId, 
+  unitId,
   className = '',
   lazy = true
 }) => {
   const [firstImage, setFirstImage] = useState<VehicleImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<VehicleImage | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Loading derives from API hook; no separate spinner state needed
   const [isInView, setIsInView] = useState(!lazy);
   const imageRef = useRef<HTMLDivElement>(null);
+
+  // When in view, enable API-backed fetch by passing a real unit id; otherwise undefined to avoid work
+  const apiUnitKey = isInView ? unitId : undefined;
+  const api = useUnitImages(apiUnitKey as string | number | undefined);
+  const unitImages = api.images;
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -53,61 +62,46 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
     return () => observer.disconnect();
   }, [lazy, isInView]);
 
-  // Enhanced image loading with URL checking
+  // Prefer API-backed image listing by UnitID; do not fallback to legacy blob probing
   useEffect(() => {
-    if (!vin || (lazy && !isInView)) {
-      setFirstImage(null);
-      setError(null);
-      setIsLoading(false);
-      return;
-    }
-    
-    const findAvailableImage = async () => {
-      setIsLoading(true);
+    let cancelled = false;
+    async function resolveImage() {
+      // Reset
       setError(null);
       setFirstImage(null);
-      
-      try {
-        // Generate attempts: 1.png, 1.jpg, 1.jpeg, 2.png, 2.jpg, 2.jpeg, etc.
-        const extensions = ['png', 'jpg', 'jpeg'];
-        const maxNumbers = 5; // Try first 5 numbers
-        
-        for (let num = 1; num <= maxNumbers; num++) {
-          for (const ext of extensions) {
-            const url = getVehicleImageUrl(vin, num, ext);
-            
-            try {
-              // Check if URL exists before trying to load
-              const exists = await checkImageExists(url);
-              if (exists) {
-                setFirstImage({ url, number: num });
-                setIsLoading(false);
-                return; // Found a valid image, exit
-              }
-            } catch (checkError) {
-              // Continue to next attempt if check fails
-              console.log(`Image check failed for ${url}:`, checkError);
-              continue;
-            }
-          }
+
+      // If using lazy mode and not in view, skip
+      if (lazy && !isInView) return;
+
+      // If we have unitId and API images available, choose the lowest-numbered image
+      if (apiUnitKey && Array.isArray(unitImages) && unitImages.length > 0) {
+        // Find the image with the smallest numeric index (e.g., 1.webp)
+        const lowest = unitImages.reduce((min, cur) => {
+          if (cur.number <= 0) return min;
+          if (!min) return cur;
+          return cur.number < min.number ? cur : min;
+        }, undefined as typeof unitImages[number] | undefined) || unitImages[0];
+
+        const url = lowest.url || buildApiUrl(`units/${encodeURIComponent(String(apiUnitKey))}/images/${encodeURIComponent(lowest.name)}`);
+        if (!cancelled) {
+          setFirstImage(prev => {
+            if (prev && prev.number === lowest.number && prev.url === url) return prev;
+            return { url, number: lowest.number };
+          });
         }
-        
-        // No images found after all attempts
-        setError('No image found');
-        setFirstImage(null);
-      } catch (err) {
-        console.error('Error finding available image:', err);
-        setError('Failed to load image');
-        setFirstImage(null);
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    };
-    
-    findAvailableImage();
-  }, [vin, typeId, lazy, isInView]);
+      // No API images available
+      setError('No image found');
+      setFirstImage(null);
+    }
+
+    resolveImage();
+    return () => { cancelled = true; };
+  }, [apiUnitKey, unitImages, vin, typeId, lazy, isInView]);
 
   // Show loading state
+  const isLoading = api.isLoading;
   if (isLoading || (!firstImage && !error && (lazy ? isInView : true))) {
     return (
       <div ref={lazy ? imageRef : undefined} className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>

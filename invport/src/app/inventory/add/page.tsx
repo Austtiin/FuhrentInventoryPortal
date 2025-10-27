@@ -16,9 +16,16 @@ const toTitleCase = (str: string): string => {
     .join(' ');
 };
 
-// Fields that should be capitalized
+// Capitalize only the first character; leave the rest as the user types
+const capitalizeFirst = (str: string): string => {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+// Fields that should be capitalized (every word)
 // Note: exclude 'category' to preserve exact option values like 'RV'
-const TITLE_CASE_FIELDS = ['make', 'model'];
+// Note: model is handled separately to only capitalize the first character
+const TITLE_CASE_FIELDS = ['make'];
 const UPPERCASE_FIELDS = ['vin', 'stockNo'];
 
 const AddInventoryPage: React.FC = () => {
@@ -94,7 +101,10 @@ const AddInventoryPage: React.FC = () => {
     
     // Apply appropriate text formatting based on field
     let processedValue = value;
-    if (TITLE_CASE_FIELDS.includes(name)) {
+    if (name === 'model') {
+      // Only capitalize the very first character
+      processedValue = capitalizeFirst(value);
+    } else if (TITLE_CASE_FIELDS.includes(name)) {
       processedValue = toTitleCase(value);
     } else if (UPPERCASE_FIELDS.includes(name)) {
       processedValue = value.toUpperCase();

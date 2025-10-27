@@ -113,6 +113,7 @@ export default function CompactInventoryCard({
           <SingleVehicleImage 
             vin={item.vin}
             typeId={item.typeId || 2}
+            unitId={item.unitId ?? (Number.isFinite(Number(item.id)) ? Number(item.id) : undefined)}
             className="w-full h-full"
             lazy={true}
           />

@@ -233,7 +233,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
               : s
           )
         );
-      }
+       }
       
       // Bust cache so images re-render with fresh URLs
       setCacheBuster((b) => b + 1);

@@ -7,6 +7,7 @@ import { Layout } from '@/components/layout';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 import { NotificationContainer } from '@/components/ui/Notification';
 import { useNotification } from '@/hooks/useNotification';
+import { useUnitImages } from '@/hooks/useUnitImages';
 import { apiFetch } from '@/lib/apiClient';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -22,6 +23,12 @@ const toTitleCase = (str: string): string => {
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+};
+
+// Utility: capitalize only the first character; leave the rest untouched
+const capitalizeFirst = (str: string): string => {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
 interface VehicleData {
@@ -61,8 +68,9 @@ interface VehicleFormData {
   TypeID?: number;
 }
 
-// Fields that should be capitalized / uppercased when editing
-const TITLE_CASE_FIELDS: (keyof VehicleFormData)[] = ['Make', 'Model'];
+// Fields that should be title-cased (every word)
+// Note: Model is handled separately to only capitalize the first character
+const TITLE_CASE_FIELDS: (keyof VehicleFormData)[] = ['Make'];
 const UPPERCASE_FIELDS: (keyof VehicleFormData)[] = ['VIN', 'StockNo'];
 
 // Suggestions and category options similar to Add page
@@ -85,6 +93,8 @@ function EditInventoryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { notifications, success, error, warning, closeNotification } = useNotification();
+  // Coalesce repeated "image moved" notifications to prevent stacking
+  const lastImageMovedIdRef = useRef<string | null>(null);
   const [unitId, setUnitId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -131,6 +141,17 @@ function EditInventoryPageContent() {
 
   const typeId = useMemo(() => (itemType === 'FishHouse' ? 1 : itemType === 'Trailer' ? 3 : 2), [itemType]);
   const categoryOptions = useMemo(() => itemType === 'Vehicle' ? VEHICLE_CATEGORY_OPTIONS : BASE_CATEGORY_OPTIONS, [itemType]);
+
+  // Images progress (based on canonical API listing)
+  const imagesHook = useUnitImages(vehicle?.UnitID ?? undefined);
+  const imageCount = imagesHook.images?.length || 0;
+  const maxImagesAllowed = 30;
+  const progressPct = Math.max(0, Math.min(100, (imageCount / maxImagesAllowed) * 100));
+  const imageStatus = useMemo(() => {
+    if (imageCount > 20) return { label: 'Great', color: 'bg-green-500', badge: 'bg-green-100 text-green-800 border border-green-200' } as const;
+    if (imageCount >= 10 && imageCount <= 20) return { label: 'Good', color: 'bg-amber-500', badge: 'bg-amber-100 text-amber-800 border border-amber-200' } as const;
+    return { label: 'Okay', color: 'bg-blue-500', badge: 'bg-blue-100 text-blue-800 border border-blue-200' } as const;
+  }, [imageCount]);
 
   // Look up UnitID by VIN
   const getUnitIdByVin = async (vin: string): Promise<string> => {
@@ -297,7 +318,10 @@ function EditInventoryPageContent() {
       if (field === 'Status') {
         processedValue = value.toLowerCase().trim();
       }
-      if (TITLE_CASE_FIELDS.includes(field)) {
+      if (field === 'Model') {
+        // Only capitalize the very first character; do not force-case the rest
+        processedValue = capitalizeFirst(value);
+      } else if (TITLE_CASE_FIELDS.includes(field)) {
         processedValue = toTitleCase(value);
       } else if (UPPERCASE_FIELDS.includes(field)) {
         processedValue = value.toUpperCase();
@@ -629,7 +653,20 @@ function EditInventoryPageContent() {
 
         {/* 2) Photo Gallery - First main section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Photo Gallery</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">Photo Gallery</h2>
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${imageStatus.badge}`}>{imageStatus.label}</span>
+          </div>
+          {/* Images Progress */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+              <span>Photos</span>
+              <span>{imageCount} / {maxImagesAllowed}</span>
+            </div>
+            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className={`h-full ${imageStatus.color}`} style={{ width: `${progressPct}%` }} />
+            </div>
+          </div>
           {vehicle.VIN ? (
             <VehicleImageGallery
               vin={vehicle.VIN}
@@ -637,8 +674,19 @@ function EditInventoryPageContent() {
               mode="gallery"
               editable
               unitId={vehicle.UnitID}
-              maxImages={20}
+              maxImages={30}
               onNotification={(type, title, message) => {
+                const t = title?.toLowerCase?.() || '';
+                const isImageMoved = t.includes('image moved');
+                if (isImageMoved) {
+                  if (lastImageMovedIdRef.current) {
+                    closeNotification(lastImageMovedIdRef.current);
+                  }
+                  // shorter duration to keep it snappy
+                  const id = success('Image moved', message || '', 1500);
+                  lastImageMovedIdRef.current = id;
+                  return;
+                }
                 if (type === 'success') success(title, message || '');
                 else if (type === 'error') error(title, message || '');
                 else warning(title, message || '');
