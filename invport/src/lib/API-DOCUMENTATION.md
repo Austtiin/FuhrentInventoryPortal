@@ -16,6 +16,7 @@ This document provides a comprehensive list of all API endpoints with expected i
 7. [Reference Data Endpoints](#reference-data-endpoints)
 8. [Unit Features Endpoints](#unit-features-endpoints)
 9. [Image Management Endpoints](#image-management-endpoints)
+10. [Inquiry Email Endpoint](#inquiry-email-endpoint)
 
 ---
 
@@ -311,12 +312,34 @@ Images are stored in Azure Blob Storage under a VIN-based folder using a path pr
 - Container: derived from configuration (e.g., `invpics`)
 - Path prefix: `invpics/units/` (configurable)
 - Per unit folder: `{VIN}/`
-- Filenames: sequential numbers starting at 1 with an image file extension (e.g., `1.jpg`, `2.png`)
+- Filenames: sequential numbers starting at 1. New uploads are normalized to WebP: `1.webp`, `2.webp`, ... (older images may keep their original extensions).
 
 Notes:
 - When you upload an image, the API auto-assigns the next available integer filename.
 - URLs in responses are constructed from your configured public Blob base URL when available.
 - Rename operations avoid overwriting existing images.
+- Listings automatically skip any dot-prefixed placeholder or temp blobs (e.g., `.init`, `.tmp-*`).
+
+#### Image Ordering Model (How sorting works)
+
+- Order is defined by the numeric filename, not upload date. The lowest number is the first image.
+- Filenames must be in the format `<index>.<ext>` where `<ext>` is one of: jpg, jpeg, png, webp, gif.
+- Extensions are preserved during reordering; only the numeric index changes.
+- Gaps are allowed (e.g., 1.png, 3.jpg) and are safely handled when reordering.
+
+Typical path for a unit’s images:
+
+```
+{container}/{prefix}{VIN}/{index}.{ext}
+```
+
+Examples:
+
+```
+invpics/units/1HGCM82633A004352/1.webp
+invpics/units/1HGCM82633A004352/2.webp
+invpics/units/1HGCM82633A004352/3.webp
+```
 
 ### 19. List Unit Images
 **Purpose:** List all images for a unit, sorted numerically by filename
@@ -330,12 +353,12 @@ Notes:
 ```json
 [
   {
-    "name": "1.jpg",
-    "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/1.jpg"
+    "name": "1.webp",
+    "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/1.webp"
   },
   {
-    "name": "2.jpg",
-    "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/2.jpg"
+    "name": "2.webp",
+    "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/2.webp"
   }
 ]
 ```
@@ -366,33 +389,34 @@ Notes:
 ```
 
 ### 21. Upload Unit Image (Auto-number)
-**Purpose:** Upload a new image for a unit; assigns the next numeric filename automatically
+**Purpose:** Upload a new image for a unit; assigns the next numeric filename automatically and converts to WebP
 
 **Endpoint:** `POST /units/{id}/images`
 
-**Headers:**
-- `Content-Type`: Image MIME type (e.g., `image/jpeg`, `image/png`)
+**What it does:**
+- Accepts only image payloads (JPEG, PNG, GIF, WebP). If the body is not a valid image, the request is rejected.
+- Automatically converts the image to WebP on the server.
+- Stores the file as `{nextIndex}.webp` and sets `Content-Type: image/webp`.
 
-**Query Parameters (optional):**
-- `ext`: Force an extension (e.g., `jpg`, `png`). If omitted, the server maps from `Content-Type`.
-
-**Body:** Raw binary image.
+**Request:**
+- Headers: `Content-Type` should be an image type (e.g., `image/jpeg`, `image/png`).
+- Body: Raw binary image.
 
 **Response:**
 ```json
 {
   "success": true,
-  "name": "3.jpg",
-  "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/3.jpg"
+  "name": "3.webp",
+  "url": "https://storageaccount.blob.core.windows.net/invpics/units/1FTFW1E50LFA12345/3.webp"
 }
 ```
 
-**Error Response (Unsupported Media Type):**
+**Error Response (Invalid Image):**
 ```json
 {
   "error": true,
-  "message": "Unsupported image content type",
-  "statusCode": 415
+  "message": "Only image uploads are accepted (jpg, jpeg, png, webp, gif). The payload was not recognized as an image.",
+  "statusCode": 400
 }
 ```
 
@@ -432,6 +456,41 @@ Notes:
   - Each file keeps its own extension while its numeric index changes (e.g., `3.png` moved to position 2 becomes `2.png`).
   - The operation uses a safe two-phase temp copy to avoid overwrite errors, so it's atomic with respect to collisions.
 
+Conceptual placeholder model (for understanding):
+
+- You can think of the server doing: `B -> moving`, `A -> B`, `moving -> A`. This is logically equivalent to how the API executes reorders.
+- Implementation detail: the server actually stages to a hidden temp folder to avoid any visible placeholder files or collisions.
+
+#### Front-end quick guide: reorder with one call
+
+- You only need a single request to reorder; do not create placeholders or issue multiple renames.
+- Build the `newName` using the target index plus the same extension as `oldName`.
+  - Example: moving `4.jpg` to index 7 → `newName = "7.jpg"`.
+- The server will shift other images for you and preserve each file’s original extension.
+
+Recommended client steps:
+1) GET `/units/{id}/images` and render in numeric order (filenames determine order).
+2) When the user drops image `oldName` at position `B`, construct `newName = "B" + ext(oldName)`.
+3) PUT `/units/{id}/images/{oldName}/rename/{newName}`.
+4) On 200, refresh the list with GET `/units/{id}/images`.
+
+Behavior and responses:
+- Success: `200` with body `{ "oldName": "4.jpg", "newName": "7.jpg", "moved": true }`.
+- No-op: if `oldName == newName` (case-insensitive), returns `200` with `{ moved: false }`.
+- Not found: `404` if the `oldName` doesn’t exist.
+- Conflict: `409` only when attempting to rename to an already existing exact filename outside of normal reordering (e.g., changing the extension to a name that already exists). Normal A→B reorders won’t 409.
+
+Examples:
+- Move 1.png → 2.png
+  - Effect: 2.* shifts to 1.*, then 1.png becomes 2.png.
+- Move 4.jpg → 7.jpg
+  - Effect: 5.* → 4.*, 6.* → 5.*, 7.* → 6.*, then 4.jpg → 7.jpg.
+
+Limits and guarantees:
+- There is no practical upper bound on index values; any A→B is allowed as long as filenames are valid.
+- Each involved file’s Content-Type is preserved during reordering.
+- The server avoids partial overwrites via temp-staging; under normal conditions you won’t see intermediate states.
+
 **Response (Success):**
 ```json
 {
@@ -443,6 +502,129 @@ Notes:
 ```
 
 > Note: When reordering, a pre-existing destination index is expected and will be shifted automatically; you should not see a 409 in normal reorder scenarios.
+
+---
+
+## Inquiry Email Endpoint
+
+
+### 24. Send Inquiry Email
+**Purpose:** Accepts a customer inquiry and sends branded emails via Azure Communication Services (ACS) to both the user and your sales recipient. Supports file attachments.
+
+**Endpoint:** `POST /inquiries`
+
+**Headers:**
+- `Content-Type: application/json` (required)
+
+**Request Body:**
+
+```json
+{
+  "userEmail": "customer@example.com",           // required
+  "message": "I'm interested in this unit.",      // required
+  "name": "John Doe",                            // optional
+  "phone": "651-555-1234",                      // optional
+  "vin": "1FTFW1E50LFA12345",                   // optional
+  "tradeIn": {                                   // optional
+    "year": "2018",
+    "make": "Ford",
+    "model": "F-150",
+    "mileageOrHours": "42,000",
+    "condition": "Good",
+    "images": [
+      "https://example.com/tradein1.jpg",
+      "https://example.com/tradein2.jpg"
+    ]
+  },
+  "attachments": [                                // optional
+    {
+      "name": "brochure.pdf",                    // required: filename
+      "contentType": "application/pdf",          // required: MIME type
+      "contentBase64": "JVBERi0xLjQKJcfs..."     // required: base64-encoded file content
+    }
+  ]
+}
+```
+
+**Required fields:**
+
+- `userEmail` (string): Customer's email address. Used in the email body.
+- `message` (string): Inquiry message. Alias: `body` (case-insensitive).
+
+**Optional fields:**
+- `name` (string): Customer's name.
+- `phone` (string): Customer's phone number.
+- `vin` (string): VIN or unit ID.
+- `tradeIn` (object): Trade-in details (all fields optional):
+  - `year` (string): Year of trade-in vehicle.
+  - `make` (string): Make of trade-in vehicle.
+  - `model` (string): Model of trade-in vehicle.
+  - `mileageOrHours` (string): Mileage or hours.
+  - `condition` (string): Condition description.
+  - `images` (array of string): URLs to trade-in images.
+- `attachments` (array): List of files to attach. Each must include:
+  - `name` (string): Filename as shown to recipient.
+  - `contentType` (string): MIME type (e.g., `application/pdf`, `image/png`).
+  - `contentBase64` (string): Base64-encoded file content.
+
+**Behavior:**
+
+- Sends a confirmation email to the user (branded, with dealership info, hours, contact, and their message).
+- Sends a notification email to your sales recipient (branded, with inquiry details).
+- If attachments are provided, they are included in both emails.
+- The HTTP response includes strict no-cache headers.
+
+**Response (202 Accepted):**
+
+```json
+{
+  "ok": true,
+  "userStatus": "Succeeded",
+  "userOperationId": "<guid>",
+  "salesStatus": "Succeeded",
+  "salesOperationId": "<guid>"
+}
+```
+
+**Example Response Headers:**
+```
+Content-Type: application/json; charset=utf-8
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, OPTIONS
+Access-Control-Allow-Headers: Content-Type
+Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+Pragma: no-cache
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+```
+
+**Error Responses:**
+- `400` when `userEmail` or `message` is missing: `{ "error": true, "message": "userEmail and message are required." }`
+- `500` when email configuration is missing or send fails: `{ "error": true, "message": "Failed to send email. Please try again later." }`
+
+#### Request/response contract
+
+- Request must be valid JSON with `Content-Type: application/json`.
+- On success, the API returns HTTP 202 with the ACS operation ID and status. This ID can be used to query ACS for delivery status if needed.
+- Responses include CORS and strict no-cache headers to prevent client/CDN caching.
+
+#### Example (curl)
+
+
+```bash
+curl -X POST "https://your-function-app.azurewebsites.net/api/inquiries" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "userEmail": "customer@example.com",
+        "message": "I have a question about this unit",
+        "attachments": [
+          {
+            "name": "brochure.pdf",
+            "contentType": "application/pdf",
+            "contentBase64": "JVBERi0xLjQKJcfs..."
+          }
+        ]
+      }'
+```
 
 ### 8. Set Vehicle Status
 **Purpose:** Update the status of a specific vehicle
@@ -1123,6 +1305,44 @@ Example (public dev):
   "BlobConnectionString": "<connection string>",
   "BlobContainerName": "invpics",
   "BlobPathPrefix": "units/"
+}
+```
+
+Email (ACS) settings:
+- `EmailConnectionString` - ACS Email connection string. Also supported under `ConnectionStrings:EmailConnectionString`.
+- `EmailFrom` - Verified sender email address in your ACS resource.
+  - Fallback keys also accepted by the API: `EmailSender`, `Acs:SenderAddress`, `AzureCommunicationServices:SenderAddress`, `ACS_SENDER_ADDRESS`, `mailFrom`, environment variables `EMAIL_FROM`, `mailFrom`.
+  - Example (default ACS domain): `DoNotReply@<resource-guid>.azurecomm.net`.
+  - Use your own custom verified domain if configured in ACS.
+- `SalesEmail` - Sales inbox to receive notifications (default: `Austin@Fuhrent.com`).
+  - Fallback keys also accepted by the API: `SendToEmail`, `Sales:Email`, environment variables `SALES_EMAIL`, `SEND_TO_EMAIL`.
+- `EmailLogoUrl` - Optional absolute URL to a logo used in the email header.
+- `Dealer:*` - Optional branding overrides used in the email templates:
+  - `Dealer:Name` (default: IceCastleUSA.com)
+  - `Dealer:SiteUrl` (default: https://IceCastleUSA.com)
+  - `Dealer:Phone` (default: (651) 272-5474), `Dealer:PhoneHref` (default: +16512725474)
+  - `Dealer:Email` (default: sales@icecastleusa.com)
+  - `Dealer:Address1`, `Dealer:Address2`, `Dealer:Country`
+  - `Dealer:Hours` (multiline string)
+  - `Dealer:MapUrl` (Google Maps link)
+
+Example (email settings):
+```json
+{
+  "EmailConnectionString": "endpoint=https://<acs>.communication.azure.com/;accesskey=<key>",
+  "EmailFrom": "DoNotReply@<resource-guid>.azurecomm.net",
+  "SalesEmail": "sales@yourdomain.com",
+  "EmailLogoUrl": "https://cdn.yourdomain.com/assets/logo.png",
+  "Dealer:Name": "Your Dealer Name",
+  "Dealer:SiteUrl": "https://www.yourdealer.com",
+  "Dealer:Phone": "(555) 000-0000",
+  "Dealer:PhoneHref": "+15550000000",
+  "Dealer:Email": "info@yourdealer.com",
+  "Dealer:Address1": "123 Main St",
+  "Dealer:Address2": "Your City, ST 12345",
+  "Dealer:Country": "United States",
+  "Dealer:Hours": "Mon-Fri: 9-6\nSat: 9-4\nSun: Closed",
+  "Dealer:MapUrl": "https://maps.google.com/?q=123+Main+St+Your+City+ST+12345"
 }
 ```
 
