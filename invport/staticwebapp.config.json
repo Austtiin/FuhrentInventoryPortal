@@ -1,1 +1,60 @@
-{"navigationFallback":{"rewrite":"/index.html","exclude":["/api/*"]},"routes":[{"route":"/.auth/*","allowedRoles":["anonymous"]},{"route":"/api/inventory/*","allowedRoles":["authenticated"]},{"route":"/inventory/*","serve":"/index.html","allowedRoles":["authenticated"]},{"route":"/api/*","allowedRoles":["authenticated"]},{"route":"/*","serve":"/index.html","allowedRoles":["authenticated"]}],"responseOverrides":{"401":{"statusCode":302,"redirect":"/.auth/login/aad?post_login_redirect_url=/"},"403":{"statusCode":302,"redirect":"/.auth/login/aad?post_login_redirect_url=/"}},"globalHeaders":{"cache-control":"no-cache, no-store, must-revalidate","pragma":"no-cache","expires":"0"},"mimeTypes":{".json":"application/json",".js":"text/javascript",".css":"text/css",".html":"text/html"},"platform":{"apiRuntime":"node:20"}}
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*"]
+  },
+  "routes": [
+    {
+      "route": "/.auth/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/inventory/*",
+      "allowedRoles": ["inventoryUser"]
+    },
+    {
+      "route": "/inventory/*",
+      "serve": "/index.html",
+      "allowedRoles": ["inventoryUser"]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["inventoryUser"]
+    },
+    {
+      "route": "/*",
+      "serve": "/index.html",
+      "allowedRoles": ["inventoryUser"]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "statusCode": 302,
+      "redirect": "/.auth/login/aad?post_login_redirect_url=/"
+    },
+    "403": {
+      "statusCode": 302,
+      "redirect": "/.auth/login/aad?post_login_redirect_url=/"
+    }
+  },
+  "globalHeaders": {
+    "cache-control": "no-cache, no-store, must-revalidate",
+    "pragma": "no-cache",
+    "expires": "0"
+  },
+  "mimeTypes": {
+    ".json": "application/json",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".html": "text/html"
+  },
+  "roles": {
+    "inventoryUser": {
+      "allowedGroups": ["9423b290-0d0d-44b0-9345-d12589afccf9"]
+    }
+  },
+  "platform": {
+    "apiRuntime": "node:20"
+  }
+}
+
