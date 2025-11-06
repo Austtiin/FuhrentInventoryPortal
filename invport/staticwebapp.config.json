@@ -40,16 +40,6 @@
       }
     }
   },
-  "responseOverrides": {
-    "401": {
-      "statusCode": 302,
-      "redirect": "./.auth/login/aad"
-    },
-    "403": {
-      "statusCode": 302,
-      "redirect": "./.auth/login/aad"
-    }
-  },
   "globalHeaders": {
     "cache-control": "no-cache, no-store, must-revalidate",
     "pragma": "no-cache",
