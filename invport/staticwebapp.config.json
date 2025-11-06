@@ -27,26 +27,26 @@
     },
     {
       "route": "/api/inventory/*",
-      "allowedRoles": ["inventoryUser"]
+      "allowedRoles": ["inventoryuser"]
     },
     {
       "route": "/inventory/*",
       "serve": "/index.html",
-      "allowedRoles": ["inventoryUser"]
+      "allowedRoles": ["inventoryuser"]
     },
     {
       "route": "/api/*",
-      "allowedRoles": ["inventoryUser"]
+      "allowedRoles": ["inventoryuser"]
     },
     {
       "route": "/",
       "serve": "/index.html",
-      "allowedRoles": ["inventoryUser"]
+      "allowedRoles": ["inventoryuser"]
     },
     {
       "route": "/*",
       "serve": "/index.html",
-      "allowedRoles": ["inventoryUser"]
+      "allowedRoles": ["inventoryuser"]
     }
   ],
   "responseOverrides": {
@@ -78,3 +78,4 @@
     "apiRuntime": "node:20"
   }
 }
+
