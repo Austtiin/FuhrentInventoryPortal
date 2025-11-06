@@ -41,7 +41,7 @@
     {
       "route": "/",
       "serve": "/index.html",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/*",
