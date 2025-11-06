@@ -6,11 +6,8 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import CompactInventoryCard from './CompactInventoryCard';
-import LoadingOverlay from '@/components/ui/LoadingOverlay';
 import { Vehicle } from '@/types';
-import { STATUS_OPTIONS } from '@/constants/inventory';
 import { useInventoryDirect } from '@/hooks/useInventoryAPI';
-import { useAuth } from '@/hooks/useAuth';
 
 interface InventoryListProps {
   onAdd: () => void;
@@ -47,7 +44,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
   const endIndex = startIndex + itemsPerPage;
   const currentItems = filteredVehicles.slice(startIndex, endIndex);
   const viewMode = 'grid'; // or list, depending on your UI
-  const setFilters = (filters: any) => console.log('Clear filters', filters);
+  const setFilters = (filters: Record<string, unknown>) => console.log('Clear filters', filters);
 
   return (
     <div className="w-full">
@@ -241,24 +238,6 @@ const InventoryContent: React.FC<InventoryListProps> = ({
 };
 
 const InventoryList: React.FC<InventoryListProps> = (props) => {
-  const { isLoading, isAuthenticated, requireLogin } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="w-full">
-        <LoadingOverlay isLoading={true} message="Checking authentication...">
-          <div />
-        </LoadingOverlay>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    // Navigate to login; use requireLogin to start provider flow
-    requireLogin('/inventory');
-    return null;
-  }
-
   return <InventoryContent {...props} />;
 };
 
