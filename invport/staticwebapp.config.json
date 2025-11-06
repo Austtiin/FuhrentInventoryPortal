@@ -74,13 +74,7 @@
     ".css": "text/css",
     ".html": "text/html"
   },
-  "roles": {
-    "inventoryUser": {
-      "allowedGroups": ["b50fda3a-1111-48b0-a90f-f3404b4f9e9b"]
-    }
-  },
   "platform": {
     "apiRuntime": "node:20"
   }
 }
-
