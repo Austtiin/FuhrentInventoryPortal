@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { 
@@ -10,6 +10,7 @@ import LoadingOverlay from '@/components/ui/LoadingOverlay';
 import { Vehicle } from '@/types';
 import { STATUS_OPTIONS } from '@/constants/inventory';
 import { useInventoryDirect } from '@/hooks/useInventoryAPI';
+import { useAuth } from '@/hooks/useAuth';
 
 interface InventoryListProps {
   onAdd: () => void;
@@ -20,7 +21,7 @@ interface InventoryListProps {
   markAsSold: (id: string) => void;
 }
 
-const InventoryList: React.FC<InventoryListProps> = ({
+const InventoryContent: React.FC<InventoryListProps> = ({
   onAdd,
   onView,
   onEdit,
@@ -237,6 +238,28 @@ const InventoryList: React.FC<InventoryListProps> = ({
       )}
     </div>
   );
+};
+
+const InventoryList: React.FC<InventoryListProps> = (props) => {
+  const { isLoading, isAuthenticated, requireLogin } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="w-full">
+        <LoadingOverlay isLoading={true} message="Checking authentication...">
+          <div />
+        </LoadingOverlay>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    // Navigate to login; use requireLogin to start provider flow
+    requireLogin('/inventory');
+    return null;
+  }
+
+  return <InventoryContent {...props} />;
 };
 
 export default InventoryList;
