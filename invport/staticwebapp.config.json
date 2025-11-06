@@ -9,36 +9,21 @@
       "allowedRoles": ["anonymous"]
     },
     {
-      "route": "/_next/*",
-      "allowedRoles": ["inventoryUser"]
+      "route": "/loggedout",
+      "serve": "/loggedout.html",
+      "allowedRoles": ["anonymous"]
     },
     {
-      "route": "/logo/*",
-      "allowedRoles": ["inventoryUser"]
+      "route": "/401.html",
+      "allowedRoles": ["anonymous"]
     },
     {
-      "route": "/*.css",
-      "allowedRoles": ["inventoryUser"]
+      "route": "/403.html",
+      "allowedRoles": ["anonymous"]
     },
     {
-      "route": "/*.js",
-      "allowedRoles": ["inventoryUser"]
-    },
-    {
-      "route": "/*.json",
-      "allowedRoles": ["inventoryUser"]
-    },
-    {
-      "route": "/*.ico",
-      "allowedRoles": ["inventoryUser"]
-    },
-    {
-      "route": "/*.png",
-      "allowedRoles": ["inventoryUser"]
-    },
-    {
-      "route": "/*.svg",
-      "allowedRoles": ["inventoryUser"]
+      "route": "/404.html",
+      "allowedRoles": ["anonymous"]
     },
     {
       "route": "/api/inventory/*",
@@ -56,7 +41,7 @@
     {
       "route": "/",
       "serve": "/index.html",
-      "allowedRoles": ["inventoryUser"]
+      "allowedRoles": ["authenticated"]
     },
     {
       "route": "/*",

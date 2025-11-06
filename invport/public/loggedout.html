@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied - Fuhr Inventory Portal</title>
+    <title>Logged Out - Fuhr Inventory Portal</title>
     <style>
         * {
             margin: 0;
@@ -30,7 +30,7 @@
             right: -50%;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
             animation: pulse 15s ease-in-out infinite;
         }
         
@@ -41,7 +41,7 @@
             left: -50%;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(220, 38, 38, 0.06) 0%, transparent 70%);
             animation: pulse 15s ease-in-out infinite reverse;
         }
         
@@ -59,18 +59,18 @@
             text-align: center;
             position: relative;
             z-index: 1;
-            border-top: 4px solid #dc2626;
+            border-top: 4px solid #10b981;
         }
         
-        .error-code {
-            font-size: 120px;
+        .success-text {
+            font-size: 48px;
             font-weight: 700;
-            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             margin-bottom: 20px;
-            line-height: 1;
+            line-height: 1.2;
         }
         
         h1 {
@@ -88,18 +88,19 @@
         }
         
         .info-box {
-            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-            border-left: 4px solid #dc2626;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border-left: 4px solid #10b981;
             padding: 24px;
             margin: 30px 0;
             text-align: left;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(220, 38, 38, 0.1);
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.1);
         }
         
         .info-box p {
             margin-bottom: 12px;
             font-size: 16px;
+            color: #065f46;
         }
         
         .info-box p:last-child {
@@ -107,7 +108,7 @@
         }
         
         .info-box strong {
-            color: #991b1b;
+            color: #065f46;
             font-weight: 600;
         }
         
@@ -133,39 +134,27 @@
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
         }
         
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(220, 38, 38, 0.3);
-            background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
-        }
-        
-        .btn-secondary {
-            background: white;
-            color: #10b981;
-            border: 2px solid #10b981;
-        }
-        
-        .btn-secondary:hover {
-            background: #f0fdf4;
-            transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(16, 185, 129, 0.2);
+            box-shadow: 0 12px 24px rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
         }
         
         .icon {
             width: 100px;
             height: 100px;
             margin: 0 auto 20px;
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 48px;
-            box-shadow: 0 8px 16px rgba(220, 38, 38, 0.15);
+            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.15);
         }
         
         .accent-bar {
@@ -176,13 +165,24 @@
             border-radius: 2px;
         }
         
+        .checkmark {
+            display: inline-block;
+            animation: checkmark 0.6s ease-in-out;
+        }
+        
+        @keyframes checkmark {
+            0% { transform: scale(0) rotate(-45deg); }
+            50% { transform: scale(1.2) rotate(0deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        
         @media (max-width: 600px) {
             .container {
                 padding: 40px 24px;
             }
             
-            .error-code {
-                font-size: 80px;
+            .success-text {
+                font-size: 36px;
             }
             
             h1 {
@@ -205,21 +205,21 @@
 </head>
 <body>
     <div class="container">
-        <div class="icon">🔒</div>
-        <div class="error-code">403</div>
+        <div class="icon">
+            <span class="checkmark">✓</span>
+        </div>
+        <div class="success-text">Logged Out</div>
         <div class="accent-bar"></div>
-        <h1>Access Denied</h1>
-        <p>You are authenticated but don't have permission to access this resource.</p>
+        <h1>Successfully Signed Out</h1>
+        <p>You have been successfully logged out of the Fuhr Inventory Portal.</p>
         
         <div class="info-box">
-            <p><strong>Why am I seeing this?</strong></p>
-            <p>Your account is not a member of the authorized user group for the Fuhr Inventory Portal.</p>
-            <p><strong>What can I do?</strong></p>
-            <p>Please contact your system administrator to request access to the Inventory Users group.</p>
+            <p><strong>Your session has ended</strong></p>
+            <p>All authentication tokens have been cleared. To access the portal again, you'll need to sign in with your Azure AD credentials.</p>
         </div>
         
         <div class="button-group">
-            <a href="/.auth/logout?post_logout_redirect_uri=/loggedout" class="btn btn-primary">Logout</a>
+            <a href="/.auth/login/aad" class="btn btn-primary">Sign In Again</a>
         </div>
     </div>
 </body>

@@ -37,7 +37,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         {/* Auth controls */}
         <div className="flex items-center gap-3">
           <a
-            href="/.auth/logout?post_logout_redirect_uri=/"
+            href="/.auth/logout?post_logout_redirect_uri=/loggedout"
             className="text-sm text-white bg-white/10 hover:bg-white/20 px-3 py-2 rounded-md transition-colors"
             aria-label="Sign out"
           >
