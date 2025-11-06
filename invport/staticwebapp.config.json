@@ -1,11 +1,15 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/api/*"]
+    "exclude": ["/api/*", "/_next/*", "/logo/*", "*.html"]
   },
   "routes": [
     {
       "route": "/.auth/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/loggedout.html",
       "allowedRoles": ["anonymous"]
     },
     {
@@ -26,26 +30,17 @@
       "allowedRoles": ["anonymous"]
     },
     {
-      "route": "/api/inventory/*",
-      "allowedRoles": ["inventoryuser"]
-    },
-    {
-      "route": "/inventory/*",
-      "serve": "/index.html",
-      "allowedRoles": ["inventoryuser"]
+      "route": "/_next/static/*",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      }
     },
     {
       "route": "/api/*",
       "allowedRoles": ["inventoryuser"]
     },
     {
-      "route": "/",
-      "serve": "/index.html",
-      "allowedRoles": ["inventoryuser"]
-    },
-    {
       "route": "/*",
-      "serve": "/index.html",
       "allowedRoles": ["inventoryuser"]
     }
   ],
@@ -64,15 +59,21 @@
     }
   },
   "globalHeaders": {
-    "cache-control": "no-cache, no-store, must-revalidate",
-    "pragma": "no-cache",
-    "expires": "0"
+    "cache-control": "no-cache, no-store, must-revalidate"
   },
   "mimeTypes": {
     ".json": "application/json",
     ".js": "text/javascript",
     ".css": "text/css",
-    ".html": "text/html"
+    ".html": "text/html",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon"
+  },
+  "roles": {
+    "inventoryuser": {
+      "provider": "aad"
+    }
   },
   "platform": {
     "apiRuntime": "node:20"
