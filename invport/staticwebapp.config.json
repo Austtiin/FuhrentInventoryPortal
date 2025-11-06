@@ -10,35 +10,35 @@
     },
     {
       "route": "/_next/*",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/logo/*",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/*.css",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/*.js",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/*.json",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/*.ico",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/*.png",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/*.svg",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/api/inventory/*",
@@ -56,7 +56,7 @@
     {
       "route": "/",
       "serve": "/index.html",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": ["inventoryUser"]
     },
     {
       "route": "/*",
