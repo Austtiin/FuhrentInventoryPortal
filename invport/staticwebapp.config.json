@@ -29,6 +29,17 @@
       "allowedRoles": ["DealerInv"]
     }
   ],
+  "auth": {
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://login.microsoftonline.com/f81554b8-0f8f-4d5d-9c27-f82d6249d186/v2.0",
+          "clientIdSettingName": "AZURE_CLIENT_ID",
+          "clientSecretSettingName": "AZURE_CLIENT_SECRET"
+        }
+      }
+    }
+  },
   "responseOverrides": {
     "401": {
       "statusCode": 302,
