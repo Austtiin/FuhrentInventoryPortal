@@ -22,6 +22,11 @@
       "allowedRoles": ["inventoryUser"]
     },
     {
+      "route": "/",
+      "serve": "/index.html",
+      "allowedRoles": ["authenticated"]
+    },
+    {
       "route": "/*",
       "serve": "/index.html",
       "allowedRoles": ["inventoryUser"]
@@ -29,12 +34,11 @@
   ],
   "responseOverrides": {
     "401": {
-      "statusCode": 302,
-      "redirect": "/.auth/login/aad?post_login_redirect_url=/"
+      "redirect": "/.auth/login/aad"
     },
     "403": {
-      "statusCode": 302,
-      "redirect": "/.auth/login/aad?post_login_redirect_url=/"
+      "statusCode": 403,
+      "serve": "/403.html"
     }
   },
   "globalHeaders": {
