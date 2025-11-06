@@ -9,6 +9,38 @@
       "allowedRoles": ["anonymous"]
     },
     {
+      "route": "/_next/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/logo/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/*.css",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/*.js",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/*.json",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/*.ico",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/*.png",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/*.svg",
+      "allowedRoles": ["anonymous"]
+    },
+    {
       "route": "/api/inventory/*",
       "allowedRoles": ["inventoryUser"]
     },
@@ -34,11 +66,16 @@
   ],
   "responseOverrides": {
     "401": {
-      "redirect": "/.auth/login/aad"
+      "redirect": "/.auth/login/aad",
+      "statusCode": 302
     },
     "403": {
       "statusCode": 403,
-      "serve": "/403.html"
+      "rewrite": "/403.html"
+    },
+    "404": {
+      "statusCode": 404,
+      "rewrite": "/404.html"
     }
   },
   "globalHeaders": {
