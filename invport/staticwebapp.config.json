@@ -7,10 +7,38 @@
   },
   "routes": [
     {
-      "route": "/api/*",
+      "route": "/.auth/*",
       "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/inventory/*",
+      "allowedRoles": ["DealerInv"]
+    },
+    {
+      "route": "/inventory/*",
+      "serve": "/index.html",
+      "allowedRoles": ["DealerInv"]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/*",
+      "serve": "/index.html",
+      "allowedRoles": ["authenticated"]
     }
   ],
+  "responseOverrides": {
+    "401": {
+      "statusCode": 302,
+      "redirect": "./.auth/login/aad?post_login_redirect_url=/"
+    },
+    "403": {
+      "statusCode": 302,
+      "redirect": "./.auth/login/aad?post_login_redirect_url=/"
+    }
+  },
   "globalHeaders": {
     "cache-control": "no-cache, no-store, must-revalidate",
     "pragma": "no-cache",
