@@ -76,7 +76,7 @@
   },
   "roles": {
     "inventoryUser": {
-      "allowedGroups": ["9423b290-0d0d-44b0-9345-d12589afccf9"]
+      "allowedGroups": ["b50fda3a-1111-48b0-a90f-f3404b4f9e9b"]
     }
   },
   "platform": {
