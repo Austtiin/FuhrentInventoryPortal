@@ -12,12 +12,12 @@
     },
     {
       "route": "/api/inventory/*",
-      "allowedRoles": ["DealerInv"]
+      "allowedRoles": ["authenticated"]
     },
     {
       "route": "/inventory/*",
       "serve": "/index.html",
-      "allowedRoles": ["DealerInv"]
+      "allowedRoles": ["authenticated"]
     },
     {
       "route": "/api/*",
