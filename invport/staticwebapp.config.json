@@ -21,12 +21,12 @@
     },
     {
       "route": "/api/*",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": ["DealerInv"]
     },
     {
       "route": "/*",
       "serve": "/index.html",
-      "allowedRoles": ["authenticated"]
+      "allowedRoles": ["DealerInv"]
     }
   ],
   "responseOverrides": {
