@@ -11,7 +11,7 @@ import { useUnitImages } from '@/hooks/useUnitImages';
 import { apiFetch } from '@/lib/apiClient';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { ArrowLeftIcon, ArrowPathIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ArrowPathIcon, CheckIcon, TrashIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { VEHICLE_COLORS, STATUS_OPTIONS } from '@/constants/inventory';
 import { FEATURE_CATEGORIES } from '@/constants/features';
 import FeaturesSelector from '@/components/inventory/FeaturesSelector';
@@ -133,6 +133,17 @@ function EditInventoryPageContent() {
   const [isSavingFeatures, setIsSavingFeatures] = useState(false);
   // Track initial status to detect changes saved via the form control
   const initialStatusRef = useRef<string>('');
+
+  // Expandable sections state - all start closed
+  const [expandedSections, setExpandedSections] = useState({
+    images: false,
+    unitInfo: false,
+    unitFeatures: false
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const itemType = useMemo<'FishHouse' | 'Vehicle' | 'Trailer'>(() => {
     if (!vehicle?.TypeID) return 'Vehicle';
@@ -269,6 +280,20 @@ function EditInventoryPageContent() {
     return false;
   }, [selectedFeatureIds]);
 
+  // Warn user about unsaved changes when leaving the page
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges || hasFeatureChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return 'You have unsaved changes. Are you sure you want to leave?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, hasFeatureChanges]);
+
   const saveFeatures = async () => {
     if (!vehicle?.UnitID) return;
     setIsSavingFeatures(true);
@@ -309,8 +334,39 @@ function EditInventoryPageContent() {
     }
   };
 
+  // Validation for Size and Width categories
+  const validateWholeNumber = (value: string): string | null => {
+    if (!value || value.trim() === '') return null; // Allow empty values
+    
+    // Check if it's a whole number (no decimals, no letters except at the end for size indicators)
+    const trimmedValue = value.trim();
+    const numericPart = trimmedValue.replace(/[^\d]/g, '');
+    
+    // If the value contains letters or special characters that aren't size indicators
+    if (!/^\d+[A-Za-z]*$/.test(trimmedValue)) {
+      return `Whole numbers only. If you're adding a V or S please add that in the Model area.`;
+    }
+    
+    // Check if it's actually a whole number
+    const num = parseInt(numericPart);
+    if (isNaN(num) || num.toString() !== numericPart) {
+      return `Whole numbers only. If you're adding a V or S please add that in the Model area.`;
+    }
+    
+    return null; // Valid
+  };
+
   // Handle form field changes
   const handleFieldChange = (field: keyof VehicleFormData, value: string | number | undefined) => {
+    // Validate Size and Width categories for whole numbers only
+    if ((field === 'SizeCategory' || field === 'WidthCategory') && typeof value === 'string') {
+      const validationError = validateWholeNumber(value);
+      if (validationError) {
+        error('Invalid Input', validationError);
+        return; // Don't update the field if validation fails
+      }
+    }
+
     // Apply appropriate text formatting based on field
     let processedValue = value;
     if (typeof value === 'string') {
@@ -507,6 +563,23 @@ function EditInventoryPageContent() {
     });
   };
 
+  const handleNavigateBack = (e: React.MouseEvent) => {
+    if (hasUnsavedChanges || hasFeatureChanges) {
+      e.preventDefault();
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes that will be lost. Are you sure you want to leave?',
+        confirmText: 'Leave Without Saving',
+        confirmColor: 'red',
+        onConfirm: () => {
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+          router.push('/inventory');
+        },
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -571,12 +644,20 @@ function EditInventoryPageContent() {
         {/* Header with Save Button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <Link href="/inventory" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors shrink-0">
+            <button 
+              onClick={handleNavigateBack}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors shrink-0 border-none bg-transparent cursor-pointer"
+            >
               <ArrowLeftIcon className="w-5 h-5" /> Back to Inventory
-            </Link>
+            </button>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate" title={`${vehicle?.Year ?? ''} ${vehicle?.Make ?? ''} ${vehicle?.Model ?? ''}`}>
               Edit {vehicle?.Year} {vehicle?.Make} {vehicle?.Model}
             </h1>
+            {(hasUnsavedChanges || hasFeatureChanges) && (
+              <span className="text-sm text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-200 shrink-0">
+                ⚠ Unsaved changes
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
@@ -654,319 +735,363 @@ function EditInventoryPageContent() {
         {/* 2) Photo Gallery - First main section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Photo Gallery</h2>
+            <button
+              onClick={() => toggleSection('images')}
+              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+            >
+              <h2>Photo Gallery</h2>
+              <ChevronDownIcon 
+                className={`w-5 h-5 transition-transform duration-300 ${
+                  expandedSections.images ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${imageStatus.badge}`}>{imageStatus.label}</span>
           </div>
-          {/* Images Progress */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-              <span>Photos</span>
-              <span>{imageCount} / {maxImagesAllowed}</span>
-            </div>
-            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className={`h-full ${imageStatus.color}`} style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
-          {vehicle.VIN ? (
-            <VehicleImageGallery
-              vin={vehicle.VIN}
-              typeId={typeId}
-              mode="gallery"
-              editable
-              unitId={vehicle.UnitID}
-              maxImages={30}
-              onNotification={(type, title, message) => {
-                const t = title?.toLowerCase?.() || '';
-                const isImageMoved = t.includes('image moved');
-                if (isImageMoved) {
-                  if (lastImageMovedIdRef.current) {
-                    closeNotification(lastImageMovedIdRef.current);
-                  }
-                  // shorter duration to keep it snappy
-                  const id = success('Image moved', message || '', 1500);
-                  lastImageMovedIdRef.current = id;
-                  return;
-                }
-                if (type === 'success') success(title, message || '');
-                else if (type === 'error') error(title, message || '');
-                else warning(title, message || '');
-              }}
-              className="w-full"
-            />
-          ) : (
-            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <p className="text-sm text-gray-800 font-medium">VIN is required to manage images</p>
+          
+          {expandedSections.images && (
+            <div>
+              {/* Images Progress */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                  <span>Photos</span>
+                  <span>{imageCount} / {maxImagesAllowed}</span>
+                </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className={`h-full ${imageStatus.color}`} style={{ width: `${progressPct}%` }} />
+                </div>
+              </div>
+              {vehicle.VIN ? (
+                <VehicleImageGallery
+                  vin={vehicle.VIN}
+                  typeId={typeId}
+                  mode="gallery"
+                  editable
+                  unitId={vehicle.UnitID}
+                  maxImages={30}
+                  onNotification={(type, title, message) => {
+                    const t = title?.toLowerCase?.() || '';
+                    const isImageMoved = t.includes('image moved');
+                    if (isImageMoved) {
+                      if (lastImageMovedIdRef.current) {
+                        closeNotification(lastImageMovedIdRef.current);
+                      }
+                      // shorter duration to keep it snappy
+                      const id = success('Image moved', message || '', 1500);
+                      lastImageMovedIdRef.current = id;
+                      return;
+                    }
+                    if (type === 'success') success(title, message || '');
+                    else if (type === 'error') error(title, message || '');
+                    else warning(title, message || '');
+                  }}
+                  className="w-full"
+                />
+              ) : (
+                <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <p className="text-sm text-gray-800 font-medium">VIN is required to manage images</p>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* 3) Unit Information - Editable Form */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Unit Information</h2>
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => toggleSection('unitInfo')}
+              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+            >
+              <h2>Unit Information</h2>
+              <ChevronDownIcon 
+                className={`w-5 h-5 transition-transform duration-300 ${
+                  expandedSections.unitInfo ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+          </div>
           
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Basic Information */}
+          {expandedSections.unitInfo && (
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Year</label>
-              <input
-                type="number"
-                value={formData.Year || ''}
-                onChange={(e) => handleFieldChange('Year', parseInt(e.target.value) || undefined)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="2024"
-              />
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Basic Information */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Year</label>
+                  <input
+                    type="number"
+                    value={formData.Year || ''}
+                    onChange={(e) => handleFieldChange('Year', parseInt(e.target.value) || undefined)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="2024"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">VIN</label>
-              <input
-                type="text"
-                value={formData.VIN || ''}
-                onChange={(e) => handleFieldChange('VIN', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="1234567890ABCDEFG"
-                maxLength={17}
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">VIN</label>
+                  <input
+                    type="text"
+                    value={formData.VIN || ''}
+                    onChange={(e) => handleFieldChange('VIN', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="1234567890ABCDEFG"
+                    maxLength={17}
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Make</label>
-              <input
-                type="text"
-                value={formData.Make || ''}
-                onChange={(e) => handleFieldChange('Make', e.target.value)}
-                list="make-options"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="Ford"
-              />
-              <datalist id="make-options">
-                {MAKE_SUGGESTIONS.map((m) => (
-                  <option key={m} value={m} />
-                ))}
-              </datalist>
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Make</label>
+                  <input
+                    type="text"
+                    value={formData.Make || ''}
+                    onChange={(e) => handleFieldChange('Make', e.target.value)}
+                    list="make-options"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="Ford"
+                  />
+                  <datalist id="make-options">
+                    {MAKE_SUGGESTIONS.map((m) => (
+                      <option key={m} value={m} />
+                    ))}
+                  </datalist>
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Model</label>
-              <input
-                type="text"
-                value={formData.Model || ''}
-                onChange={(e) => handleFieldChange('Model', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="F-150"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Model</label>
+                  <input
+                    type="text"
+                    value={formData.Model || ''}
+                    onChange={(e) => handleFieldChange('Model', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="F-150"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Color</label>
-              <select
-                value={formData.Color || ''}
-                onChange={(e) => handleFieldChange('Color', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-              >
-                <option value="">Select Color</option>
-                {VEHICLE_COLORS.map((color) => (
-                  <option key={color} value={color}>
-                    {color}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Color</label>
+                  <select
+                    value={formData.Color || ''}
+                    onChange={(e) => handleFieldChange('Color', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                  >
+                    <option value="">Select Color</option>
+                    {VEHICLE_COLORS.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Stock Number</label>
-              <input
-                type="text"
-                value={formData.StockNo || ''}
-                onChange={(e) => handleFieldChange('StockNo', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="VH001"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Stock Number</label>
+                  <input
+                    type="text"
+                    value={formData.StockNo || ''}
+                    onChange={(e) => handleFieldChange('StockNo', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="VH001"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Price</label>
-              <input
-                type="number"
-                value={formData.Price || ''}
-                onChange={(e) => handleFieldChange('Price', parseFloat(e.target.value) || undefined)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="35000"
-                step="0.01"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Price</label>
+                  <input
+                    type="number"
+                    value={formData.Price || ''}
+                    onChange={(e) => handleFieldChange('Price', parseFloat(e.target.value) || undefined)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="35000"
+                    step="0.01"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">MSRP</label>
-              <input
-                type="number"
-                value={formData.MSRP || ''}
-                onChange={(e) => handleFieldChange('MSRP', parseFloat(e.target.value) || undefined)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="35000"
-                step="0.01"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">MSRP</label>
+                  <input
+                    type="number"
+                    value={formData.MSRP || ''}
+                    onChange={(e) => handleFieldChange('MSRP', parseFloat(e.target.value) || undefined)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="35000"
+                    step="0.01"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Condition</label>
-              <select
-                value={formData.Condition || ''}
-                onChange={(e) => handleFieldChange('Condition', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-              >
-                <option value="">Select Condition</option>
-                <option value="New">New</option>
-                <option value="Pre-Owned">Pre-Owned</option>
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Condition</label>
+                  <select
+                    value={formData.Condition || ''}
+                    onChange={(e) => handleFieldChange('Condition', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                  >
+                    <option value="">Select Condition</option>
+                    <option value="New">New</option>
+                    <option value="Pre-Owned">Pre-Owned</option>
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Category</label>
-              <input
-                type="text"
-                value={formData.Category || ''}
-                onChange={(e) => handleFieldChange('Category', e.target.value)}
-                list="category-options"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="Truck"
-              />
-              <datalist id="category-options">
-                {categoryOptions.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Category</label>
+                  <input
+                    type="text"
+                    value={formData.Category || ''}
+                    onChange={(e) => handleFieldChange('Category', e.target.value)}
+                    list="category-options"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="Truck"
+                  />
+                  <datalist id="category-options">
+                    {categoryOptions.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Width Category</label>
-              <input
-                type="text"
-                value={formData.WidthCategory || ''}
-                onChange={(e) => handleFieldChange('WidthCategory', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="Standard"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Width Category</label>
+                  <input
+                    type="text"
+                    value={formData.WidthCategory || ''}
+                    onChange={(e) => handleFieldChange('WidthCategory', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="Standard"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-1">Size Category</label>
-              <input
-                type="text"
-                value={formData.SizeCategory || ''}
-                onChange={(e) => handleFieldChange('SizeCategory', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                placeholder="Full Size"
-              />
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Size Category</label>
+                  <input
+                    type="text"
+                    value={formData.SizeCategory || ''}
+                    onChange={(e) => handleFieldChange('SizeCategory', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="Full Size"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-1">Status</label>
-                <select
-                  value={(formData.Status ?? vehicle.Status ?? '').toString().toLowerCase()}
-                  onChange={(e) => handleFieldChange('Status', e.target.value)}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Status</label>
+                  <select
+                    value={(formData.Status ?? vehicle.Status ?? '').toString().toLowerCase()}
+                    onChange={(e) => handleFieldChange('Status', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                  >
+                    <option value="">Select Status</option>
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Type ID Selector */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-semibold text-gray-800">Unit Type</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                      TypeID: {formData.TypeID || 'Not set'}
+                    </span>
+                    {hasUnsavedChanges && (
+                      <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
+                        Unsaved changes
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('TypeID', 1)}
+                    className={`px-4 py-2 rounded-md border transition-colors ${
+                      formData.TypeID === 1
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    🏠 Fish House
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('TypeID', 2)}
+                    className={`px-4 py-2 rounded-md border transition-colors ${
+                      formData.TypeID === 2
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    🚗 Vehicle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('TypeID', 3)}
+                    className={`px-4 py-2 rounded-md border transition-colors ${
+                      formData.TypeID === 3
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    🚛 Trailer
+                  </button>
+                </div>
+                <p className="text-xs text-gray-600 mt-2">Select the type of unit this item represents</p>
+              </div>
+
+              {/* Read-only info */}
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <h3 className="text-md font-semibold text-gray-900 mb-3">Read-Only Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div><span className="font-semibold text-gray-800">VIN:</span> <span className="ml-1 font-mono text-sm text-gray-900 bg-gray-100 px-2 py-1 rounded break-all">{vehicle.VIN}</span></div>
+                  <div><span className="font-semibold text-gray-800">Unit ID:</span> <span className="ml-1 text-gray-900 font-medium">{vehicle.UnitID}</span></div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="mt-6">
+                <label className="block text-sm font-semibold text-gray-800 mb-1">Description</label>
+                <textarea
+                  value={formData.Description || ''}
+                  onChange={(e) => handleFieldChange('Description', e.target.value)}
+                  rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-                >
-                  <option value="">Select Status</option>
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
+                  placeholder="Enter vehicle description..."
+                />
               </div>
             </div>
-          </div>
-
-          {/* Type ID Selector */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-semibold text-gray-800">Unit Type</label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                  TypeID: {formData.TypeID || 'Not set'}
-                </span>
-                {hasUnsavedChanges && (
-                  <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
-                    Unsaved changes
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => handleFieldChange('TypeID', 1)}
-                className={`px-4 py-2 rounded-md border transition-colors ${
-                  formData.TypeID === 1
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                🏠 Fish House
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFieldChange('TypeID', 2)}
-                className={`px-4 py-2 rounded-md border transition-colors ${
-                  formData.TypeID === 2
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                🚗 Vehicle
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFieldChange('TypeID', 3)}
-                className={`px-4 py-2 rounded-md border transition-colors ${
-                  formData.TypeID === 3
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                🚛 Trailer
-              </button>
-            </div>
-            <p className="text-xs text-gray-600 mt-2">Select the type of unit this item represents</p>
-          </div>
-
-          {/* Read-only info */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <h3 className="text-md font-semibold text-gray-900 mb-3">Read-Only Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div><span className="font-semibold text-gray-800">VIN:</span> <span className="ml-1 font-mono text-sm text-gray-900 bg-gray-100 px-2 py-1 rounded break-all">{vehicle.VIN}</span></div>
-              <div><span className="font-semibold text-gray-800">Unit ID:</span> <span className="ml-1 text-gray-900 font-medium">{vehicle.UnitID}</span></div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="mt-6">
-            <label className="block text-sm font-semibold text-gray-800 mb-1">Description</label>
-            <textarea
-              value={formData.Description || ''}
-              onChange={(e) => handleFieldChange('Description', e.target.value)}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
-              placeholder="Enter vehicle description..."
-            />
-          </div>
+          )}
         </div>
 
         {/* 4) Unit Features */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">Unit Features</h2>
+            <button
+              onClick={() => toggleSection('unitFeatures')}
+              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+            >
+              <h2>Unit Features</h2>
+              <ChevronDownIcon 
+                className={`w-5 h-5 transition-transform duration-300 ${
+                  expandedSections.unitFeatures ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
             {hasFeatureChanges && (
               <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">Unsaved feature changes</span>
             )}
           </div>
-          <FeaturesSelector
-            title="Select Features"
-            selected={selectedFeatureIds}
-            onChange={setSelectedFeatureIds}
-            lazy
-            defaultOpen={!isMobile}
-            small
-            categoryConfig={FEATURE_CATEGORIES}
-          />
+          
+          {expandedSections.unitFeatures && (
+            <FeaturesSelector
+              title="Select Features"
+              selected={selectedFeatureIds}
+              onChange={setSelectedFeatureIds}
+              lazy
+              defaultOpen={!isMobile}
+              small
+              categoryConfig={FEATURE_CATEGORIES}
+            />
+          )}
         </div>
 
         {/* Bottom Save Button */}
