@@ -93,15 +93,17 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
       }
       
       // Parse the success response to confirm upload completed
-      const result = await safeResponseJson<{ success: boolean; name: string; url: string; error?: boolean; message?: string }>(res);
+      const result = await safeResponseJson<{ success?: boolean; name?: string; url?: string; error?: boolean; message?: string }>(res);
       console.log('📦 API Response:', result);
       
       if (result?.error) {
         throw new Error(result.message || 'Upload returned error');
       }
       
-      if (!result || !result.success) {
-        throw new Error('Upload did not return success');
+      // API may return either { success: true, name, url } OR just { name, url }
+      // If we got a 200/201 response with name and url, consider it successful
+      if (!result || (!result.name && !result.success)) {
+        throw new Error('Upload did not return valid response');
       }
       
       console.log(`✅ Upload confirmed by API: ${result.name} at ${result.url}`);
