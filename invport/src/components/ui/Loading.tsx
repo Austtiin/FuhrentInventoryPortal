@@ -1,7 +1,12 @@
 'use client';
 
 import React from 'react';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Skeleton from '@mui/material/Skeleton';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -10,11 +15,11 @@ interface LoadingSpinnerProps {
   className?: string;
 }
 
-const sizeClasses = {
-  sm: 'w-4 h-4',
-  md: 'w-6 h-6',
-  lg: 'w-8 h-8',
-  xl: 'w-12 h-12',
+const sizeMap = {
+  sm: 20,
+  md: 32,
+  lg: 48,
+  xl: 64,
 };
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
@@ -24,19 +29,40 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   className = ''
 }) => {
   const content = (
-    <div className={`flex flex-col items-center justify-center ${className}`}>
-      <ArrowPathIcon className={`${sizeClasses[size]} text-blue-600 animate-spin`} />
+    <Box 
+      className={className}
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        gap: 2
+      }}
+    >
+      <CircularProgress size={sizeMap[size]} />
       {message && (
-        <p className="mt-2 text-sm text-gray-600">{message}</p>
+        <Typography variant="body2" color="text.secondary">
+          {message}
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+      <Box
+        sx={{
+          position: 'fixed',
+          inset: 0,
+          bgcolor: 'rgba(255, 255, 255, 0.9)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+        }}
+      >
         {content}
-      </div>
+      </Box>
     );
   }
 
@@ -45,29 +71,37 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
 // Skeleton loader for cards
 export const SkeletonLoader: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`animate-pulse ${className}`}>
-    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-  </div>
+  <Box className={className}>
+    <Skeleton variant="text" width="75%" height={24} sx={{ mb: 1 }} />
+    <Skeleton variant="text" width="50%" height={20} />
+  </Box>
 );
 
 // Skeleton for stat cards
 export const StatCardSkeleton: React.FC = () => (
-  <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-3 sm:p-4 animate-pulse">
-    <div className="flex items-center justify-between mb-2">
-      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-200 rounded-lg"></div>
-    </div>
-    <div>
-      <div className="h-6 bg-gray-200 rounded w-16 mb-0.5"></div>
-      <div className="h-3 bg-gray-200 rounded w-20"></div>
-    </div>
-  </div>
+  <Card sx={{ boxShadow: 1 }}>
+    <CardContent>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Skeleton variant="circular" width={40} height={40} />
+      </Box>
+      <Skeleton variant="text" width={80} height={32} sx={{ mb: 0.5 }} />
+      <Skeleton variant="text" width={100} height={20} />
+    </CardContent>
+  </Card>
 );
 
 // Full page loading state
 export const PageLoading: React.FC<{ message?: string }> = ({ message }) => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+  <Box
+    sx={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      bgcolor: 'background.default',
+    }}
+  >
     <LoadingSpinner size="lg" message={message || "Loading..."} />
-  </div>
+  </Box>
 );
 

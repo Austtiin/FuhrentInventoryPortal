@@ -31,6 +31,67 @@ const capitalizeFirst = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
+// Validate dimensions based on make
+const validateDimensions = (make: string, length: string, width: string): { valid: boolean; error?: string } => {
+  const normalizedMake = make.trim().toLowerCase();
+  
+  // Ice Castle Fish House validation
+  if (normalizedMake === 'ice castle fish house') {
+    // Length: must be [int]V or [int]S
+    if (length && length.trim()) {
+      const lengthPattern = /^\d+[VS]$/i;
+      if (!lengthPattern.test(length.trim())) {
+        return { valid: false, error: 'For Ice Castle Fish House, length must be a whole number followed by V or S (e.g., 21V or 17S)' };
+      }
+    }
+    // Width: must be 8 or 6.5
+    if (width && width.trim()) {
+      const validWidths = ['8', '6.5'];
+      if (!validWidths.includes(width.trim())) {
+        return { valid: false, error: 'For Ice Castle Fish House, width must be either 8 or 6.5' };
+      }
+    }
+  }
+  
+  // Aluma-Lite validation
+  if (normalizedMake === 'aluma-lite') {
+    // Length: must be [int]V or [int]S
+    if (length && length.trim()) {
+      const lengthPattern = /^\d+[VS]$/i;
+      if (!lengthPattern.test(length.trim())) {
+        return { valid: false, error: 'For Aluma-Lite, length must be a whole number followed by V or S (e.g., 21V or 17S)' };
+      }
+    }
+    // Width: must be 8, 6.5, or 6
+    if (width && width.trim()) {
+      const validWidths = ['8', '6.5', '6'];
+      if (!validWidths.includes(width.trim())) {
+        return { valid: false, error: 'For Aluma-Lite, width must be 8, 6.5, or 6' };
+      }
+    }
+  }
+  
+  // For all other makes: only allow whole numbers (integers)
+  if (normalizedMake && normalizedMake !== 'ice castle fish house' && normalizedMake !== 'aluma-lite') {
+    // Length: must be integer only
+    if (length && length.trim()) {
+      const intPattern = /^\d+$/;
+      if (!intPattern.test(length.trim())) {
+        return { valid: false, error: 'Length must be a whole number only (no decimals or letters)' };
+      }
+    }
+    // Width: must be integer or decimal number only
+    if (width && width.trim()) {
+      const numPattern = /^\d+(\.\d+)?$/;
+      if (!numPattern.test(width.trim())) {
+        return { valid: false, error: 'Width must be a whole number only (no letters)' };
+      }
+    }
+  }
+  
+  return { valid: true };
+};
+
 interface VehicleData {
   UnitID: number;
   VIN?: string;
@@ -106,7 +167,7 @@ function EditInventoryPageContent() {
     title: '',
     message: '',
     confirmText: 'Confirm',
-    confirmColor: 'blue' as 'blue' | 'green' | 'yellow' | 'red',
+    confirmColor: 'primary' as 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success',
     onConfirm: () => {},
   });
 
@@ -334,35 +395,17 @@ function EditInventoryPageContent() {
     }
   };
 
-  // Validation for Size and Width categories
-  const validateWholeNumber = (value: string): string | null => {
-    if (!value || value.trim() === '') return null; // Allow empty values
-    
-    // Check if it's a whole number (no decimals, no letters except at the end for size indicators)
-    const trimmedValue = value.trim();
-    const numericPart = trimmedValue.replace(/[^\d]/g, '');
-    
-    // If the value contains letters or special characters that aren't size indicators
-    if (!/^\d+[A-Za-z]*$/.test(trimmedValue)) {
-      return `Whole numbers only. If you're adding a V or S please add that in the Model area.`;
-    }
-    
-    // Check if it's actually a whole number
-    const num = parseInt(numericPart);
-    if (isNaN(num) || num.toString() !== numericPart) {
-      return `Whole numbers only. If you're adding a V or S please add that in the Model area.`;
-    }
-    
-    return null; // Valid
-  };
-
   // Handle form field changes
   const handleFieldChange = (field: keyof VehicleFormData, value: string | number | undefined) => {
-    // Validate Size and Width categories for whole numbers only
-    if ((field === 'SizeCategory' || field === 'WidthCategory') && typeof value === 'string') {
-      const validationError = validateWholeNumber(value);
-      if (validationError) {
-        error('Invalid Input', validationError);
+    // Validate Size and Width categories based on make
+    if ((field === 'SizeCategory' || field === 'WidthCategory' || field === 'Make') && typeof value === 'string') {
+      const currentMake = field === 'Make' ? value : (formData.Make || '');
+      const currentLength = field === 'SizeCategory' ? value : (formData.SizeCategory || '');
+      const currentWidth = field === 'WidthCategory' ? value : (formData.WidthCategory || '');
+      
+      const validation = validateDimensions(currentMake, currentLength, currentWidth);
+      if (!validation.valid && validation.error) {
+        error('Invalid Input', validation.error);
         return; // Don't update the field if validation fails
       }
     }
@@ -391,6 +434,17 @@ function EditInventoryPageContent() {
   // Save vehicle changes
   const saveVehicle = async () => {
     if (!vehicle?.UnitID) return;
+    
+    // Validate dimensions before saving
+    const dimensionValidation = validateDimensions(
+      formData.Make || '',
+      formData.SizeCategory || '',
+      formData.WidthCategory || ''
+    );
+    if (!dimensionValidation.valid) {
+      error('Validation Error', dimensionValidation.error || 'Invalid dimensions');
+      return;
+    }
     
     setIsSaving(true);
     try {
@@ -504,8 +558,6 @@ function EditInventoryPageContent() {
     loadVehicle();
   }, [searchParams]);
 
-
-
   const runStatusUpdate = async (status: 'available' | 'pending' | 'sold') => {
     setIsSaving(true);
     try {
@@ -525,7 +577,7 @@ function EditInventoryPageContent() {
     }
   };
 
-  const confirmStatus = (status: 'available' | 'pending' | 'sold', label: string, color: 'blue' | 'green' | 'yellow') => {
+  const confirmStatus = (status: 'available' | 'pending' | 'sold', label: string, color: 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success') => {
     setConfirmDialog({
       isOpen: true,
       title: `${label}`,
@@ -545,7 +597,7 @@ function EditInventoryPageContent() {
       title: '🗑️ DELETE Unit',
       message: 'This action cannot be undone. Delete this unit?',
       confirmText: 'Delete Permanently',
-      confirmColor: 'red',
+      confirmColor: 'error',
       onConfirm: async () => {
         setConfirmDialog((d) => ({ ...d, isOpen: false }));
         setIsDeleting(true);
@@ -571,7 +623,7 @@ function EditInventoryPageContent() {
         title: 'Unsaved Changes',
         message: 'You have unsaved changes that will be lost. Are you sure you want to leave?',
         confirmText: 'Leave Without Saving',
-        confirmColor: 'red',
+        confirmColor: 'error',
         onConfirm: () => {
           setConfirmDialog((d) => ({ ...d, isOpen: false }));
           router.push('/inventory');
@@ -684,7 +736,7 @@ function EditInventoryPageContent() {
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 type="button"
-                onClick={() => confirmStatus('available', 'Available', 'green')}
+                onClick={() => confirmStatus('available', 'Available', 'success')}
                 disabled={isSaving || status === 'available'}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
               >
@@ -692,7 +744,7 @@ function EditInventoryPageContent() {
               </button>
               <button
                 type="button"
-                onClick={() => confirmStatus('pending', 'Pending', 'yellow')}
+                onClick={() => confirmStatus('pending', 'Pending', 'warning')}
                 disabled={isSaving || status === 'pending'}
                 className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50"
               >
@@ -700,7 +752,7 @@ function EditInventoryPageContent() {
               </button>
               <button
                 type="button"
-                onClick={() => confirmStatus('sold', 'Sold', 'blue')}
+                onClick={() => confirmStatus('sold', 'Sold', 'primary')}
                 disabled={isSaving || status === 'sold'}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
               >
@@ -1117,3 +1169,4 @@ export default function EditInventoryPage() {
     </Suspense>
   );
 }
+

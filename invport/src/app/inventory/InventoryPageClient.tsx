@@ -1,26 +1,30 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import IconButton from '@mui/material/IconButton';
+import Chip from '@mui/material/Chip';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useInventoryDirect } from '@/hooks/useInventoryAPI';
 import CompactInventoryCard from '@/components/inventory/CompactInventoryCard';
 import SkeletonCard from '@/components/ui/SkeletonCard';
-import NotificationCard, { NotificationType } from '@/components/ui/NotificationCard';
 import { Layout } from '@/components/layout';
 import { Vehicle } from '@/types';
 import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
-// Removed local debug fetch helpers
 
 function InventoryPageClientInner() {
   const router = useRouter();
   const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [notification, setNotification] = useState<{
-    type: NotificationType;
-    title: string;
-    message: string;
-    isVisible: boolean;
-  } | null>(null);
   
   const { 
     vehicles,
@@ -63,46 +67,27 @@ function InventoryPageClientInner() {
     setSelectedVehicle(null);
   };
 
-  const showNotification = (type: NotificationType, title: string, message: string) => {
-    setNotification({
-      type,
-      title,
-      message,
-      isVisible: true
-    });
-  };
-
-  const hideNotification = () => {
-    setNotification(prev => prev ? { ...prev, isVisible: false } : null);
-  };
-
   const handleMarkAsSold = async (vehicle: Vehicle) => {
     try {
       await markAsSold(vehicle.id);
-      showNotification('success', 'Status Updated', `${vehicle.year} ${vehicle.make} ${vehicle.model} marked as sold`);
     } catch (error) {
       console.error('Error marking vehicle as sold:', error);
-      showNotification('error', 'Update Failed', 'Failed to mark vehicle as sold. Please try again.');
     }
   };
 
   const handleMarkAsPending = async (vehicle: Vehicle) => {
     try {
       await markAsPending(vehicle.id);
-      showNotification('success', 'Status Updated', `${vehicle.year} ${vehicle.make} ${vehicle.model} marked as pending`);
     } catch (error) {
       console.error('Error marking vehicle as pending:', error);
-      showNotification('error', 'Update Failed', 'Failed to mark vehicle as pending. Please try again.');
     }
   };
 
   const handleMarkAsAvailable = async (vehicle: Vehicle) => {
     try {
       await markAsAvailable(vehicle.id);
-      showNotification('success', 'Status Updated', `${vehicle.year} ${vehicle.make} ${vehicle.model} marked as available`);
     } catch (error) {
       console.error('Error marking vehicle as available:', error);
-      showNotification('error', 'Update Failed', 'Failed to mark vehicle as available. Please try again.');
     }
   };
 
@@ -111,18 +96,20 @@ function InventoryPageClientInner() {
   if (error) {
     return (
       <Layout>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h2 className="text-red-800 font-semibold">Error Loading Inventory</h2>
-          <p className="text-red-600 text-sm mt-1">{error}</p>
-          <button 
-            onClick={() => refreshData()}
-            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-
-        {/* Debug panel removed */}
+        <Alert severity="error" variant="filled" sx={{ mb: 2 }}>
+          <AlertTitle>Error Loading Inventory</AlertTitle>
+          {error}
+          <Box sx={{ mt: 2 }}>
+            <Button 
+              onClick={() => refreshData()}
+              variant="contained"
+              color="inherit"
+              size="small"
+            >
+              Try Again
+            </Button>
+          </Box>
+        </Alert>
       </Layout>
     );
   }
@@ -130,134 +117,137 @@ function InventoryPageClientInner() {
   return (
     <Layout>
       <ErrorBoundary>
-        <div className="space-y-6">
+        <Box sx={{ py: 3 }}>
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Unit Inventory</h1>
-            <div className="flex items-center gap-2 mt-2">
-              <p className="text-gray-800">
-                {isLoading ? 'Loading...' : `${filteredVehicles.length} vehicles`}
-              </p>
-            </div>
-          </div>
-          <button 
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Box>
+            <Typography variant="h3" component="h1" fontWeight={700} gutterBottom>
+              Unit Inventory
+            </Typography>
+            <Typography variant="body1" color="text.primary">
+              {isLoading ? 'Loading...' : `${filteredVehicles.length} vehicles`}
+            </Typography>
+          </Box>
+          <Button 
             onClick={() => refreshData()}
             disabled={isLoading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-md transition-colors cursor-pointer disabled:cursor-not-allowed"
+            variant="contained"
+            startIcon={<RefreshIcon />}
           >
             Refresh
-          </button>
-        </div>
+          </Button>
+        </Box>
 
         {/* Search Bar */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Box sx={{ bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1, p: 3, mb: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr 1fr' }, gap: 2 }}>
             {/* Search Input */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Inventory
-              </label>
-              <input
-                type="text"
-                placeholder="Search by VIN, year, make, model, stock..."
-                value={filters.search}
-                onChange={(e) => setFilters({ search: e.target.value })}
-                className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
-              />
-            </div>
+            <TextField
+              fullWidth
+              label="Search Inventory"
+              placeholder="Search by VIN, year, make, model, stock..."
+              value={filters.search}
+              onChange={(e) => setFilters({ search: e.target.value })}
+              variant="outlined"
+              size="medium"
+            />
 
             {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status Filter
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ status: e.target.value as 'all' | 'available' | 'pending' | 'sold' })}
-                className="w-full px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
-              >
-                <option value="all">All Status</option>
-                <option value="available">Available</option>
-                <option value="pending">Pending</option>
-                <option value="sold">Sold</option>
-              </select>
-            </div>
+            <TextField
+              fullWidth
+              select
+              label="Status Filter"
+              value={filters.status}
+              onChange={(e) => setFilters({ status: e.target.value as 'all' | 'available' | 'pending' | 'sold' })}
+              variant="outlined"
+              size="medium"
+            >
+              <MenuItem value="all">All Status</MenuItem>
+              <MenuItem value="available">Available</MenuItem>
+              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="sold">Sold</MenuItem>
+            </TextField>
 
             {/* Sort By */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sort By
-              </label>
-              <div className="flex gap-2">
-                <select
-                  value={filters.sortBy}
-                  onChange={(e) => setFilters({ sortBy: e.target.value as 'year' | 'price' | 'make' | 'status' | 'dateAdded' })}
-                  className="flex-1 px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
-                >
-                  <option value="dateAdded">Date Added</option>
-                  <option value="year">Year</option>
-                  <option value="price">Price</option>
-                  <option value="make">Make</option>
-                  <option value="status">Status</option>
-                </select>
-                <button
-                  onClick={() => setFilters({ sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc' })}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
-                  title={filters.sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-                >
-                  {filters.sortOrder === 'asc' ? '↑' : '↓'}
-                </button>
-              </div>
-            </div>
-          </div>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                fullWidth
+                select
+                label="Sort By"
+                value={filters.sortBy}
+                onChange={(e) => setFilters({ sortBy: e.target.value as 'year' | 'price' | 'make' | 'status' | 'dateAdded' })}
+                variant="outlined"
+                size="medium"
+              >
+                <MenuItem value="dateAdded">Date Added</MenuItem>
+                <MenuItem value="year">Year</MenuItem>
+                <MenuItem value="price">Price</MenuItem>
+                <MenuItem value="make">Make</MenuItem>
+                <MenuItem value="status">Status</MenuItem>
+              </TextField>
+              <IconButton
+                onClick={() => setFilters({ sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc' })}
+                title={filters.sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                sx={{ bgcolor: 'action.hover' }}
+              >
+                {filters.sortOrder === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
+              </IconButton>
+            </Box>
+          </Box>
 
           {/* Active Filters Display */}
           {(filters.search || filters.status !== 'all') && (
-            <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-gray-600">Active filters:</span>
+            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography variant="body2" color="text.secondary">
+                Active filters:
+              </Typography>
               {filters.search && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm">
-                  Search: &ldquo;{filters.search}&rdquo;
-                  <button
-                    onClick={() => setFilters({ search: '' })}
-                    className="hover:text-blue-900"
-                  >
-                    ×
-                  </button>
-                </span>
+                <Chip
+                  label={`Search: "${filters.search}"`}
+                  onDelete={() => setFilters({ search: '' })}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                />
               )}
               {filters.status !== 'all' && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-sm">
-                  Status: {filters.status}
-                  <button
-                    onClick={() => setFilters({ status: 'all' })}
-                    className="hover:text-blue-900"
-                  >
-                    ×
-                  </button>
-                </span>
+                <Chip
+                  label={`Status: ${filters.status}`}
+                  onDelete={() => setFilters({ status: 'all' })}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                />
               )}
-              <button
+              <Button
                 onClick={() => setFilters({ search: '', status: 'all' })}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                size="small"
+                variant="text"
               >
                 Clear all
-              </button>
-            </div>
+              </Button>
+            </Box>
           )}
-        </div>
+        </Box>
 
         {/* Content */}
-        <div>
+        <Box>
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-3">
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+              gap: 2 
+            }}>
               {Array.from({ length: 6 }).map((_, index) => (
                 <SkeletonCard key={index} />
               ))}
-            </div>
+            </Box>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-3">
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+              gap: 2 
+            }}>
               {filteredVehicles.map((vehicle) => (
                 <CompactInventoryCard
                   key={vehicle.id}
@@ -267,50 +257,45 @@ function InventoryPageClientInner() {
                   onMarkAsPending={() => handleMarkAsPending(vehicle)}
                   onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
                   onMarkAsSold={() => handleMarkAsSold(vehicle)}
-                  onShowNotification={showNotification}
                   enableImageLoading={imagesLoaded}
                 />
               ))}
-            </div>
+            </Box>
           )}
 
           {/* Empty state */}
           {!isLoading && filteredVehicles.length === 0 && vehicles.length > 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No vehicles match your search criteria.</p>
-              <button
+            <Box sx={{ textAlign: 'center', py: 12 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No vehicles match your search criteria.
+              </Typography>
+              <Button
                 onClick={() => setFilters({ search: '', status: 'all' })}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                variant="contained"
+                sx={{ mt: 2 }}
               >
                 Clear Filters
-              </button>
-            </div>
+              </Button>
+            </Box>
           )}
 
           {!isLoading && vehicles.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No vehicles found</p>
-              <button 
+            <Box sx={{ textAlign: 'center', py: 12 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No vehicles found
+              </Typography>
+              <Button 
                 onClick={() => refreshData()}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                variant="contained"
+                sx={{ mt: 2 }}
               >
                 Refresh Inventory
-              </button>
-            </div>
+              </Button>
+            </Box>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
-      {/* Notification Component */}
-      {notification && (
-        <NotificationCard
-          type={notification.type}
-          title={notification.title}
-          message={notification.message}
-          isVisible={notification.isVisible}
-          onClose={hideNotification}
-        />
-      )}
       {/* Vehicle details modal (reuses in-memory vehicle data; no extra API calls) */}
       {selectedVehicle && (
         <VehicleDetailsModal vehicle={selectedVehicle} isOpen={isModalOpen} onClose={closeModal} />

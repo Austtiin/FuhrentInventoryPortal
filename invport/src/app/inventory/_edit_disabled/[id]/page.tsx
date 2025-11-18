@@ -46,7 +46,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
     title: string;
     message: string;
     confirmText?: string;
-    confirmColor?: 'blue' | 'green' | 'yellow' | 'red';
+    confirmColor?: 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success';
     onConfirm: () => void;
   }>({
     isOpen: false,
@@ -208,7 +208,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
       title: '⏳ Mark as Pending',
       message: 'Are you sure you want to mark this unit as Pending?\n\nThis will update the status to indicate the unit is reserved or being processed.',
       confirmText: 'Mark as Pending',
-      confirmColor: 'yellow',
+      confirmColor: 'warning',
       onConfirm: async () => {
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         setIsSaving(true);
@@ -247,7 +247,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
       title: '✅ Mark as Available',
       message: 'Are you sure you want to mark this unit as Available?\n\nThis will make the unit available for sale again.',
       confirmText: 'Mark as Available',
-      confirmColor: 'green',
+      confirmColor: 'success',
       onConfirm: async () => {
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         setIsSaving(true);
@@ -286,7 +286,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
       title: '💰 Mark as Sold',
       message: 'Are you sure you want to mark this unit as Sold?\n\nThis will update the status to indicate the unit has been sold.',
       confirmText: 'Mark as Sold',
-      confirmColor: 'blue',
+      confirmColor: 'primary',
       onConfirm: async () => {
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         setIsSaving(true);
@@ -325,7 +325,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
       title: '🗑️ DELETE Unit',
       message: '⚠️ WARNING: Are you sure you want to DELETE this unit?\n\nThis action CANNOT be undone!\n\nAll data including photos and history will be permanently removed.',
       confirmText: 'Yes, Delete Permanently',
-      confirmColor: 'red',
+      confirmColor: 'error',
       onConfirm: async () => {
         setConfirmDialog({ ...confirmDialog, isOpen: false });
         setIsDeleting(true);
@@ -783,3 +783,4 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
     </Layout>
   );
 }
+

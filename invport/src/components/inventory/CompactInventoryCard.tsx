@@ -2,12 +2,19 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { 
-  EyeIcon, 
-  PencilIcon, 
-  ClockIcon,
-  CheckIcon 
-} from '@heroicons/react/24/outline';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import CardMedia from '@mui/material/CardMedia';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { SingleVehicleImage } from '@/components/inventory/SingleVehicleImage';
 import { Vehicle } from '@/types';
@@ -27,26 +34,22 @@ const getStatusConfig = (status: string) => {
   switch (status.toLowerCase()) {
     case 'available':
       return { 
-        bg: 'bg-emerald-100', 
-        text: 'text-emerald-800', 
+        color: 'success' as const,
         label: 'Available'
       };
     case 'sold':
       return { 
-        bg: 'bg-red-100', 
-        text: 'text-red-800', 
+        color: 'error' as const,
         label: 'Sold'
       };
     case 'pending':
       return { 
-        bg: 'bg-amber-100', 
-        text: 'text-amber-800', 
+        color: 'warning' as const,
         label: 'Pending'
       };
     default:
       return { 
-        bg: 'bg-gray-100', 
-        text: 'text-gray-800', 
+        color: 'default' as const,
         label: status || 'Unknown'
       };
   }
@@ -106,9 +109,22 @@ export default function CompactInventoryCard({
   };
 
   return (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-gray-300 transition-all duration-200 overflow-hidden max-w-xs mx-auto lg:max-w-none lg:mx-0">
-      {/* Image Section - Fixed Height */}
-      <div className="relative h-48 bg-gray-100">
+  <Card 
+    sx={{ 
+      maxWidth: { xs: 320, lg: 'none' },
+      mx: { xs: 'auto', lg: 0 },
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      transition: 'all 0.2s',
+      '&:hover': {
+        boxShadow: 6,
+        borderColor: 'grey.300',
+      },
+    }}
+  >
+      {/* Image Section */}
+      <Box sx={{ position: 'relative', height: 192, bgcolor: 'grey.100' }}>
         {enableImageLoading ? (
           <SingleVehicleImage 
             vin={item.vin}
@@ -118,95 +134,124 @@ export default function CompactInventoryCard({
             lazy={true}
           />
         ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-            <div className="text-center">
-              <LoadingSpinner size="md" />
-              <p className="text-xs text-gray-500 mt-2">Loading image...</p>
-            </div>
-          </div>
+          <Box sx={{ 
+            width: '100%', 
+            height: '100%', 
+            bgcolor: 'grey.200', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            flexDirection: 'column'
+          }}>
+            <LoadingSpinner size="md" />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+              Loading image...
+            </Typography>
+          </Box>
         )}
         
         {/* Status Badge Overlay */}
-        <div className="absolute top-3 left-3">
-          <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${statusConfig.bg} ${statusConfig.text} shadow-sm`}>
-            {statusConfig.label}
-          </span>
-        </div>
+        <Box sx={{ position: 'absolute', top: 12, left: 12 }}>
+          <Chip 
+            label={statusConfig.label} 
+            color={statusConfig.color}
+            size="small"
+            sx={{ fontWeight: 600, boxShadow: 2 }}
+          />
+        </Box>
         
         {/* Stock Number Overlay */}
-        <div className="absolute top-3 right-3">
-          <span className="bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
-            #{item.stock}
-          </span>
-        </div>
-      </div>
+        <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
+          <Chip 
+            label={`#${item.stock}`}
+            size="small"
+            sx={{ 
+              bgcolor: 'rgba(0, 0, 0, 0.7)', 
+              color: 'white',
+              fontWeight: 500,
+            }}
+          />
+        </Box>
+      </Box>
 
       {/* Content Section */}
-  <div className="p-4 flex flex-col">
+  <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Vehicle Title */}
-        <h3 className="font-bold text-gray-900 text-base mb-2 leading-tight line-clamp-2 min-h-10">
+        <Typography variant="h6" component="h3" fontWeight={700} gutterBottom sx={{ 
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          minHeight: 56,
+        }}>
           {item.year} {item.make} {item.model}
-        </h3>
+        </Typography>
 
         {/* Vehicle Details */}
-        <div className="space-y-1 mb-3 flex-1">
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">VIN:</span> 
-            <span className="ml-1 font-mono text-xs">{item.vin}</span>
-          </div>
+        <Box sx={{ mb: 2, flexGrow: 1 }}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            <Box component="span" fontWeight={500}>VIN:</Box>{' '}
+            <Box component="span" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+              {item.vin}
+            </Box>
+          </Typography>
           
           {item.mileage && (
-            <div className="text-sm text-gray-600">
-              <span className="font-medium">Mileage:</span> 
-              <span className="ml-1">{item.mileage?.toLocaleString()} miles</span>
-            </div>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              <Box component="span" fontWeight={500}>Mileage:</Box>{' '}
+              {item.mileage?.toLocaleString()} miles
+            </Typography>
           )}
           
           {item.color && (
-            <div className="text-sm text-gray-600">
-              <span className="font-medium">Color:</span> 
-              <span className="ml-1">{item.color}</span>
-            </div>
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight={500}>Color:</Box>{' '}
+              {item.color}
+            </Typography>
           )}
-        </div>
+        </Box>
 
         {/* Price + MSRP */}
-        <div className="mb-3">
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <p className="text-xl font-bold text-emerald-600 m-0">
+        <Box sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap' }}>
+            <Typography variant="h5" component="p" color="success.main" fontWeight={700} sx={{ m: 0 }}>
               {formatPrice(item.price)}
-            </p>
+            </Typography>
             {typeof item.msrp === 'number' && !Number.isNaN(item.msrp) && (
-              <span className="text-xs text-gray-600 font-medium">
+              <Typography variant="caption" color="text.secondary" fontWeight={500}>
                 MSRP: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(item.msrp)}
-              </span>
+              </Typography>
             )}
-          </div>
-        </div>
+          </Box>
+        </Box>
 
         {/* Action Buttons Row (View + Status) */}
-        <div className="flex gap-2 flex-wrap">
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
           {onView ? (
-            <button
+            <Button
               onClick={() => onView(item)}
-              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              variant="contained"
+              startIcon={<VisibilityIcon />}
+              sx={{ flex: 1, minWidth: 0 }}
             >
-              <EyeIcon className="h-4 w-4 mr-1" />
               View
-            </button>
+            </Button>
           ) : (
-            <Link
+            <Button
+              component={Link}
               href={`/inventory/vehicle?id=${item.id || item.unitId}`}
-              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              variant="contained"
+              startIcon={<VisibilityIcon />}
+              sx={{ flex: 1, minWidth: 0 }}
             >
-              <EyeIcon className="h-4 w-4 mr-1" />
               View
-            </Link>
+            </Button>
           )}
 
           {/* Conditional Status Buttons */}
           {item.status?.toLowerCase() === 'available' && (
-            <button
+            <Button
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -214,22 +259,18 @@ export default function CompactInventoryCard({
                 handleStatusChange('pending');
               }}
               disabled={isLoading}
-              className="flex-1 flex items-center justify-center px-3 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 shadow-sm"
+              variant="contained"
+              color="warning"
+              startIcon={isLoading ? undefined : <AccessTimeIcon />}
+              sx={{ flex: 1, minWidth: 0 }}
             >
-              {isLoading ? (
-                <LoadingSpinner size="sm" />
-              ) : (
-                <>
-                  <ClockIcon className="h-4 w-4 mr-1" />
-                  Pending
-                </>
-              )}
-            </button>
+              {isLoading ? <LoadingSpinner size="sm" /> : 'Mark Pending'}
+            </Button>
           )}
 
           {item.status?.toLowerCase() === 'pending' && (
-            <>
-              <button
+            <ButtonGroup variant="contained" sx={{ flex: 1 }}>
+              <Button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -237,15 +278,13 @@ export default function CompactInventoryCard({
                   handleStatusChange('available');
                 }}
                 disabled={isLoading}
-                className="flex-1 flex items-center justify-center px-2 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm"
+                color="success"
+                size="small"
+                sx={{ flex: 1, fontSize: '0.75rem', px: 1 }}
               >
-                {isLoading ? (
-                  <LoadingSpinner size="sm" />
-                ) : (
-                  'Available'
-                )}
-              </button>
-              <button
+                {isLoading ? <LoadingSpinner size="sm" /> : 'Mark Available'}
+              </Button>
+              <Button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -253,19 +292,17 @@ export default function CompactInventoryCard({
                   handleStatusChange('sold');
                 }}
                 disabled={isLoading}
-                className="flex-1 flex items-center justify-center px-2 py-2 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 shadow-sm"
+                color="error"
+                size="small"
+                sx={{ flex: 1, fontSize: '0.75rem', px: 1 }}
               >
-                {isLoading ? (
-                  <LoadingSpinner size="sm" />
-                ) : (
-                  'Sold'
-                )}
-              </button>
-            </>
+                {isLoading ? <LoadingSpinner size="sm" /> : 'Mark Sold'}
+              </Button>
+            </ButtonGroup>
           )}
 
           {item.status?.toLowerCase() === 'sold' && (
-            <button
+            <Button
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -273,30 +310,28 @@ export default function CompactInventoryCard({
                 handleStatusChange('available');
               }}
               disabled={isLoading}
-              className="flex-1 flex items-center justify-center px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm"
+              variant="contained"
+              color="success"
+              startIcon={isLoading ? undefined : <CheckCircleIcon />}
+              sx={{ flex: 1, minWidth: 0 }}
             >
-              {isLoading ? (
-                <LoadingSpinner size="sm" />
-              ) : (
-                <>
-                  <CheckIcon className="h-4 w-4 mr-1" />
-                  Mark Available
-                </>
-              )}
-            </button>
+              {isLoading ? <LoadingSpinner size="sm" /> : 'Mark Available'}
+            </Button>
           )}
-        </div>
+        </Box>
 
         {/* Edit Button - Full width at bottom */}
-        <button
+        <Button
           onClick={() => onEdit(item)}
-          className="mt-2 w-full flex items-center justify-center px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
+          variant="outlined"
+          color="inherit"
+          startIcon={<EditIcon />}
+          fullWidth
         >
-          <PencilIcon className="h-4 w-4 mr-1" />
           Edit
-        </button>
-      </div>
-    </div>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

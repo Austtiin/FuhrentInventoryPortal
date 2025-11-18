@@ -22,6 +22,67 @@ const capitalizeFirst = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
+// Validate dimensions based on make
+const validateDimensions = (make: string, length: string, width: string): { valid: boolean; error?: string } => {
+  const normalizedMake = make.trim().toLowerCase();
+  
+  // Ice Castle Fish House validation
+  if (normalizedMake === 'ice castle fish house') {
+    // Length: must be [int]V or [int]S
+    if (length && length.trim()) {
+      const lengthPattern = /^\d+[VS]$/i;
+      if (!lengthPattern.test(length.trim())) {
+        return { valid: false, error: 'For Ice Castle Fish House, length must be a whole number followed by V or S (e.g., 21V or 17S)' };
+      }
+    }
+    // Width: must be 8 or 6.5
+    if (width && width.trim()) {
+      const validWidths = ['8', '6.5'];
+      if (!validWidths.includes(width.trim())) {
+        return { valid: false, error: 'For Ice Castle Fish House, width must be either 8 or 6.5' };
+      }
+    }
+  }
+  
+  // Aluma-Lite validation
+  if (normalizedMake === 'aluma-lite') {
+    // Length: must be [int]V or [int]S
+    if (length && length.trim()) {
+      const lengthPattern = /^\d+[VS]$/i;
+      if (!lengthPattern.test(length.trim())) {
+        return { valid: false, error: 'For Aluma-Lite, length must be a whole number followed by V or S (e.g., 21V or 17S)' };
+      }
+    }
+    // Width: must be 8, 6.5, or 6
+    if (width && width.trim()) {
+      const validWidths = ['8', '6.5', '6'];
+      if (!validWidths.includes(width.trim())) {
+        return { valid: false, error: 'For Aluma-Lite, width must be 8, 6.5, or 6' };
+      }
+    }
+  }
+  
+  // For all other makes: only allow whole numbers (integers)
+  if (normalizedMake && normalizedMake !== 'ice castle fish house' && normalizedMake !== 'aluma-lite') {
+    // Length: must be integer only
+    if (length && length.trim()) {
+      const intPattern = /^\d+$/;
+      if (!intPattern.test(length.trim())) {
+        return { valid: false, error: 'Length must be a whole number only (no decimals or letters)' };
+      }
+    }
+    // Width: must be integer or decimal number only
+    if (width && width.trim()) {
+      const numPattern = /^\d+(\.\d+)?$/;
+      if (!numPattern.test(width.trim())) {
+        return { valid: false, error: 'Width must be a whole number only (no letters)' };
+      }
+    }
+  }
+  
+  return { valid: true };
+};
+
 // Fields that should be capitalized (every word)
 // Note: exclude 'category' to preserve exact option values like 'RV'
 // Note: model is handled separately to only capitalize the first character
@@ -110,12 +171,31 @@ const AddInventoryPage: React.FC = () => {
       processedValue = value.toUpperCase();
     }
     
-    setFormData(prev => ({
-      ...prev,
+    const updatedData = {
+      ...formData,
       [name]: processedValue
-    }));
-    // Clear error when user types
-    if (error) setError('');
+    };
+    
+    // Validate dimensions when width, length, or make changes
+    if (name === 'width' || name === 'length' || name === 'make') {
+      const validation = validateDimensions(
+        name === 'make' ? processedValue : updatedData.make,
+        name === 'length' ? processedValue : updatedData.length,
+        name === 'width' ? processedValue : updatedData.width
+      );
+      if (!validation.valid) {
+        setError(validation.error || 'Invalid dimensions');
+      } else {
+        if (error && (error.includes('length') || error.includes('width') || error.includes('dimensions'))) {
+          setError('');
+        }
+      }
+    } else {
+      // Clear error when user types in other fields
+      if (error) setError('');
+    }
+    
+    setFormData(updatedData);
   };
 
   const checkVINExists = async (vin: string): Promise<boolean> => {
@@ -151,6 +231,15 @@ const AddInventoryPage: React.FC = () => {
         setIsSubmitting(false);
         return;
       }
+      
+      // Validate dimensions before submitting
+      const dimensionValidation = validateDimensions(formData.make, formData.length, formData.width);
+      if (!dimensionValidation.valid) {
+        setError(dimensionValidation.error || 'Invalid dimensions');
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Check if VIN already exists
       const vinExists = await checkVINExists(formData.vin);
       

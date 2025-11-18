@@ -1,7 +1,25 @@
 'use client';
 
 import React from 'react';
-import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import Typography from '@mui/material/Typography';
+import Slide from '@mui/material/Slide';
+import { TransitionProps } from '@mui/material/transitions';
+
+const Transition = React.forwardRef(function Transition(
+  props: TransitionProps & {
+    children: React.ReactElement<unknown>;
+  },
+  ref: React.Ref<unknown>,
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -9,7 +27,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  confirmColor?: 'blue' | 'green' | 'yellow' | 'red';
+  confirmColor?: 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success';
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -20,69 +38,78 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  confirmColor = 'blue',
+  confirmColor = 'primary',
   onConfirm,
   onCancel
 }) => {
-  if (!isOpen) return null;
-
-  const colorClasses = {
-    blue: 'bg-blue-600 hover:bg-blue-700',
-    green: 'bg-green-600 hover:bg-green-700',
-    yellow: 'bg-yellow-600 hover:bg-yellow-700',
-    red: 'bg-red-600 hover:bg-red-700'
+  // Map old color strings to MUI colors
+  const colorMap: Record<string, 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'> = {
+    blue: 'primary',
+    green: 'success',
+    yellow: 'warning',
+    red: 'error'
   };
+  
+  const mappedColor = colorMap[confirmColor] || confirmColor;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-50 animate-fadeIn"
-        onClick={onCancel}
-      />
+    <Dialog
+      open={isOpen}
+      onClose={onCancel}
+      TransitionComponent={Transition}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        elevation: 24,
+        sx: { borderRadius: 3 }
+      }}
+    >
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              bgcolor: 'warning.light',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <WarningAmberIcon sx={{ color: 'warning.dark', fontSize: 28 }} />
+          </Box>
+          <Typography variant="h6" component="div" fontWeight={700}>
+            {title}
+          </Typography>
+        </Box>
+      </DialogTitle>
       
-      {/* Dialog */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div className="bg-white rounded-lg shadow-2xl max-w-md w-full pointer-events-auto animate-scaleIn">
-          {/* Header */}
-          <div className="flex items-start justify-between p-6 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                <ExclamationTriangleIcon className="w-6 h-6 text-yellow-600" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-            </div>
-            <button
-              onClick={onCancel}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Close"
-            >
-              <XMarkIcon className="w-6 h-6" />
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="p-6">
-            <p className="text-gray-700 whitespace-pre-line">{message}</p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium"
-            >
-              {cancelText}
-            </button>
-            <button
-              onClick={onConfirm}
-              className={`px-4 py-2 text-white rounded-md transition-colors font-medium ${colorClasses[confirmColor]}`}
-            >
-              {confirmText}
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+      <DialogContent>
+        <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+          {message}
+        </Typography>
+      </DialogContent>
+      
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <Button 
+          onClick={onCancel} 
+          variant="outlined"
+          color="inherit"
+        >
+          {cancelText}
+        </Button>
+        <Button 
+          onClick={onConfirm} 
+          variant="contained" 
+          color={mappedColor}
+          autoFocus
+        >
+          {confirmText}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
+
