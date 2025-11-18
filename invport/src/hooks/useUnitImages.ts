@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { safeResponseJson } from '@/lib/safeJson';
-import { buildApiUrl } from '@/lib/apiClient';
+import { apiFetch } from '@/lib/apiClient';
 // no-op
 
 export interface UnitImage {
@@ -39,15 +39,22 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(buildApiUrl(`units/${encodeURIComponent(idStr)}/images`));
+      const response = await apiFetch(`units/${encodeURIComponent(idStr)}/images`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        }
+      });
       if (!response.ok) {
         const txt = await response.text();
         throw new Error(`List images failed ${response.status}: ${txt}`);
       }
       const list = await safeResponseJson<Array<{ name: string; url: string }>>(response);
+      const cacheBuster = `?cb=${Date.now()}`;
       const mapped = (Array.isArray(list) ? list : []).map(item => ({
         name: item.name,
-        url: item.url,
+        url: item.url + cacheBuster, // Add cache-busting timestamp to image URLs
         number: parseNumberFromName(item.name),
       }))
       .filter(x => x.number > 0)
@@ -76,10 +83,13 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
       console.log(`📤 Uploading to /units/${idStr}/images - File: ${file.name}, Type: ${file.type}, Size: ${file.size} bytes`);
       
       // Per documentation, upload expects raw image body with proper Content-Type
-      const res = await fetch(buildApiUrl(`units/${encodeURIComponent(idStr)}/images`), {
+      const res = await apiFetch(`units/${encodeURIComponent(idStr)}/images`, {
         method: 'POST',
+        cache: 'no-store',
         headers: {
           'Content-Type': file.type || 'application/octet-stream',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
         },
         body: file,
       });
@@ -134,8 +144,13 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(buildApiUrl(`units/${encodeURIComponent(idStr)}/images/${encodeURIComponent(img.name)}`), {
+      const res = await apiFetch(`units/${encodeURIComponent(idStr)}/images/${encodeURIComponent(img.name)}`, {
         method: 'DELETE',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
       });
       if (!res.ok) {
         const txt = await res.text();
@@ -170,8 +185,13 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(buildApiUrl(`units/${encodeURIComponent(idStr)}/images/${encodeURIComponent(oldName)}/rename/${encodeURIComponent(newName)}`), {
+      const res = await apiFetch(`units/${encodeURIComponent(idStr)}/images/${encodeURIComponent(oldName)}/rename/${encodeURIComponent(newName)}`, {
         method: 'PUT',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
       });
       if (!res.ok) {
         const txt = await res.text();
