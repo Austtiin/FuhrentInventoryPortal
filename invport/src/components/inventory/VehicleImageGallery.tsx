@@ -240,10 +240,8 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                 idx === i ? { ...s, status: 'success' as const } : s
               )
             );
-            // Small delay between successful uploads to prevent API overload
-            if (i < filesToUpload - 1) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
+            // API has confirmed upload completed - no artificial delay needed
+            // The API returns success only after the blob is written and assigned a number
           } else {
             failCount++;
             setUploadStatuses((prev: UploadStatus[]) => 

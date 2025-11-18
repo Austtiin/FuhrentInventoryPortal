@@ -85,9 +85,16 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
         const txt = await res.text();
         throw new Error(`Upload failed ${res.status}: ${txt}`);
       }
-      // Some implementations may not return a standard envelope; treat HTTP 2xx as success
-      // and refresh the list regardless of body shape.
-      await fetchImages();
+      
+      // Parse the success response to confirm upload completed
+      const result = await safeResponseJson<{ success: boolean; name: string; url: string }>(res);
+      if (!result || !result.success) {
+        throw new Error('Upload did not return success');
+      }
+      
+      console.log(`✅ Upload confirmed by API: ${result.name} at ${result.url}`);
+      
+      // No need to refresh immediately - let the caller handle batch refresh
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to upload image');
@@ -95,7 +102,7 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     } finally {
       setIsLoading(false);
     }
-  }, [idStr, fetchImages]);
+  }, [idStr]);
 
   const deleteImage = useCallback(async (imageNumber: number): Promise<boolean> => {
     if (!idStr) {
@@ -176,3 +183,4 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     refreshImages: fetchImages,
   };
 }
+
