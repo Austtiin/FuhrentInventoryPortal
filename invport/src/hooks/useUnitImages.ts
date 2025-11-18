@@ -39,9 +39,7 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(buildApiUrl(`units/${encodeURIComponent(idStr)}/images`), {
-        cache: 'no-store'
-      });
+      const response = await fetch(buildApiUrl(`units/${encodeURIComponent(idStr)}/images`));
       if (!response.ok) {
         const txt = await response.text();
         throw new Error(`List images failed ${response.status}: ${txt}`);

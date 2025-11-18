@@ -38,9 +38,7 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
     setError(null);
 
     try {
-      const response = await fetch(buildApiUrl(`images/${vin}?typeId=${typeId}`), {
-        cache: 'no-store'
-      });
+      const response = await fetch(buildApiUrl(`images/${vin}?typeId=${typeId}`));
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -109,8 +107,7 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
         const result = await safeResponseJson<GenericApiResponse>(response);
         
         if (result && result.success) {
-          // Refresh images list
-          await fetchImages();
+          // Don't refresh here - let caller refresh after all uploads complete
           return true;
         } else {
           setError(result?.error || 'Failed to upload image');

@@ -237,6 +237,10 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                 idx === i ? { ...s, status: 'success' as const } : s
               )
             );
+            // Small delay between successful uploads to prevent API overload
+            if (i < filesToUpload - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
           } else {
             failCount++;
             setUploadStatuses((prev: UploadStatus[]) => 
@@ -254,6 +258,11 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           );
           console.error(`Failed to upload ${file.name}:`, err);
         }
+      }
+      
+      // Refresh images list once after all uploads complete
+      if (successCount > 0) {
+        await api.refreshImages?.();
       }
       
       // Bust cache so images re-render with fresh URLs

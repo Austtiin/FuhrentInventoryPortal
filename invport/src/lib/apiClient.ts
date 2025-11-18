@@ -140,6 +140,7 @@ export function buildApiUrl(endpoint: string): string {
 
 /**
  * Fetch wrapper that automatically uses correct API base URL with retry logic
+ * Disables all caching for admin/dealer side to ensure fresh data
  * @param endpoint - API endpoint (e.g., '/GrabInventoryAll')
  * @param options - Fetch options with optional retry configuration
  * @returns Fetch response
@@ -157,13 +158,25 @@ export async function apiFetch(
   const maxRetries = options?.skipRetry ? 0 : (options?.maxRetries ?? DEFAULT_MAX_RETRIES);
   const retryDelay = options?.retryDelay ?? DEFAULT_RETRY_DELAY;
   
+  // Merge options with cache-busting headers
+  const fetchOptions: RequestInit = {
+    ...options,
+    cache: 'no-store', // Force no caching
+    headers: {
+      ...options?.headers,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  };
+  
   // Parse request body if present (safely)
   let requestBody: unknown = undefined;
-  if (options?.body) {
-    if (typeof options.body === 'string') {
-      requestBody = safeJsonParse(options.body, options.body);
+  if (fetchOptions?.body) {
+    if (typeof fetchOptions.body === 'string') {
+      requestBody = safeJsonParse(fetchOptions.body, fetchOptions.body);
     } else {
-      requestBody = options.body;
+      requestBody = fetchOptions.body;
     }
   }
   
@@ -179,13 +192,14 @@ export async function apiFetch(
         console.log(`🔄 [API Fetch] Attempt ${attempt + 1}/${maxRetries + 1}:`, {
           url,
           method,
-          headers: options?.headers,
-          hasBody: !!options?.body,
+          headers: fetchOptions?.headers,
+          hasBody: !!fetchOptions?.body,
+          cache: fetchOptions?.cache,
         });
       }
       
       const startTime = performance.now();
-      const response = await fetch(url, options);
+      const response = await fetch(url, fetchOptions);
       const duration = Math.round(performance.now() - startTime);
       
       if (DEBUG_ENABLED) {

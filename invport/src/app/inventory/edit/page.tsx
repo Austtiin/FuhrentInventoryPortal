@@ -248,7 +248,7 @@ function EditInventoryPageContent() {
     setIsLoading(true);
     setLoadError('');
     try {
-      const res = await apiFetch(`/vehicles/${unitId}`, { cache: 'no-store' });
+      const res = await apiFetch(`/vehicles/${unitId}`);
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(`Failed to load vehicle: ${res.status} ${txt}`);
@@ -629,6 +629,10 @@ function EditInventoryPageContent() {
           router.push('/inventory');
         },
       });
+    } else {
+      // No unsaved changes, navigate immediately
+      e.preventDefault();
+      router.push('/inventory');
     }
   };
 
@@ -698,9 +702,11 @@ function EditInventoryPageContent() {
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button 
               onClick={handleNavigateBack}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors shrink-0 border-none bg-transparent cursor-pointer"
+              type="button"
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors shrink-0 border-none bg-transparent cursor-pointer touch-manipulation p-2 -ml-2"
             >
-              <ArrowLeftIcon className="w-5 h-5" /> Back to Inventory
+              <ArrowLeftIcon className="w-5 h-5" /> 
+              <span className="whitespace-nowrap">Back to Inventory</span>
             </button>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate" title={`${vehicle?.Year ?? ''} ${vehicle?.Make ?? ''} ${vehicle?.Model ?? ''}`}>
               Edit {vehicle?.Year} {vehicle?.Make} {vehicle?.Model}
@@ -714,14 +720,16 @@ function EditInventoryPageContent() {
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
               onClick={() => fetchVehicle(unitId)}
-              className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200"
+              type="button"
+              className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 touch-manipulation"
             >
               <ArrowPathIcon className="w-5 h-5" /> Refresh
             </button>
             <button
               onClick={saveVehicle}
+              type="button"
               disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
-              className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
             >
               <CheckIcon className="w-4 h-4" />
               {isSaving || isSavingFeatures ? 'Saving...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'Saved'}
@@ -738,7 +746,7 @@ function EditInventoryPageContent() {
                 type="button"
                 onClick={() => confirmStatus('available', 'Available', 'success')}
                 disabled={isSaving || status === 'available'}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 touch-manipulation"
               >
                 <CheckIcon className="w-4 h-4" /> Mark Available
               </button>
@@ -746,7 +754,7 @@ function EditInventoryPageContent() {
                 type="button"
                 onClick={() => confirmStatus('pending', 'Pending', 'warning')}
                 disabled={isSaving || status === 'pending'}
-                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 touch-manipulation"
               >
                 <CheckIcon className="w-4 h-4" /> Mark Pending
               </button>
@@ -754,7 +762,7 @@ function EditInventoryPageContent() {
                 type="button"
                 onClick={() => confirmStatus('sold', 'Sold', 'primary')}
                 disabled={isSaving || status === 'sold'}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 touch-manipulation"
               >
                 <CheckIcon className="w-4 h-4" /> Mark Sold
               </button>
@@ -762,7 +770,7 @@ function EditInventoryPageContent() {
                 type="button"
                 onClick={confirmDelete}
                 disabled={isDeleting || isSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 touch-manipulation"
               >
                 <TrashIcon className="w-4 h-4" /> {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
@@ -1150,8 +1158,9 @@ function EditInventoryPageContent() {
         <div className="flex justify-end">
           <button
             onClick={saveVehicle}
+            type="button"
             disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
-            className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
           >
             <CheckIcon className="w-5 h-5" />
             {isSaving || isSavingFeatures ? 'Saving Changes...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'All Changes Saved'}
