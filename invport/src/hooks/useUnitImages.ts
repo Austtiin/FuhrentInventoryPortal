@@ -73,6 +73,8 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     setIsLoading(true);
     setError(null);
     try {
+      console.log(`📤 Uploading to /units/${idStr}/images - File: ${file.name}, Type: ${file.type}, Size: ${file.size} bytes`);
+      
       // Per documentation, upload expects raw image body with proper Content-Type
       const res = await fetch(buildApiUrl(`units/${encodeURIComponent(idStr)}/images`), {
         method: 'POST',
@@ -81,13 +83,23 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
         },
         body: file,
       });
+      
+      console.log(`📡 Response status: ${res.status} ${res.statusText}`);
+      
       if (!res.ok) {
         const txt = await res.text();
+        console.error(`❌ Upload failed with status ${res.status}:`, txt);
         throw new Error(`Upload failed ${res.status}: ${txt}`);
       }
       
       // Parse the success response to confirm upload completed
-      const result = await safeResponseJson<{ success: boolean; name: string; url: string }>(res);
+      const result = await safeResponseJson<{ success: boolean; name: string; url: string; error?: boolean; message?: string }>(res);
+      console.log('📦 API Response:', result);
+      
+      if (result?.error) {
+        throw new Error(result.message || 'Upload returned error');
+      }
+      
       if (!result || !result.success) {
         throw new Error('Upload did not return success');
       }
@@ -97,7 +109,9 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
       // No need to refresh immediately - let the caller handle batch refresh
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to upload image');
+      const errorMsg = e instanceof Error ? e.message : 'Failed to upload image';
+      console.error('❌ Upload error:', errorMsg, e);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
