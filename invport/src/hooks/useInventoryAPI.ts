@@ -324,18 +324,43 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
   const filteredVehicles = useMemo(() => {
     let filtered = [...vehicles];
 
-    // Apply search filter - improved to search more fields
+    // Apply search filter - comprehensive multi-field search
     if (filters.search) {
       const searchLower = filters.search.toLowerCase().trim();
-      filtered = filtered.filter(vehicle => 
-        vehicle.vin?.toLowerCase().includes(searchLower) ||
-        vehicle.make?.toLowerCase().includes(searchLower) ||
-        vehicle.model?.toLowerCase().includes(searchLower) ||
-        vehicle.year?.toString().includes(searchLower) ||
-        vehicle.stock?.toLowerCase().includes(searchLower) ||
-        vehicle.name?.toLowerCase().includes(searchLower) ||
-        `${vehicle.year} ${vehicle.make} ${vehicle.model}`.toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter(vehicle => {
+        // Search across all relevant text fields
+        const searchableFields = [
+          vehicle.vin,
+          vehicle.stock,
+          vehicle.make,
+          vehicle.model,
+          vehicle.name,
+          vehicle.color,
+          vehicle.extColor,
+          vehicle.intColor,
+          vehicle.bodyStyle,
+          vehicle.engine,
+          vehicle.drivetrain,
+          vehicle.condition,
+          vehicle.description,
+          vehicle.year?.toString(),
+          vehicle.mileage?.toString(),
+          vehicle.price?.toString(),
+          vehicle.status,
+          vehicle.location,
+          vehicle.dealer,
+          // Combined fields for better matching
+          `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+          `${vehicle.make} ${vehicle.model}`.trim(),
+          // Stock number with and without # prefix
+          `#${vehicle.stock}`,
+        ].filter(Boolean); // Remove null/undefined values
+
+        // Check if search term matches any field
+        return searchableFields.some(field => 
+          field?.toString().toLowerCase().includes(searchLower)
+        );
+      });
     }
 
     // Apply status filter

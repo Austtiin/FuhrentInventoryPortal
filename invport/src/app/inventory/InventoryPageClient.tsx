@@ -145,7 +145,7 @@ function InventoryPageClientInner() {
             <TextField
               fullWidth
               label="Search Inventory"
-              placeholder="Search by VIN, year, make, model, stock..."
+              placeholder="Search by VIN, stock #, year, make, model, color, trim, price..."
               value={filters.search}
               onChange={(e) => setFilters({ search: e.target.value })}
               variant="outlined"

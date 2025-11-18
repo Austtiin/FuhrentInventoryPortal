@@ -214,6 +214,9 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
     }));
     setUploadStatuses(statuses);
 
+    let successCount = 0;
+    let failCount = 0;
+
     try {
       for (let i = 0; i < filesToUpload; i++) {
         const file = validFiles[i];
@@ -224,28 +227,55 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           )
         );
         
-  const success = await uploadImage(file);
-        
-        setUploadStatuses((prev: UploadStatus[]) => 
-          prev.map((s, idx) => 
-            idx === i 
-              ? { ...s, status: success ? 'success' as const : 'error' as const, error: success ? undefined : 'Upload failed' }
-              : s
-          )
-        );
-       }
+        try {
+          const success = await uploadImage(file);
+          
+          if (success) {
+            successCount++;
+            setUploadStatuses((prev: UploadStatus[]) => 
+              prev.map((s, idx) => 
+                idx === i ? { ...s, status: 'success' as const } : s
+              )
+            );
+          } else {
+            failCount++;
+            setUploadStatuses((prev: UploadStatus[]) => 
+              prev.map((s, idx) => 
+                idx === i ? { ...s, status: 'error' as const, error: 'Upload failed' } : s
+              )
+            );
+          }
+        } catch (err) {
+          failCount++;
+          setUploadStatuses((prev: UploadStatus[]) => 
+            prev.map((s, idx) => 
+              idx === i ? { ...s, status: 'error' as const, error: err instanceof Error ? err.message : 'Upload failed' } : s
+            )
+          );
+          console.error(`Failed to upload ${file.name}:`, err);
+        }
+      }
       
       // Bust cache so images re-render with fresh URLs
       setCacheBuster((b) => b + 1);
-      // Show success notification
+      
+      // Show appropriate notification
       if (onNotification) {
-        onNotification('success', 'Upload Complete', `Successfully uploaded ${filesToUpload} image${filesToUpload > 1 ? 's' : ''}`);
+        if (successCount > 0 && failCount === 0) {
+          onNotification('success', 'Upload Complete', `Successfully uploaded ${successCount} image${successCount > 1 ? 's' : ''}`);
+        } else if (successCount > 0 && failCount > 0) {
+          onNotification('warning', 'Partial Upload', `Uploaded ${successCount} image${successCount > 1 ? 's' : ''}, ${failCount} failed`);
+        } else if (failCount > 0) {
+          onNotification('error', 'Upload Failed', `Failed to upload ${failCount} image${failCount > 1 ? 's' : ''}`);
+        }
       }
-    } catch {
-      if (onNotification) onNotification('error', 'Upload Failed', 'Failed to upload images. Please try again.');
+    } catch (err) {
+      console.error('Upload process error:', err);
+      if (onNotification) onNotification('error', 'Upload Failed', 'An error occurred during upload. Please try again.');
     } finally {
       setIsUploading(false);
-      setUploadStatuses([]);
+      // Keep statuses visible for 3 seconds before clearing
+      setTimeout(() => setUploadStatuses([]), 3000);
       event.target.value = '';
     }
   };

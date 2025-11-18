@@ -73,7 +73,7 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
     fetchImages();
   }, [fetchImages]);
 
-  // Upload a new image
+  // Upload a new image with timeout handling
   const uploadImage = useCallback(async (file: File): Promise<boolean> => {
     if (!vin) {
       setError('VIN is required to upload images');
@@ -88,25 +88,40 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
       formData.append('file', file);
       formData.append('typeId', typeId.toString());
 
-      const response = await fetch(buildApiUrl(`images/${vin}`), {
-        method: 'POST',
-        body: formData,
-      });
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout per image
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
-      }
+      try {
+        const response = await fetch(buildApiUrl(`images/${vin}`), {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
 
-      const result = await safeResponseJson<GenericApiResponse>(response);
-      
-      if (result && result.success) {
-        // Refresh images list
-        await fetchImages();
-        return true;
-      } else {
-        setError(result?.error || 'Failed to upload image');
-        return false;
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+        }
+
+        const result = await safeResponseJson<GenericApiResponse>(response);
+        
+        if (result && result.success) {
+          // Refresh images list
+          await fetchImages();
+          return true;
+        } else {
+          setError(result?.error || 'Failed to upload image');
+          return false;
+        }
+      } catch (fetchErr) {
+        clearTimeout(timeoutId);
+        if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+          throw new Error('Upload timed out. Please try uploading fewer images at once.');
+        }
+        throw fetchErr;
       }
     } catch (err) {
       console.error('Error uploading image:', err);

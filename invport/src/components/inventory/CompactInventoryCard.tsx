@@ -111,8 +111,7 @@ export default function CompactInventoryCard({
   return (
   <Card 
     sx={{ 
-      maxWidth: { xs: 320, lg: 'none' },
-      mx: { xs: 'auto', lg: 0 },
+      width: '100%',
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
