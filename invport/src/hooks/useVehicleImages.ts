@@ -38,7 +38,12 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
     setError(null);
 
     try {
-      const response = await fetch(buildApiUrl(`images/${vin}?typeId=${typeId}`));
+      const response = await fetch(buildApiUrl(`images/${vin}?typeId=${typeId}`), {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -95,6 +100,10 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
           method: 'POST',
           body: formData,
           signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+          },
         });
 
         clearTimeout(timeoutId);
@@ -142,6 +151,10 @@ export function useVehicleImages(vin: string | undefined, typeId: number): UseVe
     try {
       const response = await fetch(buildApiUrl(`images/${vin}?imageNumber=${imageNumber}&typeId=${typeId}`), {
         method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
       });
 
       if (!response.ok) {

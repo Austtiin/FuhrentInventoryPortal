@@ -30,7 +30,7 @@ interface VehicleImageGalleryProps {
 
 interface UploadStatus {
   filename: string;
-  status: 'uploading' | 'success' | 'error';
+  status: 'pending' | 'uploading' | 'success' | 'error';
   error?: string;
 }
 
@@ -210,7 +210,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
     setIsUploading(true);
     const statuses: UploadStatus[] = validFiles.slice(0, filesToUpload).map(f => ({
       filename: f.name,
-      status: 'uploading' as const
+      status: 'pending' as const
     }));
     setUploadStatuses(statuses);
 
@@ -221,6 +221,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
       for (let i = 0; i < filesToUpload; i++) {
         const file = validFiles[i];
         
+        // Mark current file as uploading
         setUploadStatuses((prev: UploadStatus[]) => 
           prev.map((s, idx) => 
             idx === i ? { ...s, status: 'uploading' as const } : s
@@ -228,7 +229,9 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
         );
         
         try {
+          console.log(`📤 Starting upload ${i + 1}/${filesToUpload}: ${file.name}`);
           const success = await uploadImage(file);
+          console.log(`${success ? '✅' : '❌'} Upload ${i + 1}/${filesToUpload} ${success ? 'succeeded' : 'failed'}: ${file.name}`);
           
           if (success) {
             successCount++;
@@ -251,12 +254,13 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           }
         } catch (err) {
           failCount++;
+          const errorMsg = err instanceof Error ? err.message : 'Upload failed';
+          console.error(`❌ Upload error ${i + 1}/${filesToUpload} for ${file.name}:`, errorMsg);
           setUploadStatuses((prev: UploadStatus[]) => 
             prev.map((s, idx) => 
-              idx === i ? { ...s, status: 'error' as const, error: err instanceof Error ? err.message : 'Upload failed' } : s
+              idx === i ? { ...s, status: 'error' as const, error: errorMsg } : s
             )
           );
-          console.error(`Failed to upload ${file.name}:`, err);
         }
       }
       
@@ -547,6 +551,9 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   <div key={`upload-${status.filename}-${idx}`} className="flex items-center justify-between text-sm px-2">
                     <span className="truncate flex-1 text-left">{status.filename}</span>
                     <span className="ml-2">
+                      {status.status === 'pending' && (
+                        <div className="w-4 h-4 rounded-full bg-gray-300"></div>
+                      )}
                       {status.status === 'uploading' && (
                         <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                       )}
