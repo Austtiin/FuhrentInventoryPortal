@@ -26,7 +26,7 @@ function InventoryPageClientInner() {
   const router = useRouter();
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
   
   const { 
     vehicles,
@@ -304,7 +304,7 @@ function InventoryPageClientInner() {
                 variant="contained"
                 onClick={() => setCurrentPage((p) => p + 1)}
               >
-                Show 10 more
+                Show 5 more
               </Button>
             </Box>
           )}

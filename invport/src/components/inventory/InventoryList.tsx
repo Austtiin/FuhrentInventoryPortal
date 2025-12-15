@@ -36,7 +36,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
 
   // Local pagination & state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Show ~10 items initially
+  const itemsPerPage = 5; // Show ~5 items initially
 
   const totalItems = filteredVehicles.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -78,7 +78,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
             onClick={() => setCurrentPage(currentPage + 1)}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
           >
-            Show 10 more
+            Show 5 more
           </button>
         </div>
       )}
@@ -159,7 +159,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
             onClick={() => setCurrentPage(currentPage + 1)}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
           >
-            Show 10 more
+            Show 5 more
           </button>
         </div>
       )}

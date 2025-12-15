@@ -399,18 +399,7 @@ function EditInventoryPageContent() {
 
   // Handle form field changes
   const handleFieldChange = (field: keyof VehicleFormData, value: string | number | undefined) => {
-    // Validate Size and Width categories based on make
-    if ((field === 'SizeCategory' || field === 'WidthCategory' || field === 'Make') && typeof value === 'string') {
-      const currentMake = field === 'Make' ? value : (formData.Make || '');
-      const currentLength = field === 'SizeCategory' ? value : (formData.SizeCategory || '');
-      const currentWidth = field === 'WidthCategory' ? value : (formData.WidthCategory || '');
-      
-      const validation = validateDimensions(currentMake, currentLength, currentWidth);
-      if (!validation.valid && validation.error) {
-        error('Invalid Input', validation.error);
-        return; // Don't update the field if validation fails
-      }
-    }
+    // Do not block typing with validations; validation happens on save.
 
     // Apply appropriate text formatting based on field
     let processedValue = value;

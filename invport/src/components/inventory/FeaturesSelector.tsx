@@ -15,59 +15,76 @@ interface FeaturesSelectorProps {
   title?: string;
   lazy?: boolean; // if true, don't fetch until expanded/visible
   className?: string;
-  defaultOpen?: boolean;
-  categoryConfig?: FeatureCategoryConfig[];
-  small?: boolean;
-}
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-base font-semibold text-gray-900">Unit Features</h3>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-gray-300 hover:bg-gray-50"
+          onClick={() => setIsOpen((v) => !v)}
+        >
+          {isOpen ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      {isOpen && (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <button
+              type="button"
+              className="text-xs text-blue-600 hover:text-blue-700"
+              onClick={loadFeatures}
+            >
+              Reload feature categories
+            </button>
+            <span className="text-xs text-gray-500">Selected: {selected.size}</span>
+          </div>
 
-export default function FeaturesSelector({ selected, onChange, title = 'Features', lazy = true, className = '', defaultOpen, categoryConfig, small = true }: FeaturesSelectorProps) {
-  const [isOpen, setIsOpen] = useState(!!defaultOpen);
-  const [features, setFeatures] = useState<FeatureOption[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const categories = categoryConfig ?? FEATURE_CATEGORIES;
+          <div className="space-y-4">
+            {categories.map((cat) => (
+              <div
+                key={cat.id}
+                className="rounded-lg border border-gray-200 bg-white shadow-sm"
+              >
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-3 py-2"
+                  onClick={() => toggleCategory(cat.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {cat.name}
+                    </span>
+                    <span className="text-[11px] text-gray-500">{cat.features.length} features</span>
+                  </div>
+                  <span className="text-gray-500 text-xs">{expanded.has(cat.id) ? 'Collapse' : 'Expand'}</span>
+                </button>
 
-  const loadFeatures = useCallback(async () => {
-    if (hasLoaded) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await apiFetch('/features');
-      const text = await res.text();
-      let list: FeatureOption[] = [];
-      try {
-        const parsed = JSON.parse(text) as unknown;
-        if (Array.isArray(parsed)) {
-          list = (parsed as Array<Record<string, unknown>>)
-            .map((f) => ({
-              FeatureID: Number((f['FeatureID'] ?? f['featureId'] ?? f['id']) as number | string | undefined) || 0,
-              FeatureName: String((f['FeatureName'] ?? f['featureName'] ?? f['name']) as string | undefined || ''),
-            }))
-            .filter((f) => f.FeatureID && f.FeatureName);
-        }
-      } catch (e) {
-        console.warn('Features parse failed:', e, text?.slice(0, 200));
-      }
-      setFeatures(list);
-      setHasLoaded(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load features');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [hasLoaded]);
-
-  // Optional: auto-load when first expanded
-  useEffect(() => {
-    if (!lazy) return;
-    if (isOpen && !hasLoaded) loadFeatures();
-  }, [isOpen, hasLoaded, lazy, loadFeatures]);
-
-  // Optional: intersection observer to lazy fetch when visible
-  useEffect(() => {
-    if (!lazy || hasLoaded) return;
+                {expanded.has(cat.id) && (
+                  <div className="px-3 pb-3">
+                    <div className="my-2 h-px bg-gray-100" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {cat.features.map((f) => (
+                        <button
+                          key={f.FeatureID}
+                          type="button"
+                          className={`text-xs px-2 py-1 rounded-md border transition-colors ${selected.has(f.FeatureID) ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100' : 'bg-white border-gray-300 text-gray-800 hover:border-blue-400 hover:bg-blue-50'}`}
+                          onClick={() => toggle(f.FeatureID)}
+                          title={f.FeatureName}
+                        >
+                          {f.FeatureName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
     const el = containerRef.current;
     if (!el) return;
     const obs = new IntersectionObserver((entries) => {
