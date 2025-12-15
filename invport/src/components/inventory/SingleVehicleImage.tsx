@@ -23,6 +23,7 @@ interface SingleVehicleImageProps {
   unitId?: string | number;
   className?: string;
   lazy?: boolean;
+  onClickImage?: () => void; // Optional image click override (e.g., navigate to edit)
 }
 
 export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({ 
@@ -30,7 +31,8 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
   typeId, 
   unitId,
   className = '',
-  lazy = true
+  lazy = true,
+  onClickImage
 }) => {
   const [firstImage, setFirstImage] = useState<VehicleImage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +146,13 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
             alt={`Vehicle image ${firstImage.number}`}
             fill
             className="object-cover hover:scale-105 transition-transform duration-200"
-            onClick={() => setSelectedImage(firstImage)}
+            onClick={() => {
+              if (onClickImage) {
+                onClickImage();
+              } else {
+                setSelectedImage(firstImage);
+              }
+            }}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         )}
@@ -158,8 +166,8 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
         )}
       </div>
 
-      {/* Fullscreen Modal */}
-      {selectedImage && typeof window !== 'undefined' && createPortal(
+      {/* Fullscreen Modal (only if no onClick override provided) */}
+      {!onClickImage && selectedImage && typeof window !== 'undefined' && createPortal(
         <div 
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}

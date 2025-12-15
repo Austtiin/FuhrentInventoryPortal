@@ -25,6 +25,8 @@ import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
 function InventoryPageClientInner() {
   const router = useRouter();
   const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   const { 
     vehicles,
@@ -125,7 +127,9 @@ function InventoryPageClientInner() {
               Unit Inventory
             </Typography>
             <Typography variant="body1" color="text.primary">
-              {isLoading ? 'Loading...' : `${filteredVehicles.length} vehicles`}
+              {isLoading
+                ? 'Loading...'
+                : `${Math.min(currentPage * itemsPerPage, filteredVehicles.length)} of ${filteredVehicles.length} vehicles`}
             </Typography>
           </Box>
           <Button 
@@ -248,7 +252,7 @@ function InventoryPageClientInner() {
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
               gap: 2 
             }}>
-              {filteredVehicles.map((vehicle) => (
+              {filteredVehicles.slice(0, currentPage * itemsPerPage).map((vehicle) => (
                 <CompactInventoryCard
                   key={vehicle.id}
                   item={vehicle}
@@ -290,6 +294,17 @@ function InventoryPageClientInner() {
                 sx={{ mt: 2 }}
               >
                 Refresh Inventory
+              </Button>
+            </Box>
+          )}
+          {/* Load More */}
+          {!isLoading && filteredVehicles.length > currentPage * itemsPerPage && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <Button
+                variant="contained"
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Show 10 more
               </Button>
             </Box>
           )}

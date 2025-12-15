@@ -131,6 +131,7 @@ export default function CompactInventoryCard({
             unitId={item.unitId ?? (Number.isFinite(Number(item.id)) ? Number(item.id) : undefined)}
             className="w-full h-full"
             lazy={true}
+            onClickImage={() => onEdit(item)}
           />
         ) : (
           <Box sx={{ 
