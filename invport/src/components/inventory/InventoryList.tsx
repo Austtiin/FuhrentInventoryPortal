@@ -36,7 +36,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
 
   // Local pagination & state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 10; // Show ~10 items initially
 
   const totalItems = filteredVehicles.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -71,49 +71,14 @@ const InventoryContent: React.FC<InventoryListProps> = ({
         </div>
       </div>
 
-      {/* Pagination Controls - Top */}
-      {totalPages > 1 && (
-        <div className="mb-6 flex items-center justify-center space-x-2">
-          <button
-            onClick={() => setCurrentPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-
-          {Array.from({ length: totalPages }, (_, index) => {
-            const page = index + 1;
-            if (page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)) {
-              return (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-2 text-sm font-medium rounded-md ${
-                    currentPage === page
-                      ? 'text-white bg-blue-600 hover:bg-blue-700'
-                      : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            } else if (page === currentPage - 3 || page === currentPage + 3) {
-              return (
-                <span key={page} className="px-3 py-2 text-sm text-gray-500">
-                  ...
-                </span>
-              );
-            }
-            return null;
-          })}
-
+      {/* Load More - Top */}
+      {endIndex < totalItems && (
+        <div className="mb-6 flex items-center justify-center">
           <button
             onClick={() => setCurrentPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
           >
-            Next
+            Show 10 more
           </button>
         </div>
       )}
@@ -187,49 +152,14 @@ const InventoryContent: React.FC<InventoryListProps> = ({
         )}
       </div>
 
-      {/* Pagination Controls - Bottom */}
-      {totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-center space-x-2">
-          <button
-            onClick={() => setCurrentPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-
-          {Array.from({ length: totalPages }, (_, index) => {
-            const page = index + 1;
-            if (page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2)) {
-              return (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-2 text-sm font-medium rounded-md ${
-                    currentPage === page
-                      ? 'text-white bg-blue-600 hover:bg-blue-700'
-                      : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            } else if (page === currentPage - 3 || page === currentPage + 3) {
-              return (
-                <span key={page} className="px-3 py-2 text-sm text-gray-500">
-                  ...
-                </span>
-              );
-            }
-            return null;
-          })}
-
+      {/* Load More - Bottom */}
+      {endIndex < totalItems && (
+        <div className="mt-8 flex items-center justify-center">
           <button
             onClick={() => setCurrentPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
           >
-            Next
+            Show 10 more
           </button>
         </div>
       )}

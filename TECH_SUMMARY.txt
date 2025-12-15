@@ -1,0 +1,82 @@
+FuhrentInventoryPortal — Executive Technical Summary
+
+Overview
+- Stack: Next.js 16 (React 19) frontend in invport/, Azure Functions backend in api/, TailwindCSS and Heroicons for UI.
+- Pattern: Client-first, REST-like API via apiFetch and custom SWR hooks. Clear separation of UI components, hooks, lib utilities, and constants.
+- Hosting/Configs: Static Web Apps (SWA) routing and proxy via staticwebapp.config.json; multiple Next configs for static/proxy modes.
+
+Frontend (invport/)
+- App Router structure under src/app with feature-focused routes: inventory, reports, settings, users.
+- Components: Reusable layout (Header, Sidebar, Breadcrumb, Footer), inventory cards, VehicleImageGallery, FeaturesSelector, modals, UI widgets.
+- Inventory flows: List → view → edit/add with status actions (available/pending/sold), delete, image gallery management, feature selection.
+- UX protections: Confirm dialogs for destructive actions; unsaved changes prompts (header badge, beforeunload, Back-to-Inventory confirmation).
+- Responsiveness: Tailwind, mobile-aware defaults (e.g., collapsible sections default closed).
+
+Data, Types & Constants
+- Types: src/types/* define core shapes for vehicles and API responses.
+- Constants: inventory.ts (colors, status options), features.ts (feature categories and grouping).
+- Normalization: Make → Title Case, Model → capitalize first letter, VIN/StockNo → uppercase; Status normalized to lowercase.
+- Payload mapping: UI sends camelCase while including uppercase aliases (e.g., msrp + MSRP) for DB/API compatibility; bridges typeId vs TypeID.
+
+Images
+- VehicleImageGallery: Editable VIN-based gallery with drag/reorder, progress bar, badges (Okay/Good/Great), 30-image cap.
+- Storage: blobStorage.ts abstracts Azure Blob Storage; ensureVinFolder function maintains folder structure.
+- Hooks: useUnitImages and useVehicleImages* provide SWR-driven image lists and updates.
+
+Backend (api/)
+- Azure Functions: Organized by feature (inventory, images, GrabInventoryAll, ensureVinFolder) with function.json and host.json.
+- Endpoints: 
+  - Vehicles: GET/PUT /vehicles/:id, DELETE /vehicles/delete/:id
+  - Status: POST /SetStatus/:unitId
+  - VIN Lookup: GET /checkvin/:vin
+  - Features: GET/PUT /units/:unitId/features
+  - Images: VIN-oriented endpoints consumed by gallery/hooks
+- Shared DB access: shared/database.js centralizes queries and connectivity.
+
+Hooks, Caching & Performance
+- SWR hooks: useSWR.ts, useInventorySWR.ts, useDashboardSWR.ts for client caching and revalidation.
+- Rate limiting: rateLimiter.ts throttles client-side requests.
+- Cached APIs: cachedApi.ts, dealership cache utilities for snapshotting and status checks.
+
+Error Handling & Notifications
+- Global handler: globalErrorHandler.ts for client-wide error capture.
+- UI boundaries: ErrorBoundary components around key pages.
+- Notifications: Unified container with success/error/warning; de-duplication for frequent actions (e.g., image moved).
+
+Auth
+- AuthContext: Central client-side session; useAuth hook; ProtectedRoute for guarded content.
+- Config validation: npm script validate-auth references lib/auth/config.ts (further wiring may be needed).
+
+Build & Deploy
+- Scripts: dev (Turbopack), build, build:static, start, lint; engines require Node >=20, npm >=10.
+- SWA config: staticwebapp.config.json handles routes, proxies, and possibly auth/static assets.
+- Multiple Next configs: next.config.ts, next.config.static.ts, next.config.with-proxy.ts for flexible environments.
+
+Key Conventions & Patterns
+- Case normalization and status lowercase for consistent API interactions.
+- Feature selection with lazy loading and grouped categories; small toggle chips with keyboard support.
+- Confirm dialogs and warnings for destructive or lossy actions; responsive collapsible sections.
+
+Strengths
+- Clear separation of concerns and modular components.
+- User-friendly inventory management with robust image/feature/status flows.
+- Thoughtful normalization reduces backend mismatch; payload mapping supports mixed casing.
+- Modern UI with responsive design and reusable building blocks.
+
+Risks & Recommendations
+- Type safety: Expand TypeScript strictness across API layers and lib utilities; reduce Record<string, unknown> usage.
+- Validation: Add server-side validation for numeric fields (SizeCategory, WidthCategory), statuses, and price/MSRP.
+- Schema cohesion: Align API/DB casing to avoid dual-key payloads (MSRP/msrp) and simplify transforms.
+- Testing: Add unit/integration tests for hooks (inventory/images/features) and lib/apiClient; mock function APIs.
+- Error handling: Standardize error response shapes; centralize safe parsing (`safeResponseJson`) usage.
+- Performance: Audit SWR revalidation, batch feature updates, optimize image fetching/lazy-loading.
+- Auth & middleware: Wire server-side protection where feasible; complete validate-auth integration and include .env guidance.
+- Accessibility: Verify ARIA/keyboard behavior for accordions and feature toggles; ensure color-contrast.
+- Documentation: Enhance API-DOCUMENTATION.md; add operational runbook, environment setup, and deployment steps.
+- DevEx: Add comprehensive README with setup/scripts/deploy; include sample .env and local proxy guidance.
+
+Try Next Steps
+- Add README.md with environment setup and deployment instructions.
+- Create ADR on API/DB casing standards and client payload mapping.
+- Implement Azure Function validation for Size/Width categories.
+- Add tests for FeaturesSelector and apiClient to stabilize feature workflows.

@@ -43,6 +43,27 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      {/* Register service worker and refresh blob image cache on page load */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+              window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                  .then(() => navigator.serviceWorker.ready)
+                  .then((reg) => {
+                    // On full page load, request SW to clear image cache
+                    // so subsequent image requests fetch fresh copies.
+                    if (reg && reg.active) {
+                      reg.active.postMessage({ type: 'refresh-images' });
+                    }
+                  })
+                  .catch(() => {});
+              });
+            }
+          `,
+        }}
+      />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground font-sans`}
       >

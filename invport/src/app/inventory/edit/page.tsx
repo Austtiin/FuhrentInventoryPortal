@@ -211,6 +211,19 @@ function EditInventoryPageContent() {
     return vehicle.TypeID === 1 ? 'FishHouse' : vehicle.TypeID === 3 ? 'Trailer' : 'Vehicle';
   }, [vehicle?.TypeID]);
 
+        // Unit-type specific validations
+        const isFishHouse = (formData.TypeID ?? vehicle?.TypeID ?? 0) === 1;
+        if (isFishHouse) {
+          const width = (formData.WidthCategory ?? '').toString().trim();
+          const size = (formData.SizeCategory ?? '').toString().trim();
+          if (!width || !/^\d+$/.test(width)) {
+            throw new Error('Width is required and must be a whole number for Ice Castle Fish Houses.');
+          }
+          // Require length with V or S suffix, e.g., 16V or 17S
+          if (!size || !/^\d+\s*[VS]$/i.test(size)) {
+            throw new Error('Length is required and must include V or S (e.g., 16V or 17S) for Ice Castle Fish Houses.');
+          }
+        }
   const typeId = useMemo(() => (itemType === 'FishHouse' ? 1 : itemType === 'Trailer' ? 3 : 2), [itemType]);
   const categoryOptions = useMemo(() => itemType === 'Vehicle' ? VEHICLE_CATEGORY_OPTIONS : BASE_CATEGORY_OPTIONS, [itemType]);
 
