@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/apiClient';
-import { FEATURE_CATEGORIES, detectFeatureCategory } from '@/constants/features';
+import { FEATURE_CATEGORIES, detectFeatureCategory, FeatureCategoryConfig } from '@/constants/features';
 
 export interface FeatureOption {
   FeatureID: number;
@@ -15,16 +15,19 @@ interface FeaturesSelectorProps {
   title?: string;
   lazy?: boolean;
   className?: string;
+  defaultOpen?: boolean;
+  small?: boolean;
+  categoryConfig?: FeatureCategoryConfig[];
 }
 
-export default function FeaturesSelector({ selected, onChange, title = 'Unit Features', lazy = false, className = '' }: FeaturesSelectorProps) {
-  const [isOpen, setIsOpen] = useState(true);
+export default function FeaturesSelector({ selected, onChange, title = 'Unit Features', lazy = false, className = '', defaultOpen = true, small = false, categoryConfig }: FeaturesSelectorProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [features, setFeatures] = useState<FeatureOption[]>([]);
-  const categories = FEATURE_CATEGORIES;
+  const categories = categoryConfig ?? FEATURE_CATEGORIES;
 
   const loadFeatures = useCallback(async () => {
     try {
@@ -119,7 +122,7 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
                   </div>
                   <div className="px-3 pb-3">
                     <div className="my-2 h-px bg-gray-100" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${small ? 'gap-1' : 'gap-2'}`}>
                       {(grouped.by[cat] || []).map((f) => {
                         const active = selected.includes(f.FeatureID);
                         return (
@@ -135,24 +138,24 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
                               }
                             }}
                             aria-pressed={active}
-                            className={`cursor-pointer flex items-center justify-between gap-2 p-3 rounded-md border transition-colors ${
+                            className={`cursor-pointer flex items-center justify-between gap-2 ${small ? 'p-2' : 'p-3'} rounded-md border transition-colors ${
                               active ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-gray-300'
                             }`}
                           >
-                            <span className={`truncate text-sm font-medium text-gray-900`} title={f.FeatureName}>
+                            <span className={`truncate ${small ? 'text-xs' : 'text-sm'} font-medium text-gray-900`} title={f.FeatureName}>
                               {f.FeatureName}
                             </span>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); toggle(f.FeatureID); }}
                               aria-pressed={active}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                              className={`relative inline-flex ${small ? 'h-5 w-9' : 'h-6 w-11'} items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                                 active ? 'bg-blue-600' : 'bg-gray-300'
                               }`}
                             >
                               <span
-                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                                  active ? 'translate-x-5' : 'translate-x-1'
+                                className={`inline-block ${small ? 'h-4 w-4' : 'h-5 w-5'} transform rounded-full bg-white shadow transition-transform duration-200 ${
+                                  active ? (small ? 'translate-x-4' : 'translate-x-5') : (small ? 'translate-x-1' : 'translate-x-1')
                                 }`}
                               />
                             </button>
