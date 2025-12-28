@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Silence Turbopack/webpack mixed config warning in Next 16
+  turbopack: {},
   // Skip API routes during static generation
   generateBuildId: async () => {
     // Return null to skip problematic routes
