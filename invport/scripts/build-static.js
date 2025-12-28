@@ -4,8 +4,6 @@ const { execSync } = require('child_process');
 
 const apiDir = path.join(__dirname, '..', 'src', 'app', 'api');
 const apiBackupDir = path.join(__dirname, '..', 'api-backup');
-const editDir = path.join(__dirname, '..', 'src', 'app', 'inventory', 'edit');
-const editBackupDir = path.join(__dirname, '..', 'edit-backup');
 const inventoryPageFile = path.join(__dirname, '..', 'src', 'app', 'inventory', 'page.tsx');
 const inventoryPageBackup = path.join(__dirname, '..', 'src', 'app', 'inventory', 'page.tsx.backup');
 const configFile = path.join(__dirname, '..', 'next.config.ts');
@@ -35,14 +33,8 @@ try {
     console.log('✅ API routes backed up');
   }
 
-  // Backup edit route (dynamic route not compatible with static export)
-  if (fs.existsSync(editDir)) {
-    if (fs.existsSync(editBackupDir)) {
-      fs.rmSync(editBackupDir, { recursive: true, force: true });
-    }
-    fs.renameSync(editDir, editBackupDir);
-    console.log('✅ Edit routes backed up');
-  }
+  // Keep edit route in place for static export
+  // Note: /inventory/edit is a static path and safe to export.
 
   // Fix inventory page for static export (remove dynamic exports)
   if (fs.existsSync(inventoryPageFile)) {
@@ -72,14 +64,7 @@ try {
     console.log('✅ API routes restored');
   }
 
-  // Restore edit routes
-  if (fs.existsSync(editBackupDir)) {
-    if (fs.existsSync(editDir)) {
-      fs.rmSync(editDir, { recursive: true, force: true });
-    }
-    fs.renameSync(editBackupDir, editDir);
-    console.log('✅ Edit routes restored');
-  }
+  // No edit route backup to restore
 
   // Restore inventory page
   if (fs.existsSync(inventoryPageBackup)) {
