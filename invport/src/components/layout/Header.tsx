@@ -21,7 +21,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <Bars3Icon className="w-6 h-6 text-black" />
           </button>
           <div className="flex items-center">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <Image
                 src="/logo/FELogo.png"
                 alt="Fuhr Enterprise logo"
@@ -38,7 +38,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         <div className="flex items-center gap-3">
           <a
             href="/.auth/logout?post_logout_redirect_uri=/loggedout"
-            className="text-sm text-white bg-white/10 hover:bg-white/20 px-3 py-2 rounded-md transition-colors"
+            className="text-sm px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400 shadow-sm"
             aria-label="Sign out"
           >
             Sign out

@@ -124,7 +124,7 @@ export default function CompactInventoryCard({
             typeId={item.typeId || 2}
             unitId={item.unitId ?? (Number.isFinite(Number(item.id)) ? Number(item.id) : undefined)}
             className="w-full h-full"
-            lazy={true}
+            lazy={false}
             onClickImage={() => onEdit(item)}
             onImageLoaded={onImageLoaded}
           />

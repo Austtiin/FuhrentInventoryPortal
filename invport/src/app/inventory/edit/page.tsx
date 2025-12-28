@@ -15,6 +15,7 @@ import { ArrowLeftIcon, ArrowPathIcon, CheckIcon, TrashIcon, ChevronDownIcon } f
 import { VEHICLE_COLORS, STATUS_OPTIONS } from '@/constants/inventory';
 import { FEATURE_CATEGORIES } from '@/constants/features';
 import FeaturesSelector from '@/components/inventory/FeaturesSelector';
+import { rewriteDescription } from '@/lib/ai/rewriteDescription';
 
 // Utility function to capitalize first letter of each word
 const toTitleCase = (str: string): string => {
@@ -201,6 +202,86 @@ function EditInventoryPageContent() {
     unitInfo: false,
     unitFeatures: false
   });
+
+  // AI rewrite state
+  const [aiStatus, setAiStatus] = useState<'idle' | 'received' | 'loading' | 'complete' | 'error'>('idle');
+  const [aiWarnings, setAiWarnings] = useState<string[]>([]);
+  const [animateDescription, setAnimateDescription] = useState(false);
+  const [fadePhase, setFadePhase] = useState<'idle' | 'out' | 'in'>('idle');
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+  const canRewrite = countWords(formData.Description || '') >= 30;
+
+  const typeInText = (text: string) => {
+    if (typingTimerRef.current) {
+      clearInterval(typingTimerRef.current as unknown as number);
+      typingTimerRef.current = null;
+    }
+    setIsTyping(true);
+    const chunk = Math.max(2, Math.floor(text.length / 80));
+    let i = 0;
+    // Clear existing then type new text quickly
+    handleFieldChange('Description', '');
+    typingTimerRef.current = setInterval(() => {
+      i = Math.min(text.length, i + chunk);
+      handleFieldChange('Description', text.slice(0, i));
+      if (i >= text.length) {
+        if (typingTimerRef.current) {
+          clearInterval(typingTimerRef.current as unknown as number);
+          typingTimerRef.current = null;
+        }
+        setIsTyping(false);
+        setAnimateDescription(true);
+        setTimeout(() => setAnimateDescription(false), 500);
+      }
+    }, 12);
+  };
+
+  const startRewrite = async () => {
+    if (!canRewrite) return;
+    try {
+      setAiStatus('received');
+      setAiWarnings([]);
+      setAiStatus('loading');
+      // Cancel any previous pending request
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const result = await rewriteDescription(
+        {
+          description: formData.Description || '',
+          make: formData.Make,
+          model: formData.Model,
+          year: formData.Year,
+          vin: vehicle?.VIN,
+        },
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      const newText = result.rewrittenText || '';
+      if (!newText) {
+        throw new Error('No rewritten text returned');
+      }
+      // Fade briefly then type in the new text
+      setFadePhase('out');
+      setTimeout(() => {
+        setFadePhase('in');
+        typeInText(newText);
+        setTimeout(() => setFadePhase('idle'), 400);
+      }, 180);
+      setAiWarnings(result.warnings || []);
+      setAiStatus('complete');
+    } catch (e) {
+      setAiStatus('error');
+      const message = e instanceof Error ? (e.name === 'AbortError' ? 'Timed out after 30s' : e.message) : 'Rewrite failed';
+      error('Rewrite Failed', message);
+    }
+  };
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -1100,14 +1181,97 @@ function EditInventoryPageContent() {
 
               {/* Description */}
               <div className="mt-6">
-                <label className="block text-sm font-semibold text-gray-800 mb-1">Description</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-semibold text-gray-800">Description</label>
+
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-semibold ${
+                        canRewrite
+                          ? 'bg-green-100 text-green-800 border-green-300'
+                          : 'bg-amber-100 text-amber-800 border-amber-300'
+                      }`}
+                      aria-live="polite"
+                    >
+                      {canRewrite ? (
+                        <>
+                          <CheckIcon className="w-3 h-3" /> Eligible for AI rewrite
+                        </>
+                      ) : (
+                        <>Not eligible • add ≥30 words</>
+                      )}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
+                      {countWords(formData.Description || '')} words
+                    </span>
+                    <button
+                      type="button"
+                      onClick={startRewrite}
+                      disabled={!canRewrite || aiStatus === 'loading' || isTyping}
+                      className={`relative inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold text-white shadow transition-all ${
+                        (!canRewrite || aiStatus === 'loading' || isTyping)
+                          ? 'bg-gray-300 cursor-not-allowed'
+                          : 'bg-linear-to-r from-fuchsia-500 via-rose-500 to-sky-500 hover:brightness-110 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400 active:scale-95'
+                      } ${aiStatus === 'loading' ? 'animate-bounce' : ''}`}
+                      aria-label="Rewrite description with AI"
+                    >
+                      {aiStatus === 'loading' ? (
+                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                      ) : null}
+                      <span className="relative">Rewrite with AI</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* AI Disclaimer - only after click */}
+                {aiStatus !== 'idle' && (
+                  <div className="mb-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    AI can be incorrect — always review the new response before saving. AI is never perfect.
+                  </div>
+                )}
+
                 <textarea
                   value={formData.Description || ''}
                   onChange={(e) => handleFieldChange('Description', e.target.value)}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white transition-opacity duration-300 ${
+                    animateDescription ? 'ring-2 ring-green-300 shadow-sm' : ''
+                  } ${fadePhase === 'out' ? 'opacity-40' : ''} ${fadePhase === 'in' ? 'opacity-100' : ''}`}
                   placeholder="Enter vehicle description..."
+                  disabled={isTyping}
                 />
+
+                {/* Inline status with spinner and animated dots */}
+                {aiStatus !== 'idle' && (
+                  <div className="mt-2 text-xs text-gray-700">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-block w-2 h-2 rounded-full ${
+                        aiStatus === 'error' ? 'bg-red-500' : aiStatus === 'complete' ? 'bg-green-500' : 'bg-blue-500'
+                      }`} />
+                      {aiStatus === 'loading' && (
+                        <div className="flex items-center gap-1 text-blue-700">
+                          <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                          <span>Generating rewrite</span>
+                          <span className="flex items-center">
+                            <span className="mx-0.5 animate-pulse">.</span>
+                            <span className="mx-0.5 animate-pulse" style={{ animationDelay: '0.2s' }}>.</span>
+                            <span className="mx-0.5 animate-pulse" style={{ animationDelay: '0.4s' }}>.</span>
+                          </span>
+                        </div>
+                      )}
+                      {aiStatus === 'received' && <span>Request received</span>}
+                      {aiStatus === 'complete' && <span>Rewrite applied</span>}
+                      {aiStatus === 'error' && <span className="text-red-700">Rewrite failed</span>}
+                    </div>
+                    {aiWarnings.length > 0 && (
+                      <ul className="mt-2 list-disc list-inside text-amber-700">
+                        {aiWarnings.map((w, i) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

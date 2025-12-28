@@ -32,7 +32,7 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
   typeId, 
   unitId,
   className = '',
-  lazy = true,
+  lazy = false,
   onClickImage,
   onImageLoaded
 }) => {
