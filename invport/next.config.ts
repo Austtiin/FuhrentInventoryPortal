@@ -1,11 +1,9 @@
 import type { NextConfig } from "next";
 import path from "path";
 
-const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';
-
 const nextConfig: NextConfig = {
-  // Conditionally enable static export for Azure Static Web Apps
-  ...(isStaticExport ? { output: 'export' as const } : {}),
+  // Always enable static export so builds consistently produce 'out'
+  output: 'export',
   trailingSlash: true,
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),
@@ -24,8 +22,8 @@ const nextConfig: NextConfig = {
         ]) as unknown as any,
   }),
   
-  // Use 'out' only when statically exporting
-  ...(isStaticExport ? { distDir: 'out' } : {}),
+  // Always output to 'out' for Azure Static Web Apps
+  distDir: 'out',
   
   // Remove invalid experimental staleTimes to avoid build warnings
   
