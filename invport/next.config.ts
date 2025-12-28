@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === 'true';
+
 const nextConfig: NextConfig = {
-  // Enable static export for Azure Static Web Apps with SPA support
-  output: 'export',
+  // Conditionally enable static export for Azure Static Web Apps
+  ...(isStaticExport ? { output: 'export' as const } : {}),
   trailingSlash: true,
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),
@@ -22,16 +24,10 @@ const nextConfig: NextConfig = {
         ]) as unknown as any,
   }),
   
-  // Configure for single page application
-  distDir: 'out',
+  // Use 'out' only when statically exporting
+  ...(isStaticExport ? { distDir: 'out' } : {}),
   
-  // Disable caching for dynamic content
-  experimental: {
-    staleTimes: {
-      dynamic: 0,
-      static: 0,
-    },
-  },
+  // Remove invalid experimental staleTimes to avoid build warnings
   
   images: {
     unoptimized: true,

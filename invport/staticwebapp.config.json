@@ -59,7 +59,12 @@
     }
   },
   "globalHeaders": {
-    "cache-control": "no-cache, no-store, must-revalidate"
+    "cache-control": "no-cache, no-store, must-revalidate",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "permissions-policy": "geolocation=(), microphone=(), camera=()"
   },
   "mimeTypes": {
     ".json": "application/json",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClientProviders } from "@/components/providers/ClientProviders";
+import DevAuthGuard from "@/components/providers/DevAuthGuard";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -68,7 +69,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground font-sans`}
       >
         <ClientProviders>
-          {children}
+          <DevAuthGuard>
+            {children}
+          </DevAuthGuard>
         </ClientProviders>
       </body>
     </html>

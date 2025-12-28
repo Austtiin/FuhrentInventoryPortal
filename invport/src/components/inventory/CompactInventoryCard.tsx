@@ -18,6 +18,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { SingleVehicleImage } from '@/components/inventory/SingleVehicleImage';
 import { Vehicle } from '@/types';
+import { formatMileage, formatPrice } from '@/lib/format';
 
 interface CompactInventoryCardProps {
   item: Vehicle;
@@ -28,6 +29,7 @@ interface CompactInventoryCardProps {
   onMarkAsSold: (item: Vehicle) => void;
   onShowNotification?: (type: 'success' | 'error' | 'warning', title: string, message: string) => void;
   enableImageLoading?: boolean;
+  onImageLoaded?: () => void;
 }
 
 const getStatusConfig = (status: string) => {
@@ -63,20 +65,12 @@ export default function CompactInventoryCard({
   onMarkAsAvailable,
   onMarkAsSold,
   onShowNotification,
-  enableImageLoading = true
+  enableImageLoading = true,
+  onImageLoaded
 }: CompactInventoryCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const statusConfig = getStatusConfig(item.status);
 
-  const formatPrice = (price: number | null | undefined) => {
-    if (!price) return 'Price TBD';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
 
   const handleStatusChange = async (action: 'pending' | 'available' | 'sold') => {
     console.log(`🎯 CompactInventoryCard: handleStatusChange called with action: ${action} for vehicle: ${item.id}`);
@@ -132,6 +126,7 @@ export default function CompactInventoryCard({
             className="w-full h-full"
             lazy={true}
             onClickImage={() => onEdit(item)}
+            onImageLoaded={onImageLoaded}
           />
         ) : (
           <Box sx={{ 
@@ -197,10 +192,10 @@ export default function CompactInventoryCard({
             </Box>
           </Typography>
           
-          {item.mileage && (
+          {typeof item.mileage === 'number' && (
             <Typography variant="body2" color="text.secondary" gutterBottom>
               <Box component="span" fontWeight={500}>Mileage:</Box>{' '}
-              {item.mileage?.toLocaleString()} miles
+              {formatMileage(item.mileage)}
             </Typography>
           )}
           
@@ -220,7 +215,7 @@ export default function CompactInventoryCard({
             </Typography>
             {typeof item.msrp === 'number' && !Number.isNaN(item.msrp) && (
               <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                MSRP: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(item.msrp)}
+                MSRP: {formatPrice(item.msrp)}
               </Typography>
             )}
           </Box>

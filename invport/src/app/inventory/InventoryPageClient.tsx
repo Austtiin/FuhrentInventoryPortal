@@ -21,10 +21,12 @@ import { Vehicle } from '@/types';
 import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
+import EmptyState from '@/components/ui/EmptyState';
 
 function InventoryPageClientInner() {
   const router = useRouter();
   const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [maxImageIndexUnlocked, setMaxImageIndexUnlocked] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   
@@ -47,6 +49,7 @@ function InventoryPageClientInner() {
       // Delay image loading to prioritize inventory data display
       const timer = setTimeout(() => {
         setImagesLoaded(true);
+        setMaxImageIndexUnlocked(0);
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -252,7 +255,7 @@ function InventoryPageClientInner() {
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
               gap: 2 
             }}>
-              {filteredVehicles.slice(0, currentPage * itemsPerPage).map((vehicle) => (
+              {filteredVehicles.slice(0, currentPage * itemsPerPage).map((vehicle, i) => (
                 <CompactInventoryCard
                   key={vehicle.id}
                   item={vehicle}
@@ -261,7 +264,14 @@ function InventoryPageClientInner() {
                   onMarkAsPending={() => handleMarkAsPending(vehicle)}
                   onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
                   onMarkAsSold={() => handleMarkAsSold(vehicle)}
-                  enableImageLoading={imagesLoaded}
+                  enableImageLoading={imagesLoaded && i <= maxImageIndexUnlocked}
+                  onImageLoaded={() => {
+                    setMaxImageIndexUnlocked((prev) => {
+                      // Unlock next image only when current index finishes loading
+                      if (i >= prev) return i + 1;
+                      return prev;
+                    });
+                  }}
                 />
               ))}
             </Box>
@@ -269,33 +279,19 @@ function InventoryPageClientInner() {
 
           {/* Empty state */}
           {!isLoading && filteredVehicles.length === 0 && vehicles.length > 0 && (
-            <Box sx={{ textAlign: 'center', py: 12 }}>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No vehicles match your search criteria.
-              </Typography>
-              <Button
-                onClick={() => setFilters({ search: '', status: 'all' })}
-                variant="contained"
-                sx={{ mt: 2 }}
-              >
-                Clear Filters
-              </Button>
-            </Box>
+            <EmptyState
+              title="No vehicles match your search criteria."
+              actionLabel="Clear Filters"
+              onAction={() => setFilters({ search: '', status: 'all' })}
+            />
           )}
 
           {!isLoading && vehicles.length === 0 && (
-            <Box sx={{ textAlign: 'center', py: 12 }}>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No vehicles found
-              </Typography>
-              <Button 
-                onClick={() => refreshData()}
-                variant="contained"
-                sx={{ mt: 2 }}
-              >
-                Refresh Inventory
-              </Button>
-            </Box>
+            <EmptyState
+              title="No vehicles found"
+              actionLabel="Refresh Inventory"
+              onAction={() => refreshData()}
+            />
           )}
           {/* Load More */}
           {!isLoading && filteredVehicles.length > currentPage * itemsPerPage && (

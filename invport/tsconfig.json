@@ -38,7 +38,8 @@
     "next-env.d.ts",
     "out/types/**/*.ts",
     "out\\dev/types/**/*.ts",
-    "out\\dev/types/**/*.ts"
+    "out\\dev/types/**/*.ts",
+    "out/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

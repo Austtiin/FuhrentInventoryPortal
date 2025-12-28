@@ -24,6 +24,7 @@ interface SingleVehicleImageProps {
   className?: string;
   lazy?: boolean;
   onClickImage?: () => void; // Optional image click override (e.g., navigate to edit)
+  onImageLoaded?: () => void; // Notify when the image has fully loaded
 }
 
 export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({ 
@@ -32,7 +33,8 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
   unitId,
   className = '',
   lazy = true,
-  onClickImage
+  onClickImage,
+  onImageLoaded
 }) => {
   const [firstImage, setFirstImage] = useState<VehicleImage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
   const apiUnitKey = isInView ? unitId : undefined;
   const api = useUnitImages(apiUnitKey as string | number | undefined);
   const unitImages = api.images;
+  const notifiedRef = useRef(false);
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -151,6 +154,12 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
                 onClickImage();
               } else {
                 setSelectedImage(firstImage);
+              }
+            }}
+            onLoad={() => {
+              if (!notifiedRef.current) {
+                notifiedRef.current = true;
+                onImageLoaded?.();
               }
             }}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

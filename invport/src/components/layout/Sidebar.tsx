@@ -22,6 +22,7 @@ interface NavigationItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   subItems?: NavigationItem[];
+  exact?: boolean; // when true, match only exact href (no nested)
 }
 
 const navigationItems: NavigationItem[] = [
@@ -39,6 +40,7 @@ const navigationItems: NavigationItem[] = [
         name: 'Current Inventory',
         href: '/inventory',
         icon: ListBulletIcon,
+        exact: true,
       },
       {
         name: 'Add Item',
@@ -56,6 +58,12 @@ const navigationItems: NavigationItem[] = [
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
+    // Normalize the pathname by removing trailing slashes for consistent matching
+    const cleanPath = React.useMemo(() => {
+      if (!pathname) return '/';
+      const p = pathname.replace(/\/+$/g, '');
+      return p.length ? p : '/';
+    }, [pathname]);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
   const toggleExpand = (itemName: string) => {
@@ -69,7 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   // Auto-expand parent items when on any of their sub-pages
   React.useEffect(() => {
     // Auto-expand Inventory when on any inventory page
-    if (pathname.startsWith('/inventory')) {
+    if (cleanPath.startsWith('/inventory')) {
       setExpandedItems(prev => {
         if (!prev.includes('Inventory')) {
           return [...prev, 'Inventory'];
@@ -79,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     }
     
     // Auto-expand Reports when on any reports page
-    if (pathname.startsWith('/reports')) {
+    if (cleanPath.startsWith('/reports')) {
       setExpandedItems(prev => {
         if (!prev.includes('Reports')) {
           return [...prev, 'Reports'];
@@ -103,7 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         fixed top-20 left-0 h-[calc(100vh-5rem)] bg-linear-to-b from-slate-900 to-blue-900 border-r border-blue-800/30
         transform transition-all duration-300 z-40 flex flex-col shadow-xl
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)]
+        lg:translate-x-0 lg:fixed lg:top-20 lg:h-[calc(100vh-5rem)]
         lg:w-64 w-64
       `}>
         {/* Header */}
@@ -125,13 +133,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               let isSubItemActive = false;
               
               if (hasSubItems) {
-                // For items with sub-items, check if we're on any sub-item page exactly
-                const subItemPaths = item.subItems?.map(sub => sub.href) || [];
-                isSubItemActive = subItemPaths.some(path => pathname === path);
-                
-                // Parent should ONLY be highlighted if on edit pages or other non-menu sub-routes
+                // For items with sub-items, check if we're on any sub-item page or nested path
+                const subItemPaths = (item.subItems?.map(sub => sub.href) || []).map(h => h.replace(/\/+$/g, ''));
+                isSubItemActive = subItemPaths.some(path => (
+                  cleanPath === path || cleanPath.startsWith(path + '/')
+                ));
+
+                // Parent should ONLY be highlighted if on non-menu nested routes
                 // NOT highlighted when on actual sub-item pages (Current Inventory, Add Item)
-                if (!isSubItemActive && pathname.startsWith(item.href + '/') && pathname !== item.href) {
+                const parentHref = item.href.replace(/\/+$/g, '');
+                if (!isSubItemActive && (cleanPath.startsWith(parentHref + '/') && cleanPath !== parentHref)) {
                   // On /inventory/edit/123 or similar non-menu pages
                   isActive = true;
                 }
@@ -140,7 +151,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 if (item.href === '/') {
                   isActive = pathname === '/';
                 } else {
-                  isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                  const itemHref = item.href.replace(/\/+$/g, '');
+                  isActive = cleanPath === itemHref || cleanPath.startsWith(itemHref + '/');
                 }
               }
               
@@ -158,7 +170,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                           isActive 
                             ? 'bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
                             : isSubItemActive
-                            ? 'bg-white/5 text-blue-100'
+                            ? 'bg-white/10 text-white'
                             : 'text-blue-100 hover:bg-white/10 hover:text-white'
                         }
                       `}
@@ -170,6 +182,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                           onClose();
                         }
                       }}
+                      aria-expanded={hasSubItems ? isExpanded : undefined}
+                      aria-current={(!hasSubItems && isActive) ? 'page' : undefined}
                       title={undefined}
                     >
                       <item.icon className={`shrink-0 transition-colors w-5 h-5`} />
@@ -185,8 +199,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       </>
                     </Link>
 
-                    {/* Animated white indicator bar */}
-                    {(isActive || isSubItemActive) && (
+                    {/* Animated white indicator bar - only when parent is strongly active */}
+                    {isActive && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full shadow-lg shadow-white/50"></div>
                     )}
                   </div>
@@ -200,7 +214,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     >
                       <ul className="space-y-2 ml-2">
                         {item.subItems?.map((subItem) => {
-                          const isSubActive = pathname === subItem.href;
+                          const subHref = subItem.href.replace(/\/+$/g, '');
+                          const matchExact = !!subItem.exact;
+                          const isSubActive = matchExact
+                            ? (cleanPath === subHref)
+                            : (cleanPath === subHref || cleanPath.startsWith(subHref + '/'));
                           
                           return (
                             <li key={subItem.name} className="relative">
@@ -208,14 +226,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                 href={subItem.href}
                                 className={`
                                   group relative flex items-center gap-3 px-4 py-3 mx-3 rounded-lg
-                                  transition-all duration-200 cursor-pointer
+                                  transition-colors duration-150 cursor-pointer
                                   ${
                                     isSubActive
-                                      ? 'bg-linear-to-r from-white to-blue-50 text-blue-900 shadow-2xl font-bold scale-105 border-2 border-blue-500'
-                                      : 'text-blue-100 hover:bg-white/10 hover:text-white hover:translate-x-1 border-2 border-transparent'
+                                      ? 'bg-white text-blue-900 shadow-md font-semibold border border-blue-500'
+                                      : 'text-blue-200 hover:bg-white/10 hover:text-white border border-transparent'
                                   }
                                 `}
                                 onClick={onClose}
+                                aria-current={isSubActive ? 'page' : undefined}
                               >
                                 {/* Active indicator dot */}
                                 <div className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all ${
@@ -226,7 +245,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                 
                                 {/* Icon */}
                                 <subItem.icon className={`w-5 h-5 shrink-0 transition-all ${
-                                  isSubActive ? 'text-blue-700 scale-110' : 'text-blue-300'
+                                  isSubActive ? 'text-blue-700' : 'text-blue-400'
                                 }`} />
                                 
                                 {/* Label */}

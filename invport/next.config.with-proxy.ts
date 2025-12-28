@@ -9,13 +9,7 @@ const nextConfig: NextConfig = {
   // Set the workspace root to silence the multiple lockfiles warning
   outputFileTracingRoot: path.join(__dirname, '..'),
   
-  // DISABLE ALL CACHING - Force dynamic rendering
-  experimental: {
-    staleTimes: {
-      dynamic: 0,
-      static: 0,
-    },
-  },
+  // Remove invalid experimental staleTimes; use route-level caching controls instead if needed
   
   images: {
     unoptimized: true,
