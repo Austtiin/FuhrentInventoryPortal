@@ -116,8 +116,11 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
 
   // Local display state derived from API + post-refresh animations
   const [displayImages, setDisplayImages] = useState<UnitImage[]>([]);
+  const [maxImageIndexUnlocked, setMaxImageIndexUnlocked] = useState(0);
   useEffect(() => {
     setDisplayImages(images as UnitImage[]);
+    // Reset sequential loading gate when image list changes
+    setMaxImageIndexUnlocked(0);
     // If a rename just succeeded, animate/highlight the target tile now that images are fresh
     if (successTargetRef.current) {
       const { number, dir } = successTargetRef.current;
@@ -637,13 +640,25 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                     className="aspect-square cursor-pointer relative"
                     onClick={() => setSelectedImage(image)}
                   >
-                    <Image
-                      src={withCacheBuster(image.url)}
-                      alt={`Vehicle image ${image.number}`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    />
+                    {index <= maxImageIndexUnlocked ? (
+                      <Image
+                        src={withCacheBuster(image.url)}
+                        alt={`Vehicle image ${image.number}`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        onLoad={() => {
+                          setMaxImageIndexUnlocked((prev) => {
+                            if (index >= prev) return index + 1;
+                            return prev;
+                          });
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Image Number Badge */}
