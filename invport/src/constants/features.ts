@@ -55,9 +55,11 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
       'ramp door',
       'fish house door',
       'rv door w/ screen',
+      'RV Door w/screen',
       'rv door with screen',
       'black window frames',
       'custom decals',
+      '90" Sidewalls',
     ],
   },
   {
@@ -80,6 +82,7 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
       'power lift bed 54',
       'power lift bed 60',
       'cabinets to hide power lift bed',
+      'Pocket Door',
     ],
   },
   {
@@ -98,6 +101,7 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
       'cove ceiling with led',
       'curtains',
       'blinds',
+      'cove ceiling w/led',
     ],
   },
   {
@@ -138,6 +142,7 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
       'double sink',
       'single sink',
       'dry sink',
+      'Furrion Stove w/Oven',
     ],
   },
   {
