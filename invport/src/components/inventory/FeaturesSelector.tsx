@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/apiClient';
-import { FEATURE_CATEGORIES, detectFeatureCategory, FeatureCategoryConfig } from '@/constants/features';
+import { FEATURE_CATEGORIES, UNSORTED_FEATURE_CATEGORY, detectFeatureCategory, FeatureCategoryConfig } from '@/constants/features';
 
 export interface FeatureOption {
   FeatureID: number;
@@ -81,7 +81,7 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
       if (!by[cat]) by[cat] = [];
       by[cat].push(f);
     }
-    const order = [...categories.map(c => c.name), 'Other'];
+    const order = [...categories.map((c) => c.name), UNSORTED_FEATURE_CATEGORY];
     return { by, order } as const;
   }, [features, categories]);
 
