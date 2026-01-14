@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout';
 import { useReportsData } from '@/hooks/useReportsData';
+import { InventoryRadarChart } from '@/components/reports/InventoryRadarChart';
 import { 
   DocumentArrowDownIcon, 
   CurrencyDollarIcon,
@@ -389,26 +390,15 @@ const ReportsPage: React.FC = () => {
 
             {/* Analytics Sections - More Compact */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Category Breakdown */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Category Breakdown</h3>
-                <div className="space-y-2">
-                  {reportsData.categoryBreakdown && reportsData.categoryBreakdown.length > 0 ? (
-                    reportsData.categoryBreakdown.slice(0, 5).map((category, index) => (
-                      <div key={index} className="flex items-center justify-between py-1">
-                        <span className="text-sm font-medium text-gray-700">{category.category}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-600">{category.count} units</span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {formatCurrency(category.totalValue)}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">No category data available</p>
-                  )}
-                </div>
+              {/* Inventory Type Comparison - Radar Chart */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {reportsData.totalStats && (
+                  <InventoryRadarChart
+                    totalVehicles={reportsData.totalStats.totalVehicles || 0}
+                    totalFishHouses={reportsData.totalStats.totalFishHouses || 0}
+                    totalTrailers={reportsData.totalStats.totalTrailers || 0}
+                  />
+                )}
               </div>
 
               {/* Inventory Summary */}

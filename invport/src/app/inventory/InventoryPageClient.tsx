@@ -26,7 +26,7 @@ import EmptyState from '@/components/ui/EmptyState';
 function InventoryPageClientInner() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 12;
   
   const { 
     vehicles,
