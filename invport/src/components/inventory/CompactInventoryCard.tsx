@@ -28,8 +28,6 @@ interface CompactInventoryCardProps {
   onMarkAsAvailable: (item: Vehicle) => void;
   onMarkAsSold: (item: Vehicle) => void;
   onShowNotification?: (type: 'success' | 'error' | 'warning', title: string, message: string) => void;
-  enableImageLoading?: boolean;
-  onImageLoaded?: () => void;
 }
 
 const getStatusConfig = (status: string) => {
@@ -64,9 +62,7 @@ export default function CompactInventoryCard({
   onMarkAsPending,
   onMarkAsAvailable,
   onMarkAsSold,
-  onShowNotification,
-  enableImageLoading = true,
-  onImageLoaded
+  onShowNotification
 }: CompactInventoryCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const statusConfig = getStatusConfig(item.status);
@@ -118,32 +114,13 @@ export default function CompactInventoryCard({
   >
       {/* Image Section */}
       <Box sx={{ position: 'relative', height: 192, bgcolor: 'grey.100' }}>
-        {enableImageLoading ? (
-          <SingleVehicleImage 
-            vin={item.vin}
-            typeId={item.typeId || 2}
-            unitId={item.unitId ?? (Number.isFinite(Number(item.id)) ? Number(item.id) : undefined)}
-            className="w-full h-full"
-            lazy={false}
-            onClickImage={() => onEdit(item)}
-            onImageLoaded={onImageLoaded}
-          />
-        ) : (
-          <Box sx={{ 
-            width: '100%', 
-            height: '100%', 
-            bgcolor: 'grey.200', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            flexDirection: 'column'
-          }}>
-            <LoadingSpinner size="md" />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-              Loading image...
-            </Typography>
-          </Box>
-        )}
+        <SingleVehicleImage 
+          unitId={item.unitId ?? (Number.isFinite(Number(item.id)) ? Number(item.id) : undefined)}
+          preloadedImages={item.images}
+          className="w-full h-full"
+          lazy={false}
+          onClickImage={() => onEdit(item)}
+        />
         
         {/* Status Badge Overlay */}
         <Box sx={{ position: 'absolute', top: 12, left: 12 }}>

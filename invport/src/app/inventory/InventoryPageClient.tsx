@@ -25,8 +25,6 @@ import EmptyState from '@/components/ui/EmptyState';
 
 function InventoryPageClientInner() {
   const router = useRouter();
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [maxImageIndexUnlocked, setMaxImageIndexUnlocked] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   
@@ -42,18 +40,6 @@ function InventoryPageClientInner() {
     markAsPending,
     markAsAvailable
   } = useInventoryDirect();
-
-  // Trigger image loading after inventory data is loaded
-  useEffect(() => {
-    if (!isLoading && filteredVehicles.length > 0) {
-      // Delay image loading to prioritize inventory data display
-      const timer = setTimeout(() => {
-        setImagesLoaded(true);
-        setMaxImageIndexUnlocked(0);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, filteredVehicles.length]);
 
   const handleEditVehicle = (vehicle: Vehicle) => {
     router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
@@ -255,7 +241,7 @@ function InventoryPageClientInner() {
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
               gap: 2 
             }}>
-              {filteredVehicles.slice(0, currentPage * itemsPerPage).map((vehicle, i) => (
+              {filteredVehicles.slice(0, currentPage * itemsPerPage).map((vehicle) => (
                 <CompactInventoryCard
                   key={vehicle.id}
                   item={vehicle}
@@ -264,14 +250,6 @@ function InventoryPageClientInner() {
                   onMarkAsPending={() => handleMarkAsPending(vehicle)}
                   onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
                   onMarkAsSold={() => handleMarkAsSold(vehicle)}
-                  enableImageLoading={imagesLoaded && i <= maxImageIndexUnlocked}
-                  onImageLoaded={() => {
-                    setMaxImageIndexUnlocked((prev) => {
-                      // Unlock next image only when current index finishes loading
-                      if (i >= prev) return i + 1;
-                      return prev;
-                    });
-                  }}
                 />
               ))}
             </Box>

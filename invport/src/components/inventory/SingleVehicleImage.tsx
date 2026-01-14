@@ -7,47 +7,50 @@ import {
   PhotoIcon, 
   XMarkIcon
 } from '@heroicons/react/24/outline';
-// Removed legacy blob probing utilities; rely on API-backed unit image listing
 import { useUnitImages } from '@/hooks/useUnitImages';
-import { buildApiUrl } from '@/lib/apiClient';
 import { LoadingSpinner } from '@/components/ui/Loading';
 
-interface VehicleImage {
+interface UnitImage {
   url: string;
   number: number;
 }
 
 interface SingleVehicleImageProps {
-  vin: string | undefined;
-  typeId: number;
-  unitId?: string | number;
+  unitId: string | number | undefined;
+  preloadedImages?: string[]; // Image URLs already loaded with inventory metadata
   className?: string;
   lazy?: boolean;
-  onClickImage?: () => void; // Optional image click override (e.g., navigate to edit)
-  onImageLoaded?: () => void; // Notify when the image has fully loaded
+  onClickImage?: () => void;
+  onImageLoaded?: () => void;
 }
 
 export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({ 
-  vin, 
-  typeId, 
   unitId,
+  preloadedImages,
   className = '',
   lazy = false,
   onClickImage,
   onImageLoaded
 }) => {
-  const [firstImage, setFirstImage] = useState<VehicleImage | null>(null);
+  const [firstImage, setFirstImage] = useState<UnitImage | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedImage, setSelectedImage] = useState<VehicleImage | null>(null);
-  // Loading derives from API hook; no separate spinner state needed
+  const [selectedImage, setSelectedImage] = useState<UnitImage | null>(null);
   const [isInView, setIsInView] = useState(!lazy);
   const imageRef = useRef<HTMLDivElement>(null);
-
-  // When in view, enable API-backed fetch by passing a real unit id; otherwise undefined to avoid work
-  const apiUnitKey = isInView ? unitId : undefined;
-  const api = useUnitImages(apiUnitKey as string | number | undefined);
+  
+  // Only fetch from API if no preloaded images available
+  const shouldFetchFromApi = !preloadedImages || preloadedImages.length === 0;
+  const effectiveUnitId = (isInView && shouldFetchFromApi) ? unitId : undefined;
+  const api = useUnitImages(effectiveUnitId);
   const unitImages = api.images;
   const notifiedRef = useRef(false);
+
+  // Debug logging for this specific unit
+  useEffect(() => {
+    if (effectiveUnitId) {
+      console.log(`🎬 [SingleVehicleImage UnitID=${effectiveUnitId}] State: isLoading=${api.isLoading}, error=${api.error}, images=${unitImages.length}`);
+    }
+  }, [effectiveUnitId, api.isLoading, api.error, unitImages.length]);
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -67,47 +70,74 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
     return () => observer.disconnect();
   }, [lazy, isInView]);
 
-  // Prefer API-backed image listing by UnitID; do not fallback to legacy blob probing
+  // Select the lowest-numbered image from preloaded or API response
   useEffect(() => {
     let cancelled = false;
-    async function resolveImage() {
-      // Reset
+    
+    // If using lazy mode and not in view, skip
+    if (lazy && !isInView) {
       setError(null);
       setFirstImage(null);
-
-      // If using lazy mode and not in view, skip
-      if (lazy && !isInView) return;
-
-      // If we have unitId and API images available, choose the lowest-numbered image
-      if (apiUnitKey && Array.isArray(unitImages) && unitImages.length > 0) {
-        // Find the image with the smallest numeric index (e.g., 1.webp)
-        const lowest = unitImages.reduce((min, cur) => {
-          if (cur.number <= 0) return min;
-          if (!min) return cur;
-          return cur.number < min.number ? cur : min;
-        }, undefined as typeof unitImages[number] | undefined) || unitImages[0];
-
-        const url = lowest.url || buildApiUrl(`units/${encodeURIComponent(String(apiUnitKey))}/images/${encodeURIComponent(lowest.name)}`);
-        if (!cancelled) {
-          setFirstImage(prev => {
-            if (prev && prev.number === lowest.number && prev.url === url) return prev;
-            return { url, number: lowest.number };
-          });
-        }
-        return;
-      }
-      // No API images available
-      setError('No image found');
-      setFirstImage(null);
+      return;
     }
 
-    resolveImage();
-    return () => { cancelled = true; };
-  }, [apiUnitKey, unitImages, vin, typeId, lazy, isInView]);
+    // Priority 1: Use preloaded images if available
+    if (preloadedImages && preloadedImages.length > 0) {
+      if (!cancelled) {
+        // Use first preloaded image (assumed to be lowest-numbered)
+        setFirstImage({ url: preloadedImages[0], number: 1 });
+        setError(null);
+      }
+      return;
+    }
 
-  // Show loading state
-  const isLoading = api.isLoading;
-  if (isLoading || (!firstImage && !error && (lazy ? isInView : true))) {
+    // Priority 2: No preloaded images, need to fetch from API
+    if (!effectiveUnitId) {
+      setError(null);
+      setFirstImage(null);
+      return;
+    }
+
+    // If still loading API, don't change state yet
+    if (api.isLoading) {
+      return;
+    }
+
+    // API finished loading - check for errors or images
+    if (api.error) {
+      if (!cancelled) {
+        setError('Failed to load image');
+        setFirstImage(null);
+      }
+      return;
+    }
+
+    // API succeeded - check if we have images
+    if (Array.isArray(unitImages) && unitImages.length > 0) {
+      // Find the image with the smallest numeric index (e.g., 1.webp)
+      const lowest = unitImages.reduce((min, cur) => {
+        if (cur.number <= 0) return min;
+        if (!min) return cur;
+        return cur.number < min.number ? cur : min;
+      }, undefined as typeof unitImages[number] | undefined) || unitImages[0];
+
+      if (!cancelled) {
+        setFirstImage({ url: lowest.url, number: lowest.number });
+        setError(null);
+      }
+    } else {
+      // API succeeded but returned no images
+      if (!cancelled) {
+        setError('No image found');
+        setFirstImage(null);
+      }
+    }
+
+    return () => { cancelled = true; };
+  }, [preloadedImages, effectiveUnitId, unitImages, lazy, isInView, api.isLoading, api.error]);
+
+  // Show loading state only when actively loading from API (not for preloaded images)
+  if (shouldFetchFromApi && api.isLoading && (!lazy || isInView)) {
     return (
       <div ref={lazy ? imageRef : undefined} className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>
         <div className="flex flex-col items-center justify-center p-4">

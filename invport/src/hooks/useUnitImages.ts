@@ -39,29 +39,47 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiFetch(`units/${encodeURIComponent(idStr)}/images`, {
+      console.log(`📥 [useUnitImages] Fetching images for UnitID=${idStr}`);
+      // Add timestamp to API URL to bust any proxy/CDN caching
+      const timestamp = Date.now();
+      const response = await apiFetch(`units/${encodeURIComponent(idStr)}/images?_t=${timestamp}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
         }
       });
+      console.log(`📥 [useUnitImages] Response status: ${response.status} ${response.statusText}`);
       if (!response.ok) {
         const txt = await response.text();
+        console.error('❌ [useUnitImages] Error body:', txt);
         throw new Error(`List images failed ${response.status}: ${txt}`);
       }
       const list = await safeResponseJson<Array<{ name: string; url: string }>>(response);
-      const cacheBuster = `?cb=${Date.now()}`;
-      const mapped = (Array.isArray(list) ? list : []).map(item => ({
-        name: item.name,
-        url: item.url + cacheBuster, // Add cache-busting timestamp to image URLs
-        number: parseNumberFromName(item.name),
-      }))
-      .filter(x => x.number > 0)
-      .sort((a, b) => a.number - b.number);
+      console.log('📦 [useUnitImages] Raw API response:', list);
+      
+      // API returns array of { name, url } - parse number from name and add cache buster to URLs
+      const mapped = (Array.isArray(list) ? list : [])
+        .map(item => {
+          // Add timestamp cache buster to blob URL to prevent browser caching
+          const cacheBustedUrl = item.url + (item.url.includes('?') ? '&' : '?') + `_cb=${timestamp}`;
+          return {
+            name: item.name,
+            url: cacheBustedUrl,
+            number: parseNumberFromName(item.name),
+          };
+        })
+        .filter(x => x.number > 0)
+        .sort((a, b) => a.number - b.number);
+      
+      console.log('🧮 [useUnitImages] Processed images:', mapped);
+      console.log(`✅ [useUnitImages] Found ${mapped.length} valid images, lowest number: ${mapped[0]?.number || 'none'}`);
       setImages(mapped);
+      setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load images');
+      console.error('❌ [useUnitImages] Failed to fetch images:', e);
+      const errorMsg = e instanceof Error ? e.message : 'Failed to load images';
+      setError(errorMsg);
       setImages([]);
     } finally {
       setIsLoading(false);

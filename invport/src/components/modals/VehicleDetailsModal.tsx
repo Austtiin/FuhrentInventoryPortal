@@ -68,20 +68,12 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                   mode="single"
                   typeId={vehicle.typeId || 2}
                   editable={false}
+                  unitId={vehicle.unitId ?? Number(vehicle.id)}
+                  preloadedImages={vehicle.images}
                   className="w-full h-full"
                 />
               </div>
             </div>
-
-            {/* Description Section - Below the images */}
-            {vehicle.description && (
-              <div className="bg-gray-50 rounded-lg p-6 mb-8">
-                <h4 className="text-xl font-semibold text-gray-900 mb-4">Description</h4>
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {vehicle.description}
-                </p>
-              </div>
-            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
               {/* Price and Status - Left Column */}
@@ -186,64 +178,6 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                     <div>
                       <span className="font-medium text-gray-700">Fuel Type:</span>
                       <span className="ml-2 text-gray-900">{vehicle.fuelType}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Basic Vehicle Information */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h4 className="text-lg font-semibold text-blue-900 mb-3">Unit Information</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Year:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.year}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Make:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.make}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Model:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.model}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Stock #:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.stock || 'N/A'}</span>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="font-medium text-gray-700">VIN:</span>
-                      <span className="ml-2 text-gray-900 font-mono text-xs">{vehicle.vin}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Condition:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.condition || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Category:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.category}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Appearance */}
-                <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                  <h4 className="text-lg font-semibold text-indigo-900 mb-3">Appearance</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Exterior Color:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.extColor || vehicle.color}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Interior Color:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.intColor || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Body Style:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.bodyStyle || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Size Category:</span>
-                      <span className="ml-2 text-gray-900">{vehicle.sizeCategory || 'N/A'}</span>
                     </div>
                   </div>
                 </div>

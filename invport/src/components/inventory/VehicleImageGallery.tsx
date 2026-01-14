@@ -15,7 +15,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { useUnitImages, UnitImage } from '@/hooks/useUnitImages';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { apiFetch } from '@/lib/apiClient';
+
+// Use UnitImage as VehicleImage for compatibility
+type VehicleImage = UnitImage;
 
 interface VehicleImageGalleryProps {
   vin: string | undefined;
@@ -26,6 +28,7 @@ interface VehicleImageGalleryProps {
   maxImages?: number;
   onNotification?: (type: 'success' | 'error' | 'warning', title: string, message?: string) => void;
   className?: string;
+  preloadedImages?: string[]; // Image URLs already loaded with inventory metadata
 }
 
 interface UploadStatus {
@@ -35,70 +38,63 @@ interface UploadStatus {
 }
 
 export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({ 
-  vin, 
+  vin,
+  typeId,
   mode = 'gallery',
   editable = false,
   unitId,
   maxImages = 10,
   onNotification,
-  className = ''
+  className = '',
+  preloadedImages
 }) => {
-  // Resolve UnitID for API-backed image listing (avoid direct blob probing)
-  const [resolvedUnitId, setResolvedUnitId] = useState<string | number | undefined>(unitId);
-  const [resolvingId, setResolvingId] = useState(false);
-  const [resolveError, setResolveError] = useState<string | null>(null);
+  // Memoize preloaded images transformation to prevent infinite loops
+  const preloadedImagesTransformed = React.useMemo(() => {
+    if (!preloadedImages || preloadedImages.length === 0) return [];
+    return preloadedImages.map((url, index) => ({ 
+      name: `${index + 1}.webp`, 
+      url, 
+      number: index + 1 
+    }));
+  }, [preloadedImages]);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function resolve() {
-      if (unitId != null && unitId !== '') {
-        setResolvedUnitId(unitId);
-        setResolveError(null);
-        return;
-      }
-      if (!vin) {
-        setResolvedUnitId(undefined);
-        setResolveError('Missing unit id or VIN');
-        return;
-      }
-      setResolvingId(true);
-      setResolveError(null);
-      try {
-        const res = await apiFetch(`/checkvin/${encodeURIComponent(vin)}`, { cache: 'no-store', skipRetry: true });
-        if (!res.ok) {
-          const txt = await res.text().catch(() => '');
-          throw new Error(`VIN lookup failed: ${res.status} ${txt?.slice(0,120)}`);
-        }
-        const data = await res.json().catch(() => ({}));
-        const id = data?.unitId ?? data?.UnitID ?? data?.id;
-        if (!id && !cancelled) {
-          setResolveError('VIN not found');
-          setResolvedUnitId(undefined);
-        } else if (!cancelled) {
-          setResolvedUnitId(id);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setResolveError(e instanceof Error ? e.message : 'VIN lookup failed');
-          setResolvedUnitId(undefined);
-        }
-      } finally {
-        if (!cancelled) setResolvingId(false);
-      }
-    }
-    resolve();
-    return () => { cancelled = true; };
-  }, [unitId, vin]);
+  // Always use unit-based API for both view and edit modes
+  // View mode with preloaded: use those directly without API call
+  // View mode without preloaded OR edit mode: use unit-based API
+  const shouldUseUnitApi = (editable || (preloadedImagesTransformed.length === 0)) && unitId;
+  const apiUnitId = shouldUseUnitApi ? unitId : undefined;
+  const unitApi = useUnitImages(apiUnitId);
 
-  // Use API hook for image listing/actions
-  const api = useUnitImages(resolvedUnitId);
-  const images = api.images as UnitImage[];
-  const isLoading = api.isLoading || resolvingId;
-  const error = api.error || resolveError;
-  const uploadImage = api.uploadImage;
-  const deleteImage = api.deleteImage;
-  const renameImage = api.renameImage;
-  const [selectedImage, setSelectedImage] = useState<UnitImage | null>(null);
+  // Determine which image source to use
+  let images: VehicleImage[];
+  let isLoading: boolean;
+  let error: string | null;
+  let uploadImage: ((file: File) => Promise<boolean>) | undefined;
+  let deleteImage: ((imageNumber: number) => Promise<boolean>) | undefined;
+  let renameImage: ((oldNumber: number, newNumber: number, options?: { skipRefresh?: boolean }) => Promise<boolean>) | undefined;
+  let refreshImages: (() => Promise<void>) | undefined;
+
+  if (!editable && preloadedImagesTransformed.length > 0) {
+    // View mode with preloaded images - use directly, no API
+    images = preloadedImagesTransformed as VehicleImage[];
+    isLoading = false;
+    error = null;
+    uploadImage = undefined;
+    deleteImage = undefined;
+    renameImage = undefined;
+    refreshImages = undefined;
+  } else {
+    // Edit mode OR view mode without preloaded - use unit API for everything
+    images = unitApi.images as VehicleImage[];
+    isLoading = unitApi.isLoading;
+    error = unitApi.error;
+    uploadImage = unitApi.uploadImage;
+    deleteImage = unitApi.deleteImage;
+    renameImage = unitApi.renameImage;
+    refreshImages = unitApi.refreshImages;
+  }
+
+  const [selectedImage, setSelectedImage] = useState<VehicleImage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatuses, setUploadStatuses] = useState<UploadStatus[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -115,16 +111,14 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   };
 
   // Local display state derived from API + post-refresh animations
-  const [displayImages, setDisplayImages] = useState<UnitImage[]>([]);
-  const [maxImageIndexUnlocked, setMaxImageIndexUnlocked] = useState(0);
+  const [displayImages, setDisplayImages] = useState<VehicleImage[]>([]);
   useEffect(() => {
-    setDisplayImages(images as UnitImage[]);
-    // Reset sequential loading gate when image list changes
-    setMaxImageIndexUnlocked(0);
-    // If a rename just succeeded, animate/highlight the target tile now that images are fresh
+    setDisplayImages(images as VehicleImage[]);
+    // If a reorder just succeeded, animate/highlight the target tile now that images are fresh
     if (successTargetRef.current) {
-      const { number, dir } = successTargetRef.current;
-      const idx = (images as UnitImage[]).findIndex(img => img.number === number);
+      const { index, dir } = successTargetRef.current;
+      const clampedIndex = Math.max(0, Math.min(index, (images as VehicleImage[]).length - 1));
+      const idx = clampedIndex;
       if (idx >= 0) {
         requestAnimationFrame(() => {
           const el = itemRefs.current[idx];
@@ -132,7 +126,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
             el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
           }
           setHighlightIndex(idx);
-          setMoveAnim({ key: (images as UnitImage[])[idx].name, dir });
+          setMoveAnim({ key: (images as VehicleImage[])[idx].name, dir });
           setTimeout(() => setMoveAnim(null), 500);
           setTimeout(() => setHighlightIndex(null), 1200);
           if (onNotification) {
@@ -152,8 +146,8 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   };
   const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
   const [moveAnim, setMoveAnim] = useState<{ key: string; dir: 'up' | 'down' } | null>(null);
-  // When a rename succeeds, we animate/highlight the target index after the list refreshes
-  const successTargetRef = useRef<{ number: number; dir: 'up' | 'down' } | null>(null);
+  // When a reorder succeeds, we animate/highlight the target index after the list refreshes
+  const successTargetRef = useRef<{ index: number; dir: 'up' | 'down' } | null>(null);
 
   // Removed optimistic helpers; movement is applied after backend success and refresh
 
@@ -176,6 +170,13 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
+
+    // Check if upload is available (should only be in edit mode)
+    if (!uploadImage) {
+      console.error('Upload not available - component not in edit mode');
+      if (onNotification) onNotification('error', 'Upload Failed', 'Upload is not available in this mode.');
+      return;
+    }
 
     // Validate all files first
     const validationErrors: string[] = [];
@@ -267,7 +268,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
       
       // Refresh images list once after all uploads complete
       if (successCount > 0) {
-        await api.refreshImages?.();
+        await refreshImages?.();
       }
       
       // Bust cache so images re-render with fresh URLs
@@ -297,6 +298,12 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   const confirmAndDelete = async () => {
     const imageNumber = confirmDelete.imageNumber;
     if (!imageNumber && imageNumber !== 0) return;
+    if (!deleteImage) {
+      console.error('Delete not available - component not in edit mode');
+      if (onNotification) onNotification('error', 'Delete Failed', 'Delete is not available in this mode.');
+      setConfirmDelete({ open: false, imageNumber: undefined });
+      return;
+    }
     const success = await deleteImage(imageNumber);
     if (!success) {
       if (onNotification) onNotification('error', 'Delete Failed', 'Failed to delete image. Please try again.');
@@ -313,54 +320,83 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   const handleMoveUp = async (index: number) => {
     if (index === 0) return;
     const movedImage = displayImages[index];
-    if (isReordering) return;
+    if (isReordering || !renameImage) return;
     setIsReordering(true);
-    const oldNumber = movedImage.number;
-    // Target the previous neighbor's actual number to guarantee a valid destination
-    const neighborNumber = displayImages[index - 1]?.number;
-    const newNumber = neighborNumber ?? Math.max(1, oldNumber - 1);
-    const success = await renameImage(oldNumber, newNumber);
-    if (!success) {
-      if (onNotification) onNotification('error', 'Reorder Failed', 'Failed to reorder images.');
+    
+    try {
+      // Use rename API: move image at index to index-1
+      // The API will automatically shift other images
+      const targetNumber = displayImages[index - 1].number;
+      const success = await renameImage(movedImage.number, targetNumber);
+      
+      if (!success) {
+        if (onNotification) onNotification('error', 'Reorder Failed', 'Failed to reorder images.');
+        setIsReordering(false);
+        return;
+      }
+      
+      // Mark the target index for post-refresh animation/highlight
+      successTargetRef.current = { index: index - 1, dir: 'up' };
+      
+      // Bust cache so updated order is reflected immediately
+      setCacheBuster((b) => b + 1);
+      
+      // Wait for images to refresh from server
+      if (refreshImages) {
+        await refreshImages();
+      }
+      
+      // Brief pause so user can see the new order before allowing more moves
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+    } catch (error) {
+      console.error('Error moving image up:', error);
+      if (onNotification) onNotification('error', 'Reorder Failed', 'An error occurred while reordering.');
+    } finally {
+      // Always release the lock
       setIsReordering(false);
-      return;
     }
-    // Mark the target for post-refresh animation/highlight
-    successTargetRef.current = { number: newNumber, dir: 'up' };
-    // Bust cache so updated order is reflected immediately
-    setCacheBuster((b) => b + 1);
-    // Ensure images refresh occurs now and with a couple of lazy follow-ups for eventual consistency
-    api.refreshImages?.();
-    setTimeout(() => api.refreshImages?.(), 400);
-    setTimeout(() => api.refreshImages?.(), 1200);
-    // Extra cache-bust shortly after to refresh both old and new positions in client render
-    setTimeout(() => setCacheBuster((b) => b + 1), 300);
-    // Release reorder lock slightly after the first refresh tick
-    setTimeout(() => setIsReordering(false), 350);
   };
 
   const handleMoveDown = async (index: number) => {
     if (index === displayImages.length - 1) return;
     const movedImage = displayImages[index];
-    if (isReordering) return;
+    if (isReordering || !renameImage) return;
     setIsReordering(true);
-    const oldNumber = movedImage.number;
-    // Target the next neighbor's actual number to guarantee a valid destination
-    const neighborNumber = displayImages[index + 1]?.number;
-    const newNumber = neighborNumber ?? (oldNumber + 1);
-    const success = await renameImage(oldNumber, newNumber);
-    if (!success) {
-      if (onNotification) onNotification('error', 'Reorder Failed', 'Failed to reorder images.');
+    
+    try {
+      // Use rename API: move image at index to index+1
+      // The API will automatically shift other images
+      const targetNumber = displayImages[index + 1].number;
+      const success = await renameImage(movedImage.number, targetNumber);
+      
+      if (!success) {
+        if (onNotification) onNotification('error', 'Reorder Failed', 'Failed to reorder images.');
+        setIsReordering(false);
+        return;
+      }
+      
+      // Mark the target index for post-refresh animation/highlight
+      successTargetRef.current = { index: index + 1, dir: 'down' };
+      
+      // Bust cache so updated order is reflected immediately
+      setCacheBuster((b) => b + 1);
+      
+      // Wait for images to refresh from server
+      if (refreshImages) {
+        await refreshImages();
+      }
+      
+      // Brief pause so user can see the new order before allowing more moves
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+    } catch (error) {
+      console.error('Error moving image down:', error);
+      if (onNotification) onNotification('error', 'Reorder Failed', 'An error occurred while reordering.');
+    } finally {
+      // Always release the lock
       setIsReordering(false);
-      return;
     }
-    successTargetRef.current = { number: newNumber, dir: 'down' };
-    setCacheBuster((b) => b + 1);
-    api.refreshImages?.();
-    setTimeout(() => api.refreshImages?.(), 400);
-    setTimeout(() => api.refreshImages?.(), 1200);
-    setTimeout(() => setCacheBuster((b) => b + 1), 300);
-    setTimeout(() => setIsReordering(false), 350);
   };
 
   // Drag & Drop removed: only arrow-based single-step renames are supported for now
@@ -640,25 +676,13 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                     className="aspect-square cursor-pointer relative"
                     onClick={() => setSelectedImage(image)}
                   >
-                    {index <= maxImageIndexUnlocked ? (
-                      <Image
-                        src={withCacheBuster(image.url)}
-                        alt={`Vehicle image ${image.number}`}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        onLoad={() => {
-                          setMaxImageIndexUnlocked((prev) => {
-                            if (index >= prev) return index + 1;
-                            return prev;
-                          });
-                        }}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      </div>
-                    )}
+                    <Image
+                      src={withCacheBuster(image.url)}
+                      alt={`Vehicle image ${image.number}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    />
                   </div>
 
                   {/* Image Number Badge */}
