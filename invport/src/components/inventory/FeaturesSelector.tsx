@@ -18,9 +18,11 @@ interface FeaturesSelectorProps {
   defaultOpen?: boolean;
   small?: boolean;
   categoryConfig?: FeatureCategoryConfig[];
+  refreshKey?: number; // Force reload when this changes
+  showOnlyUnsorted?: boolean; // Only show features that don't match any category
 }
 
-export default function FeaturesSelector({ selected, onChange, title = 'Unit Features', lazy = false, className = '', defaultOpen = true, small = false, categoryConfig }: FeaturesSelectorProps) {
+export default function FeaturesSelector({ selected, onChange, title = 'Unit Features', lazy = false, className = '', defaultOpen = true, small = false, categoryConfig, refreshKey, showOnlyUnsorted = false }: FeaturesSelectorProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -67,6 +69,13 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
     }
   }, [lazy, hasLoaded, loadFeatures]);
 
+  // Reload features when refreshKey changes
+  useEffect(() => {
+    if (refreshKey !== undefined && hasLoaded) {
+      loadFeatures();
+    }
+  }, [refreshKey, hasLoaded, loadFeatures]);
+
   const toggle = (id: number) => {
     const next = selected.includes(id)
       ? selected.filter((x) => x !== id)
@@ -76,14 +85,20 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
 
   const grouped = useMemo(() => {
     const by: Record<string, FeatureOption[]> = {};
-    for (const f of features) {
+    
+    // Filter features if showOnlyUnsorted is true
+    const featuresToShow = showOnlyUnsorted 
+      ? features.filter(f => detectFeatureCategory(f.FeatureName, FEATURE_CATEGORIES) === UNSORTED_FEATURE_CATEGORY)
+      : features;
+    
+    for (const f of featuresToShow) {
       const cat = detectFeatureCategory(f.FeatureName, categories);
       if (!by[cat]) by[cat] = [];
       by[cat].push(f);
     }
     const order = [...categories.map((c) => c.name), UNSORTED_FEATURE_CATEGORY];
     return { by, order } as const;
-  }, [features, categories]);
+  }, [features, categories, showOnlyUnsorted]);
 
   return (
     <div ref={containerRef} className={className}>

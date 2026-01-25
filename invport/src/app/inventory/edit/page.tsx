@@ -13,8 +13,9 @@ import { LoadingSpinner } from '@/components/ui/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ArrowLeftIcon, ArrowPathIcon, CheckIcon, TrashIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { VEHICLE_COLORS, STATUS_OPTIONS } from '@/constants/inventory';
-import { FEATURE_CATEGORIES } from '@/constants/features';
+import { FEATURE_CATEGORIES, VEHICLE_FEATURE_CATEGORIES } from '@/constants/features';
 import FeaturesSelector from '@/components/inventory/FeaturesSelector';
+import { VinDecoderButton } from '@/components/inventory/VinDecoderButton';
 import { rewriteDescription } from '@/lib/ai/rewriteDescription';
 
 // Utility function to capitalize first letter of each word
@@ -193,6 +194,7 @@ function EditInventoryPageContent() {
   const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([]);
   const initialFeatureIdsRef = useRef<number[]>([]);
   const [isSavingFeatures, setIsSavingFeatures] = useState(false);
+  const [featureRefreshKey, setFeatureRefreshKey] = useState(0); // Force feature reload
   // Track initial status to detect changes saved via the form control
   const initialStatusRef = useRef<string>('');
 
@@ -437,6 +439,104 @@ function EditInventoryPageContent() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges, hasFeatureChanges]);
+
+  const handleVinFeatures = async (featureNames: string[]) => {
+    if (!vehicle?.UnitID) {
+      error('No Unit', 'Cannot add features without a valid unit');
+      return;
+    }
+
+    try {
+      const results = {
+        added: 0,
+        alreadyAssigned: 0,
+        failed: 0,
+        newlyCreated: 0,
+      };
+
+      // Show progress notification
+      success('Adding Features', `Adding ${featureNames.length} feature${featureNames.length !== 1 ? 's' : ''} from VIN decode...`);
+
+      // Add each feature using the new endpoint
+      for (const featureName of featureNames) {
+        try {
+          const addRes = await apiFetch(`/units/${vehicle.UnitID}/features/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ featureName: featureName.trim() }),
+          });
+
+          if (addRes.ok) {
+            const result = await addRes.json();
+            
+            if (result.alreadyAssigned) {
+              results.alreadyAssigned++;
+            } else {
+              results.added++;
+              if (result.newlyCreated) {
+                results.newlyCreated++;
+              }
+            }
+          } else {
+            results.failed++;
+            console.error(`Failed to add feature "${featureName}":`, addRes.status);
+          }
+        } catch (err) {
+          results.failed++;
+          console.error(`Error adding feature "${featureName}":`, err);
+        }
+      }
+
+      // Refresh the features list to show the newly added features
+      if (results.added > 0) {
+        // Wait a moment for database operations to complete
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Refresh the unit's feature assignments
+        await fetchUnitFeatures(vehicle.UnitID.toString());
+        
+        // Force FeaturesSelector to reload its feature list
+        setFeatureRefreshKey(prev => prev + 1);
+        
+        // Wait another moment to ensure state updates
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Open and scroll to the features section
+        setExpandedSections(prev => ({ ...prev, unitFeatures: true }));
+        
+        // Scroll to features section after a brief delay to ensure it's expanded
+        setTimeout(() => {
+          const featuresSection = document.querySelector('[data-section="unit-features"]');
+          if (featuresSection) {
+            featuresSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 200);
+
+        // Show detailed success message
+        const messages: string[] = [];
+        if (results.added > 0) {
+          messages.push(`${results.added} feature${results.added !== 1 ? 's' : ''} added`);
+        }
+        if (results.newlyCreated > 0) {
+          messages.push(`${results.newlyCreated} new feature${results.newlyCreated !== 1 ? 's' : ''} created`);
+        }
+        if (results.alreadyAssigned > 0) {
+          messages.push(`${results.alreadyAssigned} already assigned`);
+        }
+        if (results.failed > 0) {
+          messages.push(`${results.failed} failed`);
+        }
+
+        success('Features Added from VIN', messages.join(', '));
+      } else if (results.alreadyAssigned > 0) {
+        error('Already Added', `All ${results.alreadyAssigned} feature${results.alreadyAssigned !== 1 ? 's' : ''} are already assigned to this unit.`);
+      } else {
+        error('No Features Added', 'Failed to add any features. Please try again.');
+      }
+    } catch (err) {
+      error('Feature Generation Failed', err instanceof Error ? err.message : 'Failed to process VIN features');
+    }
+  };
 
   const saveFeatures = async () => {
     if (!vehicle?.UnitID) return;
@@ -1278,7 +1378,7 @@ function EditInventoryPageContent() {
         </div>
 
         {/* 4) Unit Features */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4" data-section="unit-features">
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => toggleSection('unitFeatures')}
@@ -1297,15 +1397,38 @@ function EditInventoryPageContent() {
           </div>
           
           {expandedSections.unitFeatures && (
-            <FeaturesSelector
-              title="Select Features"
-              selected={selectedFeatureIds}
-              onChange={setSelectedFeatureIds}
-              lazy
-              defaultOpen={!isMobile}
-              small
-              categoryConfig={FEATURE_CATEGORIES}
-            />
+            <div className="space-y-4">
+              {/* VIN Decoder Button - Only show for Vehicles */}
+              {itemType === 'Vehicle' && vehicle?.VIN && (
+                <div className="p-4 rounded-lg bg-purple-50 border border-purple-200">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-purple-900 mb-1">VIN Decoder</h3>
+                      <p className="text-xs text-purple-700">
+                        Automatically extract vehicle features from the VIN. Decoded features will be added to your existing selections.
+                      </p>
+                    </div>
+                    <VinDecoderButton 
+                      currentVin={vehicle.VIN}
+                      onFeaturesGenerated={handleVinFeatures}
+                      className="shrink-0"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <FeaturesSelector
+                title="Select Features"
+                selected={selectedFeatureIds}
+                onChange={setSelectedFeatureIds}
+                lazy
+                defaultOpen={!isMobile}
+                small
+                categoryConfig={itemType === 'Vehicle' ? VEHICLE_FEATURE_CATEGORIES : FEATURE_CATEGORIES}
+                refreshKey={featureRefreshKey}
+                showOnlyUnsorted={itemType === 'Vehicle'}
+              />
+            </div>
           )}
         </div>
 

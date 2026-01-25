@@ -55,11 +55,12 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
       'ramp door',
       'fish house door',
       'rv door w/ screen',
-      'RV Door w/screen',
+      'rv door w/screen',
       'rv door with screen',
       'black window frames',
       'custom decals',
-      '90" Sidewalls',
+      '90" sidewalls',
+      '90\" sidewalls',
     ],
   },
   {
@@ -82,7 +83,7 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
       'power lift bed 54',
       'power lift bed 60',
       'cabinets to hide power lift bed',
-      'Pocket Door',
+      'pocket door',
     ],
   },
   {
@@ -131,6 +132,7 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
       '3 burner stove w/ oven',
       '3 burner stove with oven',
       'furrion stove w/ oven',
+      'furrion stove w/oven',
       'furrion stove with oven',
       'microwave',
       'range hood',
@@ -142,7 +144,6 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
       'double sink',
       'single sink',
       'dry sink',
-      'Furrion Stove w/Oven',
     ],
   },
   {
@@ -251,6 +252,10 @@ export const FEATURE_CATEGORIES: FeatureCategoryConfig[] = [
     ],
   },
 ];
+
+// Vehicle-specific category config - only shows unsorted features
+// Vehicles don't need the detailed categorization that fish houses/trailers use
+export const VEHICLE_FEATURE_CATEGORIES: FeatureCategoryConfig[] = [];
 
 export function detectFeatureCategory(name: string, categories: FeatureCategoryConfig[]): string {
   const n = (name || '').toLowerCase();
