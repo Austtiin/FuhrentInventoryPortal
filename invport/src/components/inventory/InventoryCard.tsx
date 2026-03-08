@@ -22,7 +22,7 @@ const getStatusColor = (status: string) => {
       return 'bg-green-500';
     case 'sold':
     case 'Sold':
-      return 'bg-blue-500';
+      return 'bg-emerald-500';
     case 'pending':
     case 'Pending':
       return 'bg-yellow-500';
@@ -39,7 +39,7 @@ const getStatusColor = (status: string) => {
 
 const InventoryCard: React.FC<InventoryCardProps> = ({ item, onView, onEdit, onDelete }) => {
   return (
-    <div className="group bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-blue-300/50">
+    <div className="group bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-emerald-300/50">
   <div className="relative h-48 overflow-hidden lg:h-56 bg-linear-to-br from-gray-100 to-gray-200">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-gray-400 text-center">
@@ -57,7 +57,7 @@ const InventoryCard: React.FC<InventoryCardProps> = ({ item, onView, onEdit, onD
       
       <div className="p-6">
         <div className="mb-6">
-          <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
+          <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors">
             {item.name}
           </h3>
           <p className="text-sm text-slate-600 font-medium">
@@ -115,7 +115,7 @@ const InventoryCard: React.FC<InventoryCardProps> = ({ item, onView, onEdit, onD
         <div className="flex gap-3 pt-4 border-t border-gray-200/50">
           <button
             onClick={() => onView(item)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-white text-slate-700 border border-gray-300 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 font-medium cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-white text-slate-700 border border-gray-300 rounded-lg transition-all hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 font-medium cursor-pointer"
           >
             <EyeIcon className="w-4 h-4" />
             View
@@ -123,7 +123,7 @@ const InventoryCard: React.FC<InventoryCardProps> = ({ item, onView, onEdit, onD
           
           <button
             onClick={() => onEdit(item)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-blue-600 text-white border border-blue-600 rounded-lg transition-all hover:bg-blue-700 hover:border-blue-700 font-medium cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-emerald-600 text-white border border-emerald-600 rounded-lg transition-all hover:bg-emerald-700 hover:border-emerald-700 font-medium cursor-pointer"
           >
             <PencilIcon className="w-4 h-4" />
             Edit

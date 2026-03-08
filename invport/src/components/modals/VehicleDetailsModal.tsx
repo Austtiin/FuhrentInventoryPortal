@@ -99,8 +99,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 </div>
 
                 {/* Basic Vehicle Information */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h4 className="text-lg font-semibold text-blue-900 mb-3">Unit Information</h4>
+                <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+                  <h4 className="text-lg font-semibold text-emerald-900 mb-3">Unit Information</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Year:</span>
@@ -250,7 +250,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
                 onClose();
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors"
             >
               Edit Unit
             </button>

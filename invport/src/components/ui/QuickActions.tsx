@@ -72,7 +72,7 @@ export const QuickActions: React.FC = () => {
         {primaryAction && (
           <button
             onClick={() => handleActionClick(primaryAction.route)}
-            className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 cursor-pointer"
+            className="w-full flex items-center justify-center gap-3 p-4 bg-[#1C4840] text-white rounded-lg hover:bg-teal-700 transition-all duration-200 cursor-pointer"
           >
             <primaryAction.icon className="w-5 h-5" />
             <span className="font-medium">{primaryAction.label}</span>
@@ -85,7 +85,7 @@ export const QuickActions: React.FC = () => {
             <button
               key={action.id}
               onClick={() => handleActionClick(action.route)}
-              className="flex items-center gap-2 p-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+              className="flex items-center gap-2 p-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-[#1C4840] hover:text-white transition-colors cursor-pointer"
             >
               <action.icon className="w-4 h-4" />
               <span className="font-medium text-sm">{action.label}</span>
@@ -103,8 +103,8 @@ export const QuickActions: React.FC = () => {
             className={`
               flex items-center gap-2 p-3 rounded-lg transition-all duration-200 cursor-pointer text-sm
               ${action.primary 
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700' 
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-[#1C4840] text-white hover:bg-teal-700' 
+                : 'bg-gray-100 text-gray-700 hover:bg-[#1C4840] hover:text-white'
               }
             `}
           >

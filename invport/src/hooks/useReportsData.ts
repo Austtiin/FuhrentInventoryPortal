@@ -114,6 +114,64 @@ export function useReportsData() {
       console.log('%c🔍 [Reports] Final Extracted Data:', 'color: #00BCD4; font-weight: bold');
       console.log(data);
       
+      // Fetch full inventory to calculate detailed statistics
+      let avgPrice = 0;
+      let minPrice = 0;
+      let maxPrice = 0;
+      let avgYear = 0;
+      let oldestYear = 0;
+      let newestYear = 0;
+      
+      try {
+        const inventoryResponse = await apiFetch('/GrabInventoryAll');
+        if (inventoryResponse.ok) {
+          const inventoryResult = await safeResponseJson<unknown>(inventoryResponse);
+          let inventory: Array<{Price?: number; Year?: number}> = [];
+          
+          // Handle different response structures
+          if (Array.isArray(inventoryResult)) {
+            inventory = inventoryResult;
+          } else if (inventoryResult && typeof inventoryResult === 'object') {
+            const inv = inventoryResult as Record<string, unknown>;
+            if (Array.isArray(inv.data)) {
+              inventory = inv.data;
+            } else if (Array.isArray(inv.vehicles)) {
+              inventory = inv.vehicles;
+            }
+          }
+          
+          console.log('%c🔍 [Reports] Calculating statistics from', 'color: #FF9800; font-weight: bold', inventory.length, 'items');
+          
+          // Calculate price statistics
+          const prices = inventory
+            .map(item => Number(item.Price))
+            .filter(price => !isNaN(price) && price > 0);
+          
+          if (prices.length > 0) {
+            avgPrice = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+            minPrice = Math.min(...prices);
+            maxPrice = Math.max(...prices);
+          }
+          
+          // Calculate year statistics
+          const years = inventory
+            .map(item => Number(item.Year))
+            .filter(year => !isNaN(year) && year > 1900 && year <= new Date().getFullYear() + 1);
+          
+          if (years.length > 0) {
+            avgYear = years.reduce((sum, year) => sum + year, 0) / years.length;
+            oldestYear = Math.min(...years);
+            newestYear = Math.max(...years);
+          }
+          
+          console.log('%c✅ [Reports] Statistics calculated:', 'color: #4CAF50; font-weight: bold', {
+            avgPrice, minPrice, maxPrice, avgYear, oldestYear, newestYear
+          });
+        }
+      } catch (invErr) {
+        console.warn('[Reports] Could not fetch inventory for detailed statistics:', invErr);
+      }
+      
       // Adapt the Azure Function response to match our expected format
       const adaptedData: ReportsData = {
         totalStats: {
@@ -123,13 +181,13 @@ export function useReportsData() {
           totalTrailers: Number(data.totalTrailers || 0),
           uniqueMakes: Number(data.totalUniqueMakes || data.uniqueMakes || 0),
           pendingSales: Number(data.pendingSales || 0),
-          avgPrice: 0, // Calculated client-side if needed
-          minPrice: 0,
-          maxPrice: 0,
+          avgPrice,
+          minPrice,
+          maxPrice,
           uniqueCategories: 0,
-          avgYear: 0,
-          oldestYear: 0,
-          newestYear: 0,
+          avgYear,
+          oldestYear,
+          newestYear,
         },
         categoryBreakdown: [],
         statusBreakdown: [],

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { Layout } from '@/components/layout';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/apiClient';
 import { VEHICLE_COLORS, STATUS_OPTIONS } from '@/constants/inventory';
@@ -321,7 +320,6 @@ const AddInventoryPage: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -336,8 +334,7 @@ const AddInventoryPage: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900">Add New Inventory Item</h1>
-            <p className="text-gray-600 mt-1">Enter the details for the new item</p>
+            <p className="text-gray-600">Enter the details for the new item</p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-8">
@@ -745,7 +742,7 @@ const AddInventoryPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[200px]"
+                className="px-6 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[200px]"
               >
                 {isSubmitting ? (
                   <>
@@ -769,7 +766,6 @@ const AddInventoryPage: React.FC = () => {
           </form>
         </div>
       </div>
-    </Layout>
   );
 };
 

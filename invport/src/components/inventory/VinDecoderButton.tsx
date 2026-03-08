@@ -282,8 +282,8 @@ export function VinDecoderButton({ currentVin, onFeaturesGenerated, className = 
           {/* Decoded Data Display */}
           {decodedData && (
             <div className="space-y-4">
-              <div className="p-4 rounded-md bg-blue-50 border border-blue-200">
-                <h3 className="text-sm font-semibold text-blue-900 mb-3">Decoded Vehicle Information</h3>
+              <div className="p-4 rounded-md bg-emerald-50 border border-emerald-200">
+                <h3 className="text-sm font-semibold text-emerald-900 mb-3">Decoded Vehicle Information</h3>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {decodedData.make && (
                     <div>

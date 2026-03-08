@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Layout } from '@/components/layout';
+
 import { useReportsData } from '@/hooks/useReportsData';
 import { InventoryRadarChart } from '@/components/reports/InventoryRadarChart';
 import { 
@@ -312,13 +312,11 @@ const ReportsPage: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600">
               Comprehensive insights into your inventory performance and metrics
               {lastUpdated && (
                 <span className="text-sm text-gray-500 block mt-1">
@@ -331,7 +329,7 @@ const ReportsPage: React.FC = () => {
             <button
               onClick={() => refresh()}
               disabled={isLoading}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-md transition-colors cursor-pointer disabled:cursor-not-allowed"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-md transition-colors cursor-pointer disabled:cursor-not-allowed"
             >
               <ArrowTrendingUpIcon className="w-5 h-5" />
               <span className="text-white">{isLoading ? 'Loading...' : 'Refresh Data'}</span>
@@ -496,7 +494,7 @@ const ReportsPage: React.FC = () => {
                         key={format}
                         onClick={() => generateReport(report.title, format)}
                         disabled={isLoading || isExporting}
-                        className="px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer text-white disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700"
+                        className="px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer text-white disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-700"
                       >
                         Generate {format}
                       </button>
@@ -508,7 +506,6 @@ const ReportsPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 

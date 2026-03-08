@@ -1,13 +1,10 @@
 import React from 'react';
 import Link from 'next/link';
-import { Layout } from '@/components/layout';
 
 export default function UsersPage() {
   return (
-    <Layout>
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+        <div className="flex items-center justify-end">
           <Link href="/inventory" className="text-blue-600 hover:text-blue-700 text-sm">Back to Inventory</Link>
         </div>
 
@@ -17,6 +14,5 @@ export default function UsersPage() {
           </p>
         </div>
       </div>
-    </Layout>
   );
 }

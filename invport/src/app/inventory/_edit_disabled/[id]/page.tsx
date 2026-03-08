@@ -427,7 +427,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
                 type="button"
                 onClick={handleMarkAsAvailable}
                 disabled={isSaving || formData.status === 'Available'}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title={formData.status === 'Available' ? 'Already marked as Available' : 'Mark this unit as Available for sale'}
               >
                 <CheckIcon className="w-4 h-4" />
@@ -756,7 +756,7 @@ export default function EditInventoryPage({ params }: EditInventoryPageProps) {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[200px]"
+                className="px-6 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[200px]"
               >
                 {isSaving ? (
                   <>

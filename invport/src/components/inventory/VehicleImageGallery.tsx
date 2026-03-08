@@ -471,7 +471,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           
           {/* Thumbnail Indicator for image number 1 */}
           {currentImage.number === 1 && (
-            <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-semibold shadow-lg border border-blue-700">
+            <div className="absolute top-2 left-2 bg-emerald-600 text-white px-2 py-1 rounded-md text-xs font-semibold shadow-lg border border-emerald-700">
               Thumbnail
             </div>
           )}
@@ -513,7 +513,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   onClick={() => setCurrentImageIndex(index)}
                   className={`relative shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
                     index === currentImageIndex 
-                      ? 'border-blue-500 shadow-md' 
+                      ? 'border-emerald-500 shadow-md' 
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -526,7 +526,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   />
                   {/* Thumbnail Indicator for image number 1 */}
                   {image.number === 1 && (
-                    <div className="absolute top-0 left-0 bg-blue-600 text-white px-1 text-xs font-bold rounded-br-md">
+                    <div className="absolute top-0 left-0 bg-emerald-600 text-white px-1 text-xs font-bold rounded-br-md">
                       T
                     </div>
                   )}
@@ -692,7 +692,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
 
                   {/* Thumbnail Indicator for image number 1 */}
                   {image.number === 1 && (
-                    <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold shadow-lg border border-blue-700">
+                    <div className="absolute top-2 right-2 bg-emerald-600 text-white px-2 py-1 rounded text-xs font-semibold shadow-lg border border-emerald-700">
                       Thumbnail
                     </div>
                   )}
@@ -706,7 +706,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                           type="button"
                           onClick={() => handleMoveUp(index)}
                           disabled={isReordering}
-                          className={`p-2 rounded-md transition-colors text-white ${isReordering ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                          className={`p-2 rounded-md transition-colors text-white ${isReordering ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                           title="Move up"
                         >
                           <ArrowUpIcon className="w-4 h-4" />
@@ -719,7 +719,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                           type="button"
                           onClick={() => handleMoveDown(index)}
                           disabled={isReordering}
-                          className={`p-2 rounded-md transition-colors text-white ${isReordering ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                          className={`p-2 rounded-md transition-colors text-white ${isReordering ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                           title="Move down"
                         >
                           <ArrowDownIcon className="w-4 h-4" />

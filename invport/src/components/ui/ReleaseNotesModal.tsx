@@ -58,7 +58,7 @@ export default function ReleaseNotesModal({ storageKey = "releaseNotesSeenVersio
         <div className="mt-4 flex items-center justify-end gap-2">
           <button
             onClick={dismiss}
-            className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+            className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700"
           >
             Got it
           </button>

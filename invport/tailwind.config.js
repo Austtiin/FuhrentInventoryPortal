@@ -8,7 +8,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Custom brand colors
+        // Custom theme colors - flattened for easier Tailwind access
+        'theme-dark': '#1e1e24',          // Sidebar, navbar, primary dark elements
+        'theme-bg': '#ffcf99',             // Main content area background  
+        'theme-white': '#FFFFFF',          // Content sections, cards
+        'theme-red': '#92140c',            // Secondary accent, important elements
+        'theme-cream': '#fff8f0',          // Light backgrounds
+        'theme-navy': '#111d4a',           // Navy accent
+        'theme-text': '#1e1e24',           // Primary text color
+        
+        // Keep existing brand colors for backward compatibility
         brand: {
           black: '#32292F',
           cream: '#F0F7F4', 

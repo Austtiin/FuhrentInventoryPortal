@@ -9,12 +9,18 @@ import {
   PlusCircleIcon,
   ChartBarIcon,
   ChevronDownIcon,
-  ListBulletIcon
+  ListBulletIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  width: number;
+  isExpanded: boolean;
+  onToggleWidth: () => void;
+  isDesktop: boolean;
 }
 
 interface NavigationItem {
@@ -35,19 +41,11 @@ const navigationItems: NavigationItem[] = [
     name: 'Inventory',
     href: '/inventory',
     icon: CubeIcon,
-    subItems: [
-      {
-        name: 'Current Inventory',
-        href: '/inventory',
-        icon: ListBulletIcon,
-        exact: true,
-      },
-      {
-        name: 'Add Item',
-        href: '/inventory/add',
-        icon: PlusCircleIcon,
-      }
-    ]
+  },
+  {
+    name: 'Add Item',
+    href: '/inventory/add',
+    icon: PlusCircleIcon,
   },
   {
     name: 'Reports',
@@ -56,7 +54,7 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, width, isExpanded, onToggleWidth, isDesktop }) => {
   const pathname = usePathname();
     // Normalize the pathname by removing trailing slashes for consistent matching
     const cleanPath = React.useMemo(() => {
@@ -102,31 +100,45 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {/* Mobile overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-slate-200/70 z-30 lg:hidden"
+          className="absolute inset-0 bg-slate-200/70 z-30 lg:hidden"
           onClick={onClose}
         />
       )}
       
-      <aside className={`
-        fixed top-20 left-0 h-[calc(100vh-5rem)] bg-linear-to-b from-slate-900 to-blue-900 border-r border-blue-800/30
-        transform transition-all duration-300 z-40 flex flex-col shadow-xl
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:fixed lg:top-20 lg:h-[calc(100vh-5rem)]
-        lg:w-64 w-64
-      `}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-blue-800/30 bg-linear-to-r from-blue-900 to-indigo-900 relative">
-          <h2 className="text-lg font-bold text-white tracking-tight">Inventory Portal</h2>
-          <div className="flex items-center gap-2" />
+      <aside 
+        className={`
+          sticky top-2 left-0 self-start bg-[#ECF5E9]
+          transform transition-transform duration-300 z-40 flex flex-col shrink-0
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0 rounded-2xl
+          max-h-[calc(100vh-1rem)] overflow-y-auto
+          w-64
+        `}
+        style={{ width: isDesktop ? `${width}px` : '256px', marginLeft: isDesktop ? '0' : undefined }}
+      >
+        {/* Logo Header */}
+        <div className="flex items-center justify-center pt-2 pb-1 px-3 bg-[#ECF5E9] relative">
+          <div className="flex items-center justify-center w-full">
+            <img
+              src="/logo/FELogo.png"
+              alt="Fuhr Enterprise logo"
+              className={`hover:opacity-90 transition-all duration-300 object-contain ${
+                isExpanded ? 'h-20 w-full' : 'h-8 w-auto'
+              }`}
+            />
+          </div>
         </div>
         
+        {/* Gradient Separator */}
+        <div className="h-px bg-linear-to-r from-transparent via-[#1C4840] to-transparent opacity-30 mx-4"></div>
+        
         {/* Navigation */}
-        <nav className="flex-1 py-2 overflow-y-auto scrollbar-thin">
+        <nav className="flex-1 py-2 overflow-y-hidden">
           <ul className="list-none m-0 p-0 space-y-1">
             {navigationItems.map((item) => {
               // Check if this is a parent item with sub-items
               const hasSubItems = item.subItems && item.subItems.length > 0;
-              const isExpanded = expandedItems.includes(item.name);
+              const isMenuExpanded = expandedItems.includes(item.name);
               
               // More precise active state logic
               let isActive = false;
@@ -164,52 +176,62 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       href={item.href}
                       className={`
                         group relative flex items-center transition-all duration-300 cursor-pointer
-                        gap-3 px-4 py-3 mx-3
                         rounded-md
                         ${
+                          isExpanded 
+                            ? 'gap-3 px-4 py-3 mx-3'
+                            : 'justify-center p-3 mx-2'
+                        }
+                        ${
                           isActive 
-                            ? 'bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
+                            ? 'bg-[#1C4840] text-white' 
                             : isSubItemActive
-                            ? 'bg-white/10 text-white'
-                            : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                            ? 'bg-teal-600 text-white'
+                            : 'text-gray-700 hover:bg-[#1C4840] hover:text-white'
                         }
                       `}
                       onClick={(e) => {
                         if (hasSubItems) {
                           e.preventDefault();
-                          toggleExpand(item.name);
+                          if (isExpanded) {
+                            toggleExpand(item.name);
+                          }
                         } else {
                           onClose();
                         }
                       }}
-                      aria-expanded={hasSubItems ? isExpanded : undefined}
+                      aria-expanded={hasSubItems ? isMenuExpanded : undefined}
                       aria-current={(!hasSubItems && isActive) ? 'page' : undefined}
-                      title={undefined}
+                      title={isExpanded ? undefined : item.name}
                     >
-                      <item.icon className={`shrink-0 transition-colors w-5 h-5`} />
-                      <>
-                        <span className="font-medium text-sm tracking-wide flex-1">{item.name}</span>
-                        {hasSubItems && (
-                          <ChevronDownIcon 
-                            className={`w-4 h-4 transition-transform duration-300 ${
-                              isExpanded ? 'rotate-180' : ''
-                            }`}
-                          />
-                        )}
-                      </>
+                      <item.icon className={`shrink-0 transition-colors ${
+                        isExpanded ? 'w-5 h-5' : 'w-6 h-6'
+                      }`} />
+                      {isExpanded && (
+                        <>
+                          <span className="font-medium text-sm tracking-wide flex-1">{item.name}</span>
+                          {hasSubItems && (
+                            <ChevronDownIcon 
+                              className={`w-4 h-4 transition-transform duration-300 ${
+                                isMenuExpanded ? 'rotate-180' : ''
+                              }`}
+                            />
+                          )}
+                        </>
+                      )}
                     </Link>
 
-                    {/* Animated white indicator bar - only when parent is strongly active */}
+                    {/* Animated indicator bar - only when parent is strongly active */}
                     {isActive && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full shadow-lg shadow-white/50"></div>
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#1C4840] rounded-r-full"></div>
                     )}
                   </div>
 
                   {/* Sub Items - Animated Dropdown */}
-                  {hasSubItems && (
+                  {hasSubItems && isExpanded && (
                     <div 
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        isExpanded ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0'
+                        isMenuExpanded ? 'max-h-48 opacity-100 mt-2' : 'max-h-0 opacity-0'
                       }`}
                     >
                       <ul className="space-y-2 ml-2">
@@ -229,8 +251,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                   transition-colors duration-150 cursor-pointer
                                   ${
                                     isSubActive
-                                      ? 'bg-white text-blue-900 shadow-md font-semibold border border-blue-500'
-                                      : 'text-blue-200 hover:bg-white/10 hover:text-white border border-transparent'
+                                      ? 'bg-[#1C4840] text-white font-semibold border border-[#1C4840]'
+                                      : 'text-gray-700 hover:bg-teal-600 hover:text-white border border-transparent'
                                   }
                                 `}
                                 onClick={onClose}
@@ -239,18 +261,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                 {/* Active indicator dot */}
                                 <div className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all ${
                                   isSubActive 
-                                    ? 'bg-blue-600 ring-4 ring-blue-300 shadow-lg shadow-blue-500/50' 
-                                    : 'bg-blue-400/50'
+                                    ? 'bg-white ring-2 ring-emerald-300' 
+                                    : 'bg-gray-500'
                                 }`}></div>
                                 
                                 {/* Icon */}
                                 <subItem.icon className={`w-5 h-5 shrink-0 transition-all ${
-                                  isSubActive ? 'text-blue-700' : 'text-blue-400'
+                                  isSubActive ? 'text-white' : 'text-gray-400'
                                 }`} />
                                 
                                 {/* Label */}
                                 <span className={`text-sm tracking-wide flex-1 ${
-                                  isSubActive ? 'text-blue-900 font-bold' : 'font-medium'
+                                  isSubActive ? 'text-white font-bold' : 'font-medium'
                                 }`}>
                                   {subItem.name}
                                 </span>
@@ -258,15 +280,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                 {/* Active pulse indicator */}
                                 {isSubActive && (
                                   <div className="ml-auto flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" style={{ animationDelay: '150ms' }}></div>
+                                    <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-teal-300 animate-pulse" style={{ animationDelay: '150ms' }}></div>
                                   </div>
                                 )}
                               </Link>
 
                               {/* Animated vertical indicator bar for active sub-item */}
                               {isSubActive && (
-                                <div className="absolute left-0 top-0 bottom-0 w-2 bg-linear-to-r from-blue-600 to-blue-500 rounded-r-full shadow-lg shadow-blue-600/50"></div>
+                                <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#1C4840] rounded-r-full"></div>
                               )}
                             </li>
                           );
@@ -281,22 +303,49 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </nav>
         
         {/* Footer */}
-        <div className={`border-t border-blue-800/30 bg-slate-800/50 p-4`}>
-          <div className={`flex items-center gap-3`}>
-            <div className={`bg-linear-to-br from-blue-600 to-indigo-600 text-white rounded-md flex items-center justify-center font-bold cursor-pointer hover:shadow-lg transition-all w-12 h-12 text-base`}>
-              FE
-            </div>
-            {
+        <div className="border-t border-teal-300 bg-[#ECF5E9] p-4 relative">
+          {isExpanded ? (
+            <div className="flex items-center gap-3">
+              <div className="bg-[#1C4840] text-white rounded-md flex items-center justify-center font-bold cursor-pointer hover:bg-teal-700 transition-all text-base w-12 h-12">
+                FE
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white m-0 truncate">
+                <p className="text-sm font-semibold text-gray-900 m-0 truncate">
                   Dealer Portal
                 </p>
-                <p className="text-xs text-blue-200 m-0 truncate">
+                <p className="text-xs text-gray-600 m-0 truncate">
                   Inventory System
                 </p>
               </div>
-            }
-          </div>
+              {/* Width Toggle Button - Desktop only */}
+              {isDesktop && (
+                <button
+                  onClick={onToggleWidth}
+                  className="p-2 rounded-md bg-[#1C4840] text-white hover:bg-teal-700 transition-all"
+                  title="Compact sidebar"
+                  aria-label="Compact sidebar"
+                >
+                  <ChevronDoubleLeftIcon className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div className="bg-[#1C4840] text-white rounded-md flex items-center justify-center font-bold cursor-pointer hover:bg-teal-700 transition-all text-base w-10 h-10">
+                FE
+              </div>
+              {isDesktop && (
+                <button
+                  onClick={onToggleWidth}
+                  className="p-1.5 rounded-md bg-[#1C4840] text-white hover:bg-teal-700 transition-all"
+                  title="Expand sidebar"
+                  aria-label="Expand sidebar"
+                >
+                  <ChevronDoubleRightIcon className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </aside>
     </>

@@ -1,49 +1,44 @@
 "use client";
 
 import React from 'react';
-import Image from 'next/image';
 import { Bars3Icon } from '@heroicons/react/24/outline';
+import Breadcrumb from './Breadcrumb';
 
 interface HeaderProps {
   onMenuClick: () => void;
+  sidebarWidth: number;
+  isDesktop: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarWidth, isDesktop }) => {
   return (
-    <header className="bg-brand-black backdrop-blur-lg border-b border-brand-blue/30 shadow-lg fixed top-0 z-50 h-20 w-full">
-      <div className="flex items-center justify-between h-full px-6 max-w-full">
-        <div className="flex items-center gap-4">
-          <button 
-            className="flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 border-none rounded-md cursor-pointer transition-all duration-200 lg:hidden backdrop-blur-sm"
-            onClick={onMenuClick}
-            aria-label="Toggle menu"
-          >
-            <Bars3Icon className="w-6 h-6 text-black" />
-          </button>
-          <div className="flex items-center">
-            <div className="shrink-0">
-              <Image
-                src="/logo/FELogo.png"
-                alt="Fuhr Enterprise logo"
-                width={200}
-                height={60}
-                className="hover:opacity-90 transition-opacity duration-200"
-                priority
-              />
-            </div>
+    <header className="bg-transparent sticky top-0 z-30 transition-all duration-300">
+      <div className="flex flex-col h-full px-6 pt-3 pb-3 max-w-full">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-4 flex-1">
+            <button 
+              className="flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 border-none rounded-md cursor-pointer transition-all duration-200 lg:hidden backdrop-blur-sm"
+              onClick={onMenuClick}
+              aria-label="Toggle menu"
+            >
+              <Bars3Icon className="w-6 h-6 text-black" />
+            </button>
+            <Breadcrumb inHeader={true} />
+          </div>
+
+          {/* Auth controls */}
+          <div className="flex items-center gap-3">
+            <a
+              href="/.auth/logout?post_logout_redirect_uri=/loggedout"
+              className="text-sm px-4 py-2 rounded-md bg-[#1C4840] text-white hover:bg-teal-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-400"
+              aria-label="Sign out"
+            >
+              Sign out
+            </a>
           </div>
         </div>
-
-        {/* Auth controls */}
-        <div className="flex items-center gap-3">
-          <a
-            href="/.auth/logout?post_logout_redirect_uri=/loggedout"
-            className="text-sm px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400 shadow-sm"
-            aria-label="Sign out"
-          >
-            Sign out
-          </a>
-        </div>
+        
+        <Breadcrumb inHeader={false} />
       </div>
     </header>
   );

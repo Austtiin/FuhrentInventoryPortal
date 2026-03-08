@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Layout } from '@/components/layout';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 import { NotificationContainer } from '@/components/ui/Notification';
 import { useNotification } from '@/hooks/useNotification';
@@ -810,17 +809,14 @@ function EditInventoryPageContent() {
 
   if (isLoading) {
     return (
-      <Layout>
         <div className="flex items-center justify-center h-96">
           <LoadingSpinner size="xl" />
         </div>
-      </Layout>
     );
   }
 
   if (loadError || !vehicle) {
     return (
-      <Layout>
         <div className="max-w-2xl mx-auto">
           <div className="bg-red-50 border border-red-300 rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
@@ -848,14 +844,13 @@ function EditInventoryPageContent() {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   const status = ((formData.Status ?? vehicle.Status) || 'Available').toString().toLowerCase();
 
   return (
-    <Layout>
+    <>
       {/* Notifications and Confirm Dialog */}
       <NotificationContainer notifications={notifications} onClose={closeNotification} />
       <ConfirmDialog
@@ -880,9 +875,6 @@ function EditInventoryPageContent() {
               <ArrowLeftIcon className="w-5 h-5" /> 
               <span className="whitespace-nowrap">Back to Inventory</span>
             </button>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate" title={`${vehicle?.Year ?? ''} ${vehicle?.Make ?? ''} ${vehicle?.Model ?? ''}`}>
-              Edit {vehicle?.Year} {vehicle?.Make} {vehicle?.Model}
-            </h1>
             {(hasUnsavedChanges || hasFeatureChanges) && (
               <span className="text-sm text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-200 shrink-0">
                 ⚠ Unsaved changes
@@ -901,7 +893,7 @@ function EditInventoryPageContent() {
               onClick={saveVehicle}
               type="button"
               disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
-              className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
             >
               <CheckIcon className="w-4 h-4" />
               {isSaving || isSavingFeatures ? 'Saving...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'Saved'}
@@ -934,7 +926,7 @@ function EditInventoryPageContent() {
                 type="button"
                 onClick={() => confirmStatus('sold', 'Sold', 'primary')}
                 disabled={isSaving || status === 'sold'}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 touch-manipulation"
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 touch-manipulation"
               >
                 <CheckIcon className="w-4 h-4" /> Mark Sold
               </button>
@@ -1238,7 +1230,7 @@ function EditInventoryPageContent() {
                     onClick={() => handleFieldChange('TypeID', 1)}
                     className={`px-4 py-2 rounded-md border transition-colors ${
                       formData.TypeID === 1
-                        ? 'bg-blue-600 text-white border-blue-600'
+                        ? 'bg-emerald-600 text-white border-emerald-600'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
@@ -1249,7 +1241,7 @@ function EditInventoryPageContent() {
                     onClick={() => handleFieldChange('TypeID', 2)}
                     className={`px-4 py-2 rounded-md border transition-colors ${
                       formData.TypeID === 2
-                        ? 'bg-blue-600 text-white border-blue-600'
+                        ? 'bg-emerald-600 text-white border-emerald-600'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
@@ -1260,7 +1252,7 @@ function EditInventoryPageContent() {
                     onClick={() => handleFieldChange('TypeID', 3)}
                     className={`px-4 py-2 rounded-md border transition-colors ${
                       formData.TypeID === 3
-                        ? 'bg-blue-600 text-white border-blue-600'
+                        ? 'bg-emerald-600 text-white border-emerald-600'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
@@ -1438,14 +1430,14 @@ function EditInventoryPageContent() {
             onClick={saveVehicle}
             type="button"
             disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
-            className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+            className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
           >
             <CheckIcon className="w-5 h-5" />
             {isSaving || isSavingFeatures ? 'Saving Changes...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'All Changes Saved'}
           </button>
         </div>
       </div>
-    </Layout>
+    </>
   );
 }
 

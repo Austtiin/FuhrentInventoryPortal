@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { Layout } from '@/components/layout';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 import { Vehicle } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
@@ -113,29 +112,24 @@ export default function InventoryItemPage() {
   const formatPrice = (price: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(price);
 
   if (isLoading) return (
-    <Layout>
       <div className="min-h-screen p-6">
         <div className="max-w-4xl mx-auto bg-white p-8 rounded shadow">Loading...</div>
       </div>
-    </Layout>
   );
 
   if (error) return (
-    <Layout>
       <div className="min-h-screen p-6">
         <div className="max-w-4xl mx-auto bg-white p-8 rounded shadow">
           <h2 className="text-xl font-bold">Error</h2>
           <p className="text-sm text-red-600 mt-2">{error}</p>
-          <button onClick={() => router.push('/inventory')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Back to inventory</button>
+          <button onClick={() => router.push('/inventory')} className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded">Back to inventory</button>
         </div>
       </div>
-    </Layout>
   );
 
   if (!vehicle) return null;
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-6xl mx-auto p-6">
           <button onClick={() => router.push('/inventory')} className="mb-6 flex items-center text-blue-600"> 
@@ -170,7 +164,6 @@ export default function InventoryItemPage() {
           </div>
         </div>
       </div>
-    </Layout>
   );
 }
 

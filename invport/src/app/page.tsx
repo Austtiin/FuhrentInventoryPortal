@@ -3,7 +3,6 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import { Layout } from '@/components/layout';
 import { 
   DashboardStats, 
   QuickActions, 
@@ -36,19 +35,17 @@ export default function Dashboard() {
   };
 
   return (
-    <Layout>
       <ErrorBoundary>
         <div className="space-y-4">
           {/* Dashboard Header with Refresh Button */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
               <p className="text-gray-600">Welcome to your inventory management system</p>
             </div>
             <button
               onClick={refreshData}
               disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="Refresh all dashboard data"
             >
               <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -98,7 +95,6 @@ export default function Dashboard() {
           </div>
         </div>
       </ErrorBoundary>
-    </Layout>
   );
 }
 

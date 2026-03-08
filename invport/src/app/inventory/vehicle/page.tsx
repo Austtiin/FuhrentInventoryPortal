@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, ClockIcon, TruckIcon, TagIcon } from '@heroicons/react/24/outline';
-import { Layout } from '@/components/layout';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 import { Vehicle } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
@@ -132,7 +131,6 @@ export default function VehicleDetailPage() {
 
   if (isLoading) {
     return (
-      <Layout>
         <div className="min-h-screen bg-gray-50 p-6">
           <div className="max-w-6xl mx-auto">
             <div className="bg-white rounded-lg shadow-lg p-8">
@@ -148,13 +146,11 @@ export default function VehicleDetailPage() {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   if (error) {
     return (
-      <Layout>
         <div className="min-h-screen bg-gray-50 p-6">
           <div className="max-w-6xl mx-auto">
             <div className="bg-white rounded-lg shadow-lg p-8">
@@ -172,7 +168,7 @@ export default function VehicleDetailPage() {
                 <p className="text-gray-600 mb-6">{error}</p>
                 <button
                   onClick={() => router.push('/inventory')}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                 >
                   View All Inventory
                 </button>
@@ -180,13 +176,11 @@ export default function VehicleDetailPage() {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   if (!vehicle) {
     return (
-      <Layout>
         <div className="min-h-screen bg-gray-50 p-6">
           <div className="max-w-6xl mx-auto">
             <div className="bg-white rounded-lg shadow-lg p-8">
@@ -196,7 +190,7 @@ export default function VehicleDetailPage() {
                 <p className="text-gray-600 mb-6">The requested vehicle could not be found.</p>
                 <button
                   onClick={() => router.push('/inventory')}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                 >
                   View All Inventory
                 </button>
@@ -204,12 +198,10 @@ export default function VehicleDetailPage() {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-6xl mx-auto p-6">
           {/* Back Navigation */}
@@ -330,7 +322,6 @@ export default function VehicleDetailPage() {
           </div>
         </div>
       </div>
-    </Layout>
   );
 }
 

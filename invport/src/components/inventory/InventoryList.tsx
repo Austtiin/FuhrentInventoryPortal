@@ -57,31 +57,27 @@ const InventoryContent: React.FC<InventoryListProps> = ({
             </h1>
             {isLoading && (
               <div className="animate-spin">
-                <ArrowPathIcon className="w-5 h-5 text-blue-500" />
+                <ArrowPathIcon className="w-5 h-5 text-emerald-500" />
               </div>
             )}
           </div>
           <button 
             onClick={onAdd}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-lg text-sm font-medium transition-colors hover:bg-blue-700 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white border border-emerald-600 rounded-lg text-sm font-medium transition-colors hover:bg-emerald-700 cursor-pointer"
           >
             <PlusIcon className="w-4 h-4" />
             Add Vehicle
           </button>
         </div>
-      </div>
-
-      {/* Load More - Top */}
-      {endIndex < totalItems && (
-        <div className="mb-6 flex items-center justify-center">
-          <button
-            onClick={() => setCurrentPage(currentPage + 1)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-          >
-            Show 5 more
-          </button>
+        
+        {/* Results Summary - Moved below title */}
+        <div className="mt-4">
+          <p className="text-sm text-gray-600 m-0">
+            Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems} vehicles
+            {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Error Display */}
       {error && (
@@ -104,14 +100,6 @@ const InventoryContent: React.FC<InventoryListProps> = ({
         </div>
       )}
 
-      {/* Results Summary */}
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-gray-600 m-0">
-          Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems} vehicles
-          {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
-        </p>
-      </div>
-
       {/* Vehicle Grid/List */}
       <div
         className={
@@ -123,7 +111,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
         {isLoading && filteredVehicles.length === 0 ? (
           <div className="col-span-full flex items-center justify-center py-16">
             <div className="text-center">
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-600 font-medium">Loading inventory...</p>
             </div>
           </div>
@@ -131,7 +119,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
           <div className="col-span-full text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
             <p className="text-base text-gray-600 mb-6">No vehicles found matching your criteria.</p>
             <button 
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-lg text-sm font-medium transition-colors hover:bg-blue-700"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white border border-emerald-600 rounded-lg text-sm font-medium transition-colors hover:bg-emerald-700"
               onClick={() => setFilters({ search: '', status: 'all' })}
             >
               Clear Filters
@@ -157,7 +145,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
         <div className="mt-8 flex items-center justify-center">
           <button
             onClick={() => setCurrentPage(currentPage + 1)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700"
           >
             Show 5 more
           </button>

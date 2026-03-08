@@ -16,7 +16,6 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useInventoryDirect } from '@/hooks/useInventoryAPI';
 import CompactInventoryCard from '@/components/inventory/CompactInventoryCard';
 import SkeletonCard from '@/components/ui/SkeletonCard';
-import { Layout } from '@/components/layout';
 import { Vehicle } from '@/types';
 import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
@@ -86,7 +85,6 @@ function InventoryPageClientInner() {
 
   if (error) {
     return (
-      <Layout>
         <Alert severity="error" variant="filled" sx={{ mb: 2 }}>
           <AlertTitle>Error Loading Inventory</AlertTitle>
           {error}
@@ -101,31 +99,25 @@ function InventoryPageClientInner() {
             </Button>
           </Box>
         </Alert>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <ErrorBoundary>
-        <Box sx={{ py: 3 }}>
-        {/* Header */}
+        <Box>
+        {/* Actions and Count */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-          <Box>
-            <Typography variant="h3" component="h1" fontWeight={700} gutterBottom>
-              Unit Inventory
-            </Typography>
-            <Typography variant="body1" color="text.primary">
-              {isLoading
-                ? 'Loading...'
-                : `${Math.min(currentPage * itemsPerPage, filteredVehicles.length)} of ${filteredVehicles.length} vehicles`}
-            </Typography>
-          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {isLoading
+              ? 'Loading...'
+              : `Showing ${Math.min(currentPage * itemsPerPage, filteredVehicles.length)} of ${filteredVehicles.length} vehicles`}
+          </Typography>
           <Button 
             onClick={() => refreshData()}
             disabled={isLoading}
             variant="contained"
             startIcon={<RefreshIcon />}
+            size="small"
           >
             Refresh
           </Button>
@@ -292,7 +284,6 @@ function InventoryPageClientInner() {
 
       {/* Debug panel removed */}
       </ErrorBoundary>
-    </Layout>
   );
 }
 

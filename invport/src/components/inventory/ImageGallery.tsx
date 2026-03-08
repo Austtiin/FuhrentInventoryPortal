@@ -249,13 +249,13 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     <div className="space-y-4">
       {/* Upload Section - Only show if editable */}
       {editable && (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-600 transition-colors bg-gray-50">
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-emerald-600 transition-colors bg-gray-50">
           <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           
           {/* Upload Progress */}
           {isUploading && uploadStatuses.length > 0 ? (
             <div className="space-y-3">
-              <p className="text-blue-600 font-semibold text-lg">
+              <p className="text-emerald-600 font-semibold text-lg">
                 Uploading {uploadStatuses.length} image{uploadStatuses.length > 1 ? 's' : ''}...
               </p>
               <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -264,7 +264,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                     <span className="truncate flex-1 text-left">{status.filename}</span>
                     <span className="ml-2">
                       {status.status === 'uploading' && (
-                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                       )}
                       {status.status === 'success' && (
                         <CheckCircleIcon className="w-5 h-5 text-green-600" />
@@ -318,7 +318,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       {/* Loading State */}
       {isLoading && images.length === 0 && (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
           <span className="ml-3 text-gray-600">Loading images...</span>
         </div>
       )}
@@ -341,7 +341,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                 onDrop={(e) => handleDrop(e, index)}
                 className={`relative group bg-white border-2 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
                   draggedIndex === index 
-                    ? 'border-blue-500 opacity-50 scale-95' 
+                    ? 'border-emerald-500 opacity-50 scale-95' 
                     : 'border-gray-200'
                 } ${editable ? 'cursor-move' : ''}`}
               >
@@ -371,7 +371,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                   {index > 0 && (
                     <button
                       onClick={() => handleMoveUp(index)}
-                      className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      className="p-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
                       title="Move up"
                     >
                       <ArrowUpIcon className="w-4 h-4" />
@@ -382,7 +382,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                   {index < images.length - 1 && (
                     <button
                       onClick={() => handleMoveDown(index)}
-                      className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      className="p-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
                       title="Move down"
                     >
                       <ArrowDownIcon className="w-4 h-4" />

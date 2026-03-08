@@ -11,4 +11,5 @@ export { default as NotificationCard } from './NotificationCard';
 export { default as LoadingOverlay } from './LoadingOverlay';
 export { default as SkeletonCard } from './SkeletonCard';
 export { default as VehicleImage } from './VehicleImage';
+export { PageTransitionLoader } from './PageTransitionLoader';
 

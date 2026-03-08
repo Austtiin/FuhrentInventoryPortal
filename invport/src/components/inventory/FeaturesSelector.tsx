@@ -108,7 +108,7 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
           <button
             type="button"
             onClick={() => setIsOpen((v) => !v)}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
           >
             {isOpen ? 'Hide' : 'Show'}
           </button>
@@ -164,8 +164,8 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
                               type="button"
                               onClick={(e) => { e.stopPropagation(); toggle(f.FeatureID); }}
                               aria-pressed={active}
-                              className={`relative inline-flex ${small ? 'h-5 w-9' : 'h-6 w-11'} items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                active ? 'bg-blue-600' : 'bg-gray-300'
+                              className={`relative inline-flex ${small ? 'h-5 w-9' : 'h-6 w-11'} items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                                active ? 'bg-emerald-600' : 'bg-gray-300'
                               }`}
                             >
                               <span

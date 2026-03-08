@@ -236,7 +236,7 @@ export const InventorySummaryReport: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={refresh} disabled={loading} className="px-3 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 disabled:opacity-50">{loading ? 'Loading…' : 'Refresh'}</button>
-          <button onClick={exportCSV} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">CSV</button>
+          <button onClick={exportCSV} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">CSV</button>
           <button onClick={exportExcel} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">Excel</button>
           <button onClick={exportPDF} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">PDF</button>
         </div>

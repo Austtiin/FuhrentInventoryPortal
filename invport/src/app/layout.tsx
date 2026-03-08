@@ -4,6 +4,7 @@ import { ClientProviders } from "@/components/providers/ClientProviders";
 import DevAuthGuard from "@/components/providers/DevAuthGuard";
 import { ServiceWorkerRegistration } from "@/components/providers/ServiceWorkerRegistration";
 import ReleaseNotesModal from "@/components/ui/ReleaseNotesModal";
+import Layout from "@/components/layout/Layout";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -53,7 +54,9 @@ export default function RootLayout({
         <ClientProviders>
           <DevAuthGuard>
             <ReleaseNotesModal />
-            {children}
+            <Layout>
+              {children}
+            </Layout>
           </DevAuthGuard>
         </ClientProviders>
       </body>
