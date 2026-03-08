@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClientProviders } from "@/components/providers/ClientProviders";
 import DevAuthGuard from "@/components/providers/DevAuthGuard";
 import { ServiceWorkerRegistration } from "@/components/providers/ServiceWorkerRegistration";
-import ReleaseNotesModal from "@/components/ui/ReleaseNotesModal";
 import Layout from "@/components/layout/Layout";
 import "./globals.css";
 
@@ -53,7 +52,6 @@ export default function RootLayout({
         <ServiceWorkerRegistration />
         <ClientProviders>
           <DevAuthGuard>
-            <ReleaseNotesModal />
             <Layout>
               {children}
             </Layout>
