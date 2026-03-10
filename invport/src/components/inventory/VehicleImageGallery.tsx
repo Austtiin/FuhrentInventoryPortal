@@ -102,6 +102,10 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; imageNumber?: number }>(
     { open: false }
   );
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   // Cache-busting for image URLs to ensure fresh loads after operations
   const [cacheBuster, setCacheBuster] = useState(0);
   const withCacheBuster = (url: string) => {
@@ -112,6 +116,20 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
 
   // Local display state derived from API + post-refresh animations
   const [displayImages, setDisplayImages] = useState<VehicleImage[]>([]);
+  
+  // Create preview array during drag - shows where image will land
+  const previewImages = React.useMemo(() => {
+    if (draggedIndex === null || dropTargetIndex === null || draggedIndex === dropTargetIndex) {
+      return displayImages;
+    }
+    
+    // Create new array with dragged item moved to target position
+    const newArray = [...displayImages];
+    const [draggedItem] = newArray.splice(draggedIndex, 1);
+    newArray.splice(dropTargetIndex, 0, draggedItem);
+    return newArray;
+  }, [displayImages, draggedIndex, dropTargetIndex]);
+  
   useEffect(() => {
     setDisplayImages(images as VehicleImage[]);
     // If a reorder just succeeded, animate/highlight the target tile now that images are fresh
@@ -320,7 +338,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   const handleMoveUp = async (index: number) => {
     if (index === 0) return;
     const movedImage = displayImages[index];
-    if (isReordering || !renameImage) return;
+    if (isReordering || isDragging || !renameImage) return;
     setIsReordering(true);
     
     try {
@@ -361,7 +379,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
   const handleMoveDown = async (index: number) => {
     if (index === displayImages.length - 1) return;
     const movedImage = displayImages[index];
-    if (isReordering || !renameImage) return;
+    if (isReordering || isDragging || !renameImage) return;
     setIsReordering(true);
     
     try {
@@ -399,15 +417,137 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
     }
   };
 
-  // Drag & Drop removed: only arrow-based single-step renames are supported for now
-
   // Navigation functions for single mode
   const goToPrevious = () => {
-    setCurrentImageIndex((prev: number) => prev === 0 ? images.length - 1 : prev - 1);
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   const goToNext = () => {
-    setCurrentImageIndex((prev: number) => prev === images.length - 1 ? 0 : prev + 1);
+    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    if (isReordering) {
+      e.preventDefault();
+      return;
+    }
+
+    setDraggedIndex(index);
+    setDropTargetIndex(index);
+    setIsDragging(true);
+    e.dataTransfer.effectAllowed = 'move';
+
+    const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
+    dragImage.style.position = 'absolute';
+    dragImage.style.top = '-9999px';
+    dragImage.style.opacity = '0.8';
+    dragImage.style.transform = 'scale(1.05)';
+    dragImage.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, dragImage.offsetWidth / 2, dragImage.offsetHeight / 2);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
+  };
+
+  const handleDragEnd = (_e: React.DragEvent<HTMLDivElement>) => {
+    setDraggedIndex(null);
+    setDropTargetIndex(null);
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index || isReordering) return;
+
+    e.dataTransfer.dropEffect = 'move';
+    if (dropTargetIndex !== index) {
+      setDropTargetIndex(index);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index || isReordering) return;
+    setDropTargetIndex(index);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    // Only clear if we're actually leaving this element (not entering a child)
+    if (e.currentTarget === e.target) {
+      setDropTargetIndex(null);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, dropIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedIndex === null || !renameImage || draggedIndex === dropIndex || isReordering) {
+      setDraggedIndex(null);
+      setDropTargetIndex(null);
+      setIsDragging(false);
+      return;
+    }
+
+    const movedImage = displayImages[draggedIndex];
+    const targetImage = displayImages[dropIndex];
+    
+    if (!movedImage || !targetImage) {
+      setDraggedIndex(null);
+      setDropTargetIndex(null);
+      setIsDragging(false);
+      return;
+    }
+
+    setIsReordering(true);
+    
+    try {
+      console.log(`🎯 Drag & Drop: Moving image #${movedImage.number} from position ${draggedIndex} to position ${dropIndex}`);
+      
+      // Call API to rename/reorder - backend handles the shift logic
+      const success = await renameImage(movedImage.number, targetImage.number);
+      
+      if (!success) {
+        if (onNotification) {
+          onNotification('error', 'Reorder Failed', 'Failed to reorder images.');
+        }
+        setIsReordering(false);
+        setDraggedIndex(null);
+        setDropTargetIndex(null);
+        setIsDragging(false);
+        return;
+      }
+      
+      // Mark the target index for post-refresh animation/highlight
+      successTargetRef.current = { 
+        index: dropIndex, 
+        dir: draggedIndex < dropIndex ? 'down' : 'up' 
+      };
+      
+      // Bust cache so updated order is reflected immediately
+      setCacheBuster((b) => b + 1);
+      
+      // Wait for images to refresh from server
+      if (refreshImages) {
+        await refreshImages();
+      }
+      
+      console.log(`✅ Drag & Drop: Successfully moved image to position ${dropIndex}`);
+      
+      // Brief pause so user can see the new order before allowing more moves
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+    } catch (error) {
+      console.error('❌ Error during drag & drop reorder:', error);
+      if (onNotification) {
+        onNotification('error', 'Reorder Failed', 'An error occurred while reordering.');
+      }
+    } finally {
+      // Always release the lock and clear drag state
+      setIsReordering(false);
+      setDraggedIndex(null);
+      setDropTargetIndex(null);
+      setIsDragging(false);
+    }
   };
 
   // If we're missing identifiers and have an error, show it
@@ -656,21 +796,44 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
         <div className="space-y-2">
           {editable && (
             <p className="text-sm text-gray-600 italic">
-              💡 Tip: Use the arrow buttons to move images one position at a time
+              💡 Tip: Drag images to reorder them, or use arrow buttons for precise positioning
             </p>
           )}
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {displayImages.map((image, index) => (
-                <div 
-                  key={image.name}
-                  ref={setItemRef(index)}
-                  className={`relative group bg-white border-2 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
-                    highlightIndex === index
-                      ? 'border-blue-500 ring-2 ring-blue-300'
-                      : 'border-gray-200'
-                  } ${moveAnim && moveAnim.key === image.name ? (moveAnim.dir === 'up' ? 'animate-slide-up' : 'animate-slide-down') : ''}`}
-                >
+              {previewImages.map((image, previewIndex) => {
+                // Find original index for this image
+                const originalIndex = displayImages.findIndex(img => img.name === image.name);
+                const isBeingDragged = draggedIndex === originalIndex;
+                const isDropTarget = dropTargetIndex === previewIndex && draggedIndex !== null;
+                
+                return (
+                  <div 
+                    key={image.name}
+                    ref={setItemRef(originalIndex)}
+                    draggable={editable && !isReordering}
+                    onDragStart={(e) => handleDragStart(e, originalIndex)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOver(e, previewIndex)}
+                    onDragEnter={(e) => handleDragEnter(e, previewIndex)}
+                    onDrop={(e) => handleDrop(e, previewIndex)}
+                    className={`relative group bg-white border-2 rounded-lg overflow-hidden shadow-sm transition-all duration-200 ease-out ${
+                      highlightIndex === originalIndex
+                        ? 'border-blue-500 ring-2 ring-blue-300 scale-105'
+                        : isBeingDragged
+                        ? 'border-blue-400 opacity-30 scale-95 shadow-xl'
+                        : isDropTarget
+                        ? 'border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50/50 scale-[1.02]'
+                        : isDragging && !isBeingDragged
+                        ? 'border-gray-300 transform'
+                        : 'border-gray-200 hover:shadow-md hover:border-gray-300'
+                    } ${moveAnim && moveAnim.key === image.name ? (moveAnim.dir === 'up' ? 'animate-slide-up' : 'animate-slide-down') : ''} ${
+                      editable && !isReordering ? 'cursor-grab active:cursor-grabbing' : ''
+                    } ${isReordering ? 'pointer-events-none' : ''}`}
+                    style={{
+                      transition: isDragging ? 'all 0.2s ease-out' : 'all 0.15s ease',
+                    }}
+                  >
                   {/* Image */}
                   <div 
                     className="aspect-square cursor-pointer relative"
@@ -701,26 +864,32 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   {editable && (
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       {/* Move Up */}
-                      {index > 0 && (
+                      {previewIndex > 0 && (
                         <button
                           type="button"
-                          onClick={() => handleMoveUp(index)}
-                          disabled={isReordering}
-                          className={`p-2 rounded-md transition-colors text-white ${isReordering ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-                          title="Move up"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveUp(originalIndex);
+                          }}
+                          disabled={isReordering || isDragging}
+                          className={`p-2 rounded-md transition-colors text-white ${isReordering || isDragging ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                          title="Move up one position"
                         >
                           <ArrowUpIcon className="w-4 h-4" />
                         </button>
                       )}
 
                       {/* Move Down */}
-                      {index < displayImages.length - 1 && (
+                      {previewIndex < previewImages.length - 1 && (
                         <button
                           type="button"
-                          onClick={() => handleMoveDown(index)}
-                          disabled={isReordering}
-                          className={`p-2 rounded-md transition-colors text-white ${isReordering ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-                          title="Move down"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveDown(originalIndex);
+                          }}
+                          disabled={isReordering || isDragging}
+                          className={`p-2 rounded-md transition-colors text-white ${isReordering || isDragging ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                          title="Move down one position"
                         >
                           <ArrowDownIcon className="w-4 h-4" />
                         </button>
@@ -729,19 +898,49 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                       {/* Delete */}
                       <button
                         type="button"
-                        onClick={() => setConfirmDelete({ open: true, imageNumber: image.number })}
-                        className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                        title="Delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDelete({ open: true, imageNumber: image.number });
+                        }}
+                        disabled={isReordering || isDragging}
+                        className={`p-2 rounded-md transition-colors text-white ${isReordering || isDragging ? 'bg-red-300 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+                        title="Delete image"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
                   )}
+
+                  {/* Drag Handle Indicator - Show when draggable */}
+                  {editable && !isReordering && !isBeingDragged && (
+                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 rounded-md px-1.5 py-0.5 text-sm font-bold text-gray-600 shadow-md pointer-events-none backdrop-blur-sm z-10">
+                      ⣿
+                    </div>
+                  )}
+                  
+                  {/* Drop Target Indicator */}
+                  {isDropTarget && (
+                    <div className="absolute inset-0 bg-emerald-500/10 rounded-lg flex items-center justify-center pointer-events-none">
+                      <div className="bg-emerald-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg animate-pulse">
+                        Drop here
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reordering Lock Overlay */}
+                  {isReordering && (
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center backdrop-blur-sm">
+                      <div className="bg-white/95 rounded-full p-2.5 shadow-lg">
+                        <div className="w-5 h-5 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
+      </div>
       )}
 
       {/* No Images State */}
@@ -797,7 +996,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
       <ConfirmDialog
         isOpen={confirmDelete.open}
         title="Delete image?"
-        message={'Are you sure you want to delete this image? This action cannot be undone.'}
+        message="Are you sure you want to delete this image? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
         confirmColor="error"
@@ -807,4 +1006,5 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
     </div>
   );
 };
+
 

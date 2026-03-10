@@ -110,6 +110,7 @@ interface VehicleData {
   TypeID?: number;
   Status?: string;
   Description?: string;
+  Banner?: string;
 }
 
 interface VehicleFormData {
@@ -128,6 +129,7 @@ interface VehicleFormData {
   WidthCategory?: string;
   SizeCategory?: string;
   TypeID?: number;
+  Banner?: string;
 }
 
 // Fields that should be title-cased (every word)
@@ -360,6 +362,7 @@ function EditInventoryPageContent() {
         WidthCategory: v.WidthCategory,
         SizeCategory: v.SizeCategory,
         TypeID: v.TypeID,
+        Banner: v.Banner,
       });
       // Capture initial status in normalized (lowercase) form
       initialStatusRef.current = (v.Status || '').toString().toLowerCase();
@@ -643,7 +646,7 @@ function EditInventoryPageContent() {
       }
 
       // Convert TypeID to typeId for API compatibility and map MSRP to msrp
-      const { TypeID, MSRP } = formData;
+      const { TypeID, MSRP, Banner } = formData;
       // Map formData (mixed case keys) to API's expected camelCase schema
       const apiPayload: Record<string, unknown> = {
         vin: formData.VIN,
@@ -661,6 +664,7 @@ function EditInventoryPageContent() {
         sizeCategory: formData.SizeCategory,
         typeId: TypeID,
         msrp: typeof MSRP === 'number' ? MSRP : null,
+        banner: Banner && Banner.trim() ? Banner.trim() : null,
       };
       // Also include uppercase MSRP to support backends expecting DB column casing
       if (typeof MSRP === 'number') {
@@ -1206,6 +1210,18 @@ function EditInventoryPageContent() {
                       <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">Banner</label>
+                  <input
+                    type="text"
+                    value={formData.Banner || ''}
+                    onChange={(e) => handleFieldChange('Banner', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    placeholder="Enter banner text (max 50 characters)"
+                    maxLength={50}
+                  />
                 </div>
               </div>
 

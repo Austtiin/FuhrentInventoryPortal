@@ -130,6 +130,12 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                       <span className="font-medium text-gray-700">Category:</span>
                       <span className="ml-2 text-gray-900">{vehicle.category}</span>
                     </div>
+                    {vehicle.banner && (
+                      <div className="col-span-2">
+                        <span className="font-medium text-gray-700">Banner:</span>
+                        <span className="ml-2 text-gray-900">{vehicle.banner}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

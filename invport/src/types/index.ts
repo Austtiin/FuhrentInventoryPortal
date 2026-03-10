@@ -32,6 +32,7 @@ export interface Vehicle {
   intColor?: string;
   extColor?: string;
   daysInStock?: number;
+  banner?: string;
 }
 
 export type VehicleStatus = 'available' | 'sold' | 'pending' | 'reserved' | 'maintenance';

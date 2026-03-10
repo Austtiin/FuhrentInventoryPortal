@@ -56,28 +56,39 @@ export const Notification: React.FC<NotificationProps> = ({
     <Alert 
       severity={type} 
       onClose={onClose}
-      variant="filled"
+      variant="outlined"
       sx={{ 
         minWidth: 320,
         maxWidth: 500,
-        boxShadow: 6,
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        bgcolor: 'background.paper',
+        borderWidth: 1,
+        borderLeftWidth: 4,
+        borderRadius: 2,
+        '& .MuiAlert-icon': {
+          fontSize: '1.5rem',
+        },
       }}
     >
-      <AlertTitle sx={{ fontWeight: 700, mb: message ? 0.5 : 0 }}>
+      <AlertTitle sx={{ fontWeight: 600, mb: message ? 0.5 : 0, fontSize: '0.95rem' }}>
         {title}
       </AlertTitle>
-      {message && <Box sx={{ fontSize: '0.875rem' }}>{message}</Box>}
+      {message && <Box sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>{message}</Box>}
       {duration > 0 && (
         <LinearProgress 
           variant="determinate" 
           value={progress} 
           sx={{ 
             mt: 1.5,
-            height: 3,
+            height: 2,
             borderRadius: 1,
-            bgcolor: 'rgba(255, 255, 255, 0.2)',
+            bgcolor: type === 'success' ? 'success.lighter' : 
+                     type === 'error' ? 'error.lighter' : 
+                     type === 'warning' ? 'warning.lighter' : 'info.lighter',
             '& .MuiLinearProgress-bar': {
-              bgcolor: 'rgba(255, 255, 255, 0.8)',
+              bgcolor: type === 'success' ? 'success.main' : 
+                       type === 'error' ? 'error.main' : 
+                       type === 'warning' ? 'warning.main' : 'info.main',
             }
           }} 
         />

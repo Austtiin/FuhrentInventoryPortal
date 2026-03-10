@@ -107,6 +107,7 @@ const AddInventoryPage: React.FC = () => {
     length: '',
     price: '',
     msrp: '',
+    banner: '',
   });
 
   // Category options
@@ -267,6 +268,7 @@ const AddInventoryPage: React.FC = () => {
         sizeCategory: string;
         msrp: number | null;
         MSRP?: number | null;
+        banner: string | null;
       } = {
         vin: formData.vin,
         year: parseInt(formData.year) || 0,
@@ -282,6 +284,7 @@ const AddInventoryPage: React.FC = () => {
         widthCategory: formData.width,
         sizeCategory: formData.length,
         msrp: formData.msrp !== '' && !Number.isNaN(parseFloat(formData.msrp)) ? parseFloat(formData.msrp) : null,
+        banner: formData.banner && formData.banner.trim() ? formData.banner.trim() : null,
       };
       // Duplicate with uppercase for compatibility with backends expecting 'MSRP'
       submissionData.MSRP = submissionData.msrp;
@@ -670,6 +673,23 @@ const AddInventoryPage: React.FC = () => {
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                     placeholder="Enter length"
+                  />
+                </div>
+
+                {/* Banner - Optional */}
+                <div>
+                  <label htmlFor="banner" className="block text-sm font-medium text-gray-900 mb-2">
+                    Banner (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    id="banner"
+                    name="banner"
+                    value={formData.banner}
+                    onChange={handleInputChange}
+                    maxLength={50}
+                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    placeholder="Enter banner text (max 50 characters)"
                   />
                 </div>
               </div>
