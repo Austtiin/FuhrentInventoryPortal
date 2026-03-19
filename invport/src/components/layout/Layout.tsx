@@ -53,8 +53,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#ECF5E9] flex flex-col p-2">
-      <div className="flex flex-1 bg-[#ECF5E9] rounded-[2.5rem]">
+    <div className="min-h-screen bg-[#ECF5E9] flex flex-col p-0 sm:p-2 overflow-x-hidden">
+      <div className="flex flex-1 bg-[#ECF5E9] rounded-none sm:rounded-[2.5rem]">
         <Sidebar 
           isOpen={sidebarOpen} 
           onClose={closeSidebar}
@@ -65,9 +65,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         />
         <div className="flex-1 flex flex-col min-h-0">
           <main 
-            className="flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out bg-[#FDFDFD] p-4 rounded-tl-[2.5rem] rounded-tr-[2.5rem]"
+            className="flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out bg-[#FDFDFD] p-2 sm:p-4 rounded-none sm:rounded-tl-[2.5rem] sm:rounded-tr-[2.5rem]"
           >
-          <div className="flex-1 flex flex-col max-w-none bg-[#FCFBFC] rounded-tl-[2.5rem] rounded-tr-[2.5rem] min-h-full shadow-lg overflow-hidden">
+          <div className="flex-1 flex flex-col max-w-none bg-[#FCFBFC] rounded-none sm:rounded-tl-[2.5rem] sm:rounded-tr-[2.5rem] min-h-full shadow-lg overflow-hidden">
             <Header 
               onMenuClick={toggleSidebar} 
               sidebarWidth={sidebarWidth}

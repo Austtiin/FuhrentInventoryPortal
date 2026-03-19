@@ -100,18 +100,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, width, isExpanded, o
       {/* Mobile overlay */}
       {isOpen && (
         <div 
-          className="absolute inset-0 bg-slate-200/70 z-30 lg:hidden"
+          className="fixed inset-0 bg-slate-200/70 z-30 lg:hidden"
           onClick={onClose}
         />
       )}
       
       <aside 
         className={`
-          sticky top-2 left-0 self-start bg-[#ECF5E9]
+          fixed top-0 left-0 h-screen bg-[#ECF5E9]
           transform transition-transform duration-300 z-40 flex flex-col shrink-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 rounded-2xl
-          max-h-[calc(100vh-1rem)] overflow-y-auto
+          lg:sticky lg:top-2 lg:left-0 lg:self-start lg:h-auto lg:translate-x-0 rounded-2xl
+          lg:max-h-[calc(100vh-1rem)] overflow-y-auto
           w-64
         `}
         style={{ width: isDesktop ? `${width}px` : '256px', marginLeft: isDesktop ? '0' : undefined }}

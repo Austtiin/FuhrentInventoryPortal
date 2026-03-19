@@ -12,7 +12,6 @@ import {
   BuildingStorefrontIcon
 } from '@heroicons/react/24/outline';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
 import { apiFetchJson } from '@/lib/apiClient';
 
 const ReportsPage: React.FC = () => {
@@ -180,6 +179,7 @@ const ReportsPage: React.FC = () => {
       }
 
       if (format === 'PDF') {
+        const { jsPDF } = await import('jspdf/dist/jspdf.umd.min.js');
         const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
         const margin = 28; // slightly tighter margins to fit content
         const headerFontSize = 10; // smaller header text to reduce clipping

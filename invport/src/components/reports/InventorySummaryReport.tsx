@@ -3,7 +3,6 @@
 import React, { useMemo } from 'react';
 import { apiFetchJson } from '@/lib/apiClient';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
 
 export interface InventoryItem {
   UnitID: number;
@@ -156,7 +155,8 @@ export const InventorySummaryReport: React.FC = () => {
     saveBlob(wbout, 'inventory-summary.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   };
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    const { jsPDF } = await import('jspdf/dist/jspdf.umd.min.js');
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
     const margin = 36;
     const lineHeight = 18;
@@ -238,7 +238,7 @@ export const InventorySummaryReport: React.FC = () => {
           <button onClick={refresh} disabled={loading} className="px-3 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 disabled:opacity-50">{loading ? 'Loading…' : 'Refresh'}</button>
           <button onClick={exportCSV} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">CSV</button>
           <button onClick={exportExcel} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">Excel</button>
-          <button onClick={exportPDF} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">PDF</button>
+          <button onClick={() => { void exportPDF(); }} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">PDF</button>
         </div>
       </div>
 
