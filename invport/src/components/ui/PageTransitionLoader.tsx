@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import Image from 'next/image';
 
 export const PageTransitionLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();
@@ -22,8 +21,8 @@ export const PageTransitionLoader: React.FC<{ children: React.ReactNode }> = ({ 
     setIsLoading(true);
     setShowContent(false);
 
-    // Simulate minimum loading time for spinner visibility (so your friend can see it spin!)
-    const minLoadTime = 800; // 800ms minimum to see the spinner
+    // Keep a brief minimum so the transition reads as intentional, not janky
+    const minLoadTime = 250;
     const startTime = Date.now();
 
     const timer = setTimeout(() => {
@@ -46,15 +45,10 @@ export const PageTransitionLoader: React.FC<{ children: React.ReactNode }> = ({ 
     <div className="relative flex-1 overflow-y-auto">
       {/* Loading Overlay - Only covers content area, not sidebar */}
       {isLoading && (
-        <div className="absolute inset-0 z-9999 bg-white flex items-center justify-center">
-          <div className="relative w-40 h-40 animate-spin-fast">
-            <Image
-              src="/logo/2.png"
-              alt="Loading..."
-              fill
-              className="object-contain"
-              priority
-            />
+        <div className="absolute inset-0 z-9999 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-600 animate-spin" />
+            <span className="text-sm font-medium text-gray-500">Loading…</span>
           </div>
         </div>
       )}
@@ -67,22 +61,6 @@ export const PageTransitionLoader: React.FC<{ children: React.ReactNode }> = ({ 
       >
         {children}
       </div>
-
-      {/* Add custom fast spin animation */}
-      <style jsx global>{`
-        @keyframes spin-fast {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        .animate-spin-fast {
-          animation: spin-fast 0.6s linear infinite;
-        }
-      `}</style>
     </div>
   );
 };

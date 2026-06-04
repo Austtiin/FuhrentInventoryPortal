@@ -107,6 +107,7 @@ const AddInventoryPage: React.FC = () => {
     length: '',
     price: '',
     msrp: '',
+    mileage: '',
     banner: '',
   });
 
@@ -268,6 +269,7 @@ const AddInventoryPage: React.FC = () => {
         sizeCategory: string;
         msrp: number | null;
         MSRP?: number | null;
+        mileage?: number;
         banner: string | null;
       } = {
         vin: formData.vin,
@@ -288,6 +290,10 @@ const AddInventoryPage: React.FC = () => {
       };
       // Duplicate with uppercase for compatibility with backends expecting 'MSRP'
       submissionData.MSRP = submissionData.msrp;
+      // Mileage (int) — relevant for vehicles; send whenever a value is provided
+      if (itemType === 'Vehicle' || (formData.mileage !== '' && !Number.isNaN(parseInt(formData.mileage)))) {
+        submissionData.mileage = parseInt(formData.mileage) || 0;
+      }
       
       // Submit to API
       const response = await apiFetch('/vehicles/add', {
@@ -337,7 +343,8 @@ const AddInventoryPage: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <p className="text-gray-600">Enter the details for the new item</p>
+            <h1 className="text-xl font-semibold text-gray-900">Add Inventory Item</h1>
+            <p className="text-gray-600 mt-0.5">Enter the details for the new item</p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-8">
@@ -568,6 +575,29 @@ const AddInventoryPage: React.FC = () => {
                     />
                   </div>
                 </div>
+
+                {/* Mileage - Vehicles only */}
+                {itemType === 'Vehicle' && (
+                  <div>
+                    <label htmlFor="mileage" className="block text-sm font-medium text-gray-900 mb-2">
+                      Mileage (Optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        id="mileage"
+                        name="mileage"
+                        value={formData.mileage}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        className="w-full pr-12 pl-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                        placeholder="45210"
+                      />
+                      <span className="absolute right-3 top-2 text-gray-500 text-sm font-medium">mi</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Stock Number - Required */}
                 <div>

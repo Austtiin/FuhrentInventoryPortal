@@ -102,6 +102,7 @@ interface VehicleData {
   Color?: string;
   Price?: number;
   MSRP?: number;
+  Mileage?: number;
   StockNo?: string;
   Condition?: string;
   Category?: string;
@@ -121,6 +122,7 @@ interface VehicleFormData {
   Color?: string;
   Price?: number;
   MSRP?: number;
+  Mileage?: number;
   StockNo?: string;
   Condition?: string;
   Category?: string;
@@ -346,6 +348,8 @@ function EditInventoryPageContent() {
       // Initialize form data with current vehicle data
       const rawMsrp = (v as unknown as Record<string, unknown>)['MSRP'] ?? (v as unknown as Record<string, unknown>)['msrp'];
       const msrpNum = typeof rawMsrp === 'number' ? rawMsrp : rawMsrp != null ? Number(rawMsrp) : undefined;
+      const rawMileage = (v as unknown as Record<string, unknown>)['Mileage'] ?? (v as unknown as Record<string, unknown>)['mileage'] ?? (v as unknown as Record<string, unknown>)['Odometer'];
+      const mileageNum = typeof rawMileage === 'number' ? rawMileage : rawMileage != null && rawMileage !== '' ? Number(rawMileage) : undefined;
       setFormData({
         Year: v.Year,
         Make: v.Make,
@@ -354,6 +358,7 @@ function EditInventoryPageContent() {
         Color: v.Color,
         Price: v.Price,
         MSRP: msrpNum,
+        Mileage: Number.isNaN(mileageNum as number) ? undefined : mileageNum,
         StockNo: v.StockNo,
         Condition: v.Condition,
         Category: v.Category,
@@ -666,6 +671,10 @@ function EditInventoryPageContent() {
         msrp: typeof MSRP === 'number' ? MSRP : null,
         banner: Banner && Banner.trim() ? Banner.trim() : null,
       };
+      // Mileage (int) — send for vehicles, or whenever a value is present
+      if (TypeID === 2 || typeof formData.Mileage === 'number') {
+        apiPayload.mileage = typeof formData.Mileage === 'number' ? formData.Mileage : 0;
+      }
       // Also include uppercase MSRP to support backends expecting DB column casing
       if (typeof MSRP === 'number') {
         apiPayload.MSRP = MSRP;
@@ -1145,6 +1154,24 @@ function EditInventoryPageContent() {
                     step="0.01"
                   />
                 </div>
+
+                {formData.TypeID === 2 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-1">Mileage</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={formData.Mileage ?? ''}
+                        onChange={(e) => handleFieldChange('Mileage', e.target.value === '' ? undefined : parseInt(e.target.value) || 0)}
+                        className="w-full pr-12 pl-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                        placeholder="45210"
+                        min="0"
+                        step="1"
+                      />
+                      <span className="absolute right-3 top-2.5 text-gray-500 text-sm font-medium">mi</span>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-1">Condition</label>
