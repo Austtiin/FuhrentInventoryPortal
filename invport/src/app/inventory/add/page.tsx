@@ -5,82 +5,15 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/apiClient';
 import { VEHICLE_COLORS, STATUS_OPTIONS } from '@/constants/inventory';
-
-// Utility function to capitalize first letter of each word
-const toTitleCase = (str: string): string => {
-  return str
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
-// Capitalize only the first character; leave the rest as the user types
-const capitalizeFirst = (str: string): string => {
-  if (!str) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
-// Validate dimensions based on make
-const validateDimensions = (make: string, length: string, width: string): { valid: boolean; error?: string } => {
-  const normalizedMake = make.trim().toLowerCase();
-  
-  // Ice Castle Fish House validation
-  if (normalizedMake === 'ice castle fish house') {
-    // Length: must be [int]V or [int]S
-    if (length && length.trim()) {
-      const lengthPattern = /^\d+[VS]$/i;
-      if (!lengthPattern.test(length.trim())) {
-        return { valid: false, error: 'For Ice Castle Fish House, length must be a whole number followed by V or S (e.g., 21V or 17S)' };
-      }
-    }
-    // Width: must be 8 or 6.5
-    if (width && width.trim()) {
-      const validWidths = ['8', '6.5'];
-      if (!validWidths.includes(width.trim())) {
-        return { valid: false, error: 'For Ice Castle Fish House, width must be either 8 or 6.5' };
-      }
-    }
-  }
-  
-  // Aluma-Lite validation
-  if (normalizedMake === 'aluma-lite') {
-    // Length: must be [int]V or [int]S
-    if (length && length.trim()) {
-      const lengthPattern = /^\d+[VS]$/i;
-      if (!lengthPattern.test(length.trim())) {
-        return { valid: false, error: 'For Aluma-Lite, length must be a whole number followed by V or S (e.g., 21V or 17S)' };
-      }
-    }
-    // Width: must be 8, 6.5, or 6
-    if (width && width.trim()) {
-      const validWidths = ['8', '6.5', '6'];
-      if (!validWidths.includes(width.trim())) {
-        return { valid: false, error: 'For Aluma-Lite, width must be 8, 6.5, or 6' };
-      }
-    }
-  }
-  
-  // For all other makes: only allow whole numbers (integers)
-  if (normalizedMake && normalizedMake !== 'ice castle fish house' && normalizedMake !== 'aluma-lite') {
-    // Length: must be integer only
-    if (length && length.trim()) {
-      const intPattern = /^\d+$/;
-      if (!intPattern.test(length.trim())) {
-        return { valid: false, error: 'Length must be a whole number only (no decimals or letters)' };
-      }
-    }
-    // Width: must be integer or decimal number only
-    if (width && width.trim()) {
-      const numPattern = /^\d+(\.\d+)?$/;
-      if (!numPattern.test(width.trim())) {
-        return { valid: false, error: 'Width must be a whole number only (no letters)' };
-      }
-    }
-  }
-  
-  return { valid: true };
-};
+import {
+  toTitleCase,
+  capitalizeFirst,
+  validateDimensions,
+  getCategoryOptions,
+  FORM_LABEL_CLASS,
+  FORM_INPUT_CLASS,
+} from '@/lib/inventoryForm';
+import MakeCombobox from '@/components/inventory/MakeCombobox';
 
 // Fields that should be capitalized (every word)
 // Note: exclude 'category' to preserve exact option values like 'RV'
@@ -111,26 +44,7 @@ const AddInventoryPage: React.FC = () => {
     banner: '',
   });
 
-  // Category options
-  const BASE_CATEGORY_OPTIONS = ['RV', 'No Water', 'Toy Hauler', 'Snowmobile Trailer', 'Skid House'];
-  const VEHICLE_CATEGORY_OPTIONS = [
-    'Car',
-    'Truck',
-    'SUV',
-    'Sedan',
-    'Coupe',
-    'Van',
-    'Hatchback',
-    'Convertible',
-    'Box Truck',
-    'Pickup Truck',
-    'Wagon',
-    'Crossover',
-  ];
-
-  const categoryOptions = itemType === 'Vehicle'
-    ? VEHICLE_CATEGORY_OPTIONS
-    : BASE_CATEGORY_OPTIONS;
+  const categoryOptions = getCategoryOptions(itemType);
 
   // Ensure category remains valid when item type changes
   useEffect(() => {
@@ -140,23 +54,20 @@ const AddInventoryPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemType]);
 
-  // Make quick suggestions (free-text remains allowed)
-  const MAKE_SUGGESTIONS = [
-    'Ice Castle Fish House',
-    'Aluma-Light',
-    'Toyota',
-    'BMW',
-    'Chevy',
-    'Ford',
-    'Honda',
-  ];
-
-  const [showMakeSuggestions, setShowMakeSuggestions] = useState(false);
-  const filteredMakeSuggestions = MAKE_SUGGESTIONS.filter(s =>
-    !formData.make ? true : s.toLowerCase().includes(formData.make.toLowerCase())
-  );
-
   // NOTE: MSRP is optional; the value is sent directly from form state where needed.
+
+  // Apply the same formatting + dimension validation used by handleInputChange,
+  // but driven by the MakeCombobox onChange (which yields a raw string value).
+  const handleMakeChange = (raw: string) => {
+    const processedValue = toTitleCase(raw);
+    const validation = validateDimensions(processedValue, formData.length, formData.width);
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid dimensions');
+    } else if (error && (error.includes('length') || error.includes('width') || error.includes('dimensions'))) {
+      setError('');
+    }
+    setFormData((prev) => ({ ...prev, make: processedValue }));
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -410,7 +321,7 @@ const AddInventoryPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Year - Required */}
                 <div>
-                  <label htmlFor="year" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="year" className={FORM_LABEL_CLASS}>
                     Year <span className="text-red-600">*</span>
                   </label>
                   <input
@@ -422,64 +333,27 @@ const AddInventoryPage: React.FC = () => {
                     required
                     min="1900"
                     max={new Date().getFullYear() + 1}
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                     placeholder="Enter year"
                   />
                 </div>
 
                 {/* Make - Required with quick suggestions */}
                 <div className="relative overflow-visible">
-                  <label htmlFor="make" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="make" className={FORM_LABEL_CLASS}>
                     Make <span className="text-red-600">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <MakeCombobox
                     id="make"
-                    name="make"
                     value={formData.make}
-                    onChange={(e) => {
-                      handleInputChange(e);
-                      setShowMakeSuggestions(true);
-                    }}
-                    onFocus={() => setShowMakeSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowMakeSuggestions(false), 150)}
+                    onChange={handleMakeChange}
                     required
-                    list="make-suggestions"
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                    placeholder="Enter make"
                   />
-                  <datalist id="make-suggestions">
-                    <option value="Ice Castle Fish House" />
-                    <option value="Toyota" />
-                    <option value="BMW" />
-                    <option value="Chevy" />
-                    <option value="Ford" />
-                    <option value="Honda" />
-                  </datalist>
-
-                  {showMakeSuggestions && filteredMakeSuggestions.length > 0 && (
-                    <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                      {filteredMakeSuggestions.map((opt) => (
-                        <li
-                          key={opt}
-                          className="cursor-pointer px-3 py-2 text-sm text-gray-900 hover:bg-gray-100"
-                          onMouseDown={(e) => {
-                            // onMouseDown to avoid blur before click
-                            e.preventDefault();
-                            setFormData(prev => ({ ...prev, make: opt }));
-                            setShowMakeSuggestions(false);
-                          }}
-                        >
-                          {opt}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
 
                 {/* Model - Required */}
                 <div>
-                  <label htmlFor="model" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="model" className={FORM_LABEL_CLASS}>
                     Model <span className="text-red-600">*</span>
                   </label>
                   <input
@@ -489,14 +363,14 @@ const AddInventoryPage: React.FC = () => {
                     value={formData.model}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                     placeholder="Enter model"
                   />
                 </div>
 
                 {/* Color */}
                 <div>
-                  <label htmlFor="color" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="color" className={FORM_LABEL_CLASS}>
                     Color <span className="text-red-600">*</span>
                   </label>
                   <select
@@ -505,7 +379,7 @@ const AddInventoryPage: React.FC = () => {
                     value={formData.color}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                   >
                     <option value="">Select Color</option>
                     {VEHICLE_COLORS.map((color) => (
@@ -518,7 +392,7 @@ const AddInventoryPage: React.FC = () => {
 
                 {/* VIN - Required */}
                 <div>
-                  <label htmlFor="vin" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="vin" className={FORM_LABEL_CLASS}>
                     VIN <span className="text-red-600">*</span>
                   </label>
                   <input
@@ -529,14 +403,14 @@ const AddInventoryPage: React.FC = () => {
                     onChange={handleInputChange}
                     required
                     maxLength={17}
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent uppercase"
+                    className={`${FORM_INPUT_CLASS} uppercase`}
                     placeholder="17-character VIN"
                   />
                 </div>
 
                 {/* Price - Optional */}
                 <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="price" className={FORM_LABEL_CLASS}>
                     Price (Optional)
                   </label>
                   <div className="relative">
@@ -557,7 +431,7 @@ const AddInventoryPage: React.FC = () => {
 
                 {/* MSRP - Optional */}
                 <div>
-                  <label htmlFor="msrp" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="msrp" className={FORM_LABEL_CLASS}>
                     MSRP (Optional)
                   </label>
                   <div className="relative">
@@ -579,7 +453,7 @@ const AddInventoryPage: React.FC = () => {
                 {/* Mileage - Vehicles only */}
                 {itemType === 'Vehicle' && (
                   <div>
-                    <label htmlFor="mileage" className="block text-sm font-medium text-gray-900 mb-2">
+                    <label htmlFor="mileage" className={FORM_LABEL_CLASS}>
                       Mileage (Optional)
                     </label>
                     <div className="relative">
@@ -601,7 +475,7 @@ const AddInventoryPage: React.FC = () => {
 
                 {/* Stock Number - Required */}
                 <div>
-                  <label htmlFor="stockNo" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="stockNo" className={FORM_LABEL_CLASS}>
                     Stock No <span className="text-red-600">*</span>
                   </label>
                   <input
@@ -611,14 +485,14 @@ const AddInventoryPage: React.FC = () => {
                     value={formData.stockNo}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent uppercase"
+                    className={`${FORM_INPUT_CLASS} uppercase`}
                     placeholder="Enter stock number"
                   />
                 </div>
 
                 {/* Condition - Required (New or Pre-Owned only) */}
                 <div>
-                  <label htmlFor="condition" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="condition" className={FORM_LABEL_CLASS}>
                     Condition <span className="text-red-600">*</span>
                   </label>
                   <select
@@ -627,7 +501,7 @@ const AddInventoryPage: React.FC = () => {
                     value={formData.condition}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                   >
                     <option value="New">New</option>
                     <option value="Pre-Owned">Pre-Owned</option>
@@ -636,7 +510,7 @@ const AddInventoryPage: React.FC = () => {
 
                 {/* Status */}
                 <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="status" className={FORM_LABEL_CLASS}>
                     Status
                   </label>
                   <select
@@ -644,7 +518,7 @@ const AddInventoryPage: React.FC = () => {
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                   >
                     {STATUS_OPTIONS.map((status) => (
                       <option key={status.value} value={status.label}>
@@ -656,7 +530,7 @@ const AddInventoryPage: React.FC = () => {
 
                 {/* Category - Required */}
                 <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="category" className={FORM_LABEL_CLASS}>
                     Category <span className="text-red-600">*</span>
                   </label>
                   <select
@@ -665,7 +539,7 @@ const AddInventoryPage: React.FC = () => {
                     value={formData.category}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                   >
                     <option value="">Select a category</option>
                     {categoryOptions.map((opt) => (
@@ -676,7 +550,7 @@ const AddInventoryPage: React.FC = () => {
 
                 {/* Width - Optional */}
                 <div>
-                  <label htmlFor="width" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="width" className={FORM_LABEL_CLASS}>
                     Width (Optional)
                   </label>
                   <input
@@ -685,14 +559,14 @@ const AddInventoryPage: React.FC = () => {
                     name="width"
                     value={formData.width}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                     placeholder="Enter width"
                   />
                 </div>
 
                 {/* Length - Optional */}
                 <div>
-                  <label htmlFor="length" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="length" className={FORM_LABEL_CLASS}>
                     Length (Optional)
                   </label>
                   <input
@@ -701,14 +575,14 @@ const AddInventoryPage: React.FC = () => {
                     name="length"
                     value={formData.length}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                     placeholder="Enter length"
                   />
                 </div>
 
                 {/* Banner - Optional */}
                 <div>
-                  <label htmlFor="banner" className="block text-sm font-medium text-gray-900 mb-2">
+                  <label htmlFor="banner" className={FORM_LABEL_CLASS}>
                     Banner (Optional)
                   </label>
                   <input
@@ -718,7 +592,7 @@ const AddInventoryPage: React.FC = () => {
                     value={formData.banner}
                     onChange={handleInputChange}
                     maxLength={50}
-                    className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className={FORM_INPUT_CLASS}
                     placeholder="Enter banner text (max 50 characters)"
                   />
                 </div>

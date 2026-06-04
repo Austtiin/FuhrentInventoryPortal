@@ -16,82 +16,13 @@ import { FEATURE_CATEGORIES, VEHICLE_FEATURE_CATEGORIES } from '@/constants/feat
 import FeaturesSelector from '@/components/inventory/FeaturesSelector';
 import { VinDecoderButton } from '@/components/inventory/VinDecoderButton';
 import { rewriteDescription } from '@/lib/ai/rewriteDescription';
-
-// Utility function to capitalize first letter of each word
-const toTitleCase = (str: string): string => {
-  return str
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
-// Utility: capitalize only the first character; leave the rest untouched
-const capitalizeFirst = (str: string): string => {
-  if (!str) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
-// Validate dimensions based on make
-const validateDimensions = (make: string, length: string, width: string): { valid: boolean; error?: string } => {
-  const normalizedMake = make.trim().toLowerCase();
-  
-  // Ice Castle Fish House validation
-  if (normalizedMake === 'ice castle fish house') {
-    // Length: must be [int]V or [int]S
-    if (length && length.trim()) {
-      const lengthPattern = /^\d+[VS]$/i;
-      if (!lengthPattern.test(length.trim())) {
-        return { valid: false, error: 'For Ice Castle Fish House, length must be a whole number followed by V or S (e.g., 21V or 17S)' };
-      }
-    }
-    // Width: must be 8 or 6.5
-    if (width && width.trim()) {
-      const validWidths = ['8', '6.5'];
-      if (!validWidths.includes(width.trim())) {
-        return { valid: false, error: 'For Ice Castle Fish House, width must be either 8 or 6.5' };
-      }
-    }
-  }
-  
-  // Aluma-Lite validation
-  if (normalizedMake === 'aluma-lite') {
-    // Length: must be [int]V or [int]S
-    if (length && length.trim()) {
-      const lengthPattern = /^\d+[VS]$/i;
-      if (!lengthPattern.test(length.trim())) {
-        return { valid: false, error: 'For Aluma-Lite, length must be a whole number followed by V or S (e.g., 21V or 17S)' };
-      }
-    }
-    // Width: must be 8, 6.5, or 6
-    if (width && width.trim()) {
-      const validWidths = ['8', '6.5', '6'];
-      if (!validWidths.includes(width.trim())) {
-        return { valid: false, error: 'For Aluma-Lite, width must be 8, 6.5, or 6' };
-      }
-    }
-  }
-  
-  // For all other makes: only allow whole numbers (integers)
-  if (normalizedMake && normalizedMake !== 'ice castle fish house' && normalizedMake !== 'aluma-lite') {
-    // Length: must be integer only
-    if (length && length.trim()) {
-      const intPattern = /^\d+$/;
-      if (!intPattern.test(length.trim())) {
-        return { valid: false, error: 'Length must be a whole number only (no decimals or letters)' };
-      }
-    }
-    // Width: must be integer or decimal number only
-    if (width && width.trim()) {
-      const numPattern = /^\d+(\.\d+)?$/;
-      if (!numPattern.test(width.trim())) {
-        return { valid: false, error: 'Width must be a whole number only (no letters)' };
-      }
-    }
-  }
-  
-  return { valid: true };
-};
+import {
+  toTitleCase,
+  capitalizeFirst,
+  validateDimensions,
+  getCategoryOptions,
+} from '@/lib/inventoryForm';
+import MakeCombobox from '@/components/inventory/MakeCombobox';
 
 interface VehicleData {
   UnitID: number;
@@ -138,22 +69,6 @@ interface VehicleFormData {
 // Note: Model is handled separately to only capitalize the first character
 const TITLE_CASE_FIELDS: (keyof VehicleFormData)[] = ['Make'];
 const UPPERCASE_FIELDS: (keyof VehicleFormData)[] = ['VIN', 'StockNo'];
-
-// Suggestions and category options similar to Add page
-const MAKE_SUGGESTIONS = [
-  'Ice Castle Fish House',
-  'Aluma-Light',
-  'Toyota',
-  'BMW',
-  'Chevy',
-  'Ford',
-  'Honda',
-];
-
-const BASE_CATEGORY_OPTIONS = ['RV', 'No Water', 'Toy Hauler', 'Snowmobile Trailer', 'Skid House'];
-const VEHICLE_CATEGORY_OPTIONS = [
-  'Car', 'Truck', 'SUV', 'Sedan', 'Coupe', 'Van', 'Hatchback', 'Convertible', 'Box Truck', 'Pickup Truck', 'Wagon', 'Crossover',
-];
 
 function EditInventoryPageContent() {
   const router = useRouter();
@@ -300,7 +215,7 @@ function EditInventoryPageContent() {
         // Unit-type specific validations are enforced on save only.
         // We avoid throwing during render so users can fix bad data.
   const typeId = useMemo(() => (itemType === 'FishHouse' ? 1 : itemType === 'Trailer' ? 3 : 2), [itemType]);
-  const categoryOptions = useMemo(() => itemType === 'Vehicle' ? VEHICLE_CATEGORY_OPTIONS : BASE_CATEGORY_OPTIONS, [itemType]);
+  const categoryOptions = useMemo(() => getCategoryOptions(itemType), [itemType]);
 
   // Images progress (based on canonical API listing)
   const imagesHook = useUnitImages(vehicle?.UnitID ?? undefined);
@@ -1078,19 +993,13 @@ function EditInventoryPageContent() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-1">Make</label>
-                  <input
-                    type="text"
+                  <MakeCombobox
+                    id="edit-make"
                     value={formData.Make || ''}
-                    onChange={(e) => handleFieldChange('Make', e.target.value)}
-                    list="make-options"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
+                    onChange={(v) => handleFieldChange('Make', v)}
                     placeholder="Ford"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-medium bg-white"
                   />
-                  <datalist id="make-options">
-                    {MAKE_SUGGESTIONS.map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
                 </div>
 
                 <div>
