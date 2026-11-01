@@ -821,7 +821,7 @@ function EditInventoryPageContent() {
               onClick={saveVehicle}
               type="button"
               disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
-              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+              className="flex items-center gap-2 px-5 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
             >
               <CheckIcon className="w-4 h-4" />
               {isSaving || isSavingFeatures ? 'Saving...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'Saved'}
@@ -831,14 +831,14 @@ function EditInventoryPageContent() {
 
         {/* 1) Quick Actions */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Quick Status Actions</h2>
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 type="button"
                 onClick={() => confirmStatus('available', 'Available', 'success')}
                 disabled={isSaving || status === 'available'}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 touch-manipulation"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-50 touch-manipulation"
               >
                 <CheckIcon className="w-4 h-4" /> Mark Available
               </button>
@@ -846,7 +846,7 @@ function EditInventoryPageContent() {
                 type="button"
                 onClick={() => confirmStatus('pending', 'Pending', 'warning')}
                 disabled={isSaving || status === 'pending'}
-                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 touch-manipulation"
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 touch-manipulation"
               >
                 <CheckIcon className="w-4 h-4" /> Mark Pending
               </button>
@@ -854,7 +854,7 @@ function EditInventoryPageContent() {
                 type="button"
                 onClick={() => confirmStatus('sold', 'Sold', 'primary')}
                 disabled={isSaving || status === 'sold'}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 touch-manipulation"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-50 touch-manipulation"
               >
                 <CheckIcon className="w-4 h-4" /> Mark Sold
               </button>
@@ -1182,33 +1182,33 @@ function EditInventoryPageContent() {
                     onClick={() => handleFieldChange('TypeID', 1)}
                     className={`px-4 py-2 rounded-md border transition-colors ${
                       formData.TypeID === 1
-                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        ? 'bg-slate-700 text-white border-slate-700'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    🏠 Fish House
+                    Fish House
                   </button>
                   <button
                     type="button"
                     onClick={() => handleFieldChange('TypeID', 2)}
                     className={`px-4 py-2 rounded-md border transition-colors ${
                       formData.TypeID === 2
-                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        ? 'bg-slate-700 text-white border-slate-700'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    🚗 Vehicle
+                    Vehicle
                   </button>
                   <button
                     type="button"
                     onClick={() => handleFieldChange('TypeID', 3)}
                     className={`px-4 py-2 rounded-md border transition-colors ${
                       formData.TypeID === 3
-                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        ? 'bg-slate-700 text-white border-slate-700'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                    🚛 Trailer
+                    Trailer
                   </button>
                 </div>
                 <p className="text-xs text-gray-600 mt-2">Select the type of unit this item represents</p>
@@ -1255,8 +1255,8 @@ function EditInventoryPageContent() {
                       className={`relative inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold text-white shadow transition-all ${
                         (!canRewrite || aiStatus === 'loading' || isTyping)
                           ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-linear-to-r from-fuchsia-500 via-rose-500 to-sky-500 hover:brightness-110 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400 active:scale-95'
-                      } ${aiStatus === 'loading' ? 'animate-bounce' : ''}`}
+                          : 'bg-slate-700 hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-400'
+                      }`}
                       aria-label="Rewrite description with AI"
                     >
                       {aiStatus === 'loading' ? (
@@ -1344,11 +1344,11 @@ function EditInventoryPageContent() {
             <div className="space-y-4">
               {/* VIN Decoder Button - Only show for Vehicles */}
               {itemType === 'Vehicle' && vehicle?.VIN && (
-                <div className="p-4 rounded-lg bg-purple-50 border border-purple-200">
+                <div className="p-4 rounded bg-gray-50 border border-gray-200">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="text-sm font-semibold text-purple-900 mb-1">VIN Decoder</h3>
-                      <p className="text-xs text-purple-700">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-1">VIN Decoder</h3>
+                      <p className="text-xs text-gray-600">
                         Automatically extract vehicle features from the VIN. Decoded features will be added to your existing selections.
                       </p>
                     </div>
@@ -1382,7 +1382,7 @@ function EditInventoryPageContent() {
             onClick={saveVehicle}
             type="button"
             disabled={isSaving || isSavingFeatures || (!hasUnsavedChanges && !hasFeatureChanges)}
-            className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+            className="flex items-center gap-2 px-8 py-3 bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
           >
             <CheckIcon className="w-5 h-5" />
             {isSaving || isSavingFeatures ? 'Saving Changes...' : (hasUnsavedChanges || hasFeatureChanges) ? 'Save Changes' : 'All Changes Saved'}
@@ -1400,4 +1400,3 @@ export default function EditInventoryPage() {
     </Suspense>
   );
 }
-

@@ -108,7 +108,7 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
           <button
             type="button"
             onClick={() => setIsOpen((v) => !v)}
-            className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
+            className="px-3 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-800"
           >
             {isOpen ? 'Hide' : 'Show'}
           </button>
@@ -154,7 +154,7 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
                             }}
                             aria-pressed={active}
                             className={`cursor-pointer flex items-center justify-between gap-2 ${small ? 'p-2' : 'p-3'} rounded-md border transition-colors ${
-                              active ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-gray-300'
+                              active ? 'bg-slate-50 border-slate-400 text-slate-800' : 'bg-white border-gray-300'
                             }`}
                           >
                             <span className={`truncate ${small ? 'text-xs' : 'text-sm'} font-medium text-gray-900`} title={f.FeatureName}>
@@ -164,8 +164,9 @@ export default function FeaturesSelector({ selected, onChange, title = 'Unit Fea
                               type="button"
                               onClick={(e) => { e.stopPropagation(); toggle(f.FeatureID); }}
                               aria-pressed={active}
-                              className={`relative inline-flex ${small ? 'h-5 w-9' : 'h-6 w-11'} items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-                                active ? 'bg-emerald-600' : 'bg-gray-300'
+                              aria-label={`Toggle ${f.FeatureName}`}
+                              className={`relative inline-flex ${small ? 'h-5 w-9' : 'h-6 w-11'} items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 ${
+                                active ? 'bg-slate-700' : 'bg-gray-300'
                               }`}
                             >
                               <span

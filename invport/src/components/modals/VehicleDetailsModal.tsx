@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Vehicle } from '@/types';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
+import Dialog from '@mui/material/Dialog';
 
 interface VehicleDetailsModalProps {
   vehicle: Vehicle;
@@ -30,39 +31,31 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
-      />
-      
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth aria-labelledby="unit-details-title">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+          <div className="flex items-start justify-between gap-3 p-4 sm:p-6 border-b border-gray-200">
+            <div className="min-w-0">
+              <h2 id="unit-details-title" className="text-xl sm:text-2xl font-semibold text-gray-900">
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 mt-1 break-words">
                 Stock: {vehicle.stock || 'N/A'} • VIN: {vehicle.vin}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Close unit details"
+              className="shrink-0 p-2 hover:bg-gray-100 rounded transition-colors"
             >
               <XMarkIcon className="w-6 h-6 text-gray-500" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* Main Image and Gallery */}
             <div className="mb-8">
-              <div className="w-full h-96 rounded-lg overflow-hidden bg-gray-100 mb-4">
+              <div className="w-full h-56 sm:h-96 rounded overflow-hidden bg-gray-100 mb-4">
                 <VehicleImageGallery 
                   vin={vehicle.vin}
                   mode="single"
@@ -99,8 +92,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 </div>
 
                 {/* Basic Vehicle Information */}
-                <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
-                  <h4 className="text-lg font-semibold text-emerald-900 mb-3">Unit Information</h4>
+                <div className="bg-white rounded p-4 border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Unit Information</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Year:</span>
@@ -140,8 +133,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 </div>
 
                 {/* Appearance */}
-                <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                  <h4 className="text-lg font-semibold text-indigo-900 mb-3">Appearance</h4>
+                <div className="bg-white rounded p-4 border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Appearance</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Exterior Color:</span>
@@ -166,8 +159,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               {/* Technical Details - Right Column */}
               <div className="space-y-6">
                 {/* Engine & Drivetrain */}
-                <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
-                  <h4 className="text-lg font-semibold text-emerald-900 mb-3">Engine & Drivetrain</h4>
+                <div className="bg-white rounded p-4 border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Engine & Drivetrain</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Engine:</span>
@@ -189,8 +182,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 </div>
 
                 {/* Inventory Details */}
-                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                  <h4 className="text-lg font-semibold text-amber-900 mb-3">Inventory Details</h4>
+                <div className="bg-white rounded p-4 border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Inventory Details</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Days in Stock:</span>
@@ -212,8 +205,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 </div>
 
                 {/* Dates */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <h4 className="text-lg font-semibold text-slate-900 mb-3">Important Dates</h4>
+                <div className="bg-white rounded p-4 border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Important Dates</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Date Added:</span>
@@ -235,7 +228,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
             {/* Description Section - Below the main content */}
             {vehicle.description && (
               <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                <h4 className="text-xl font-semibold text-gray-900 mb-4">Description</h4>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Description</h3>
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {vehicle.description}
                 </p>
@@ -256,14 +249,12 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
                 onClose();
               }}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors"
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded transition-colors"
             >
               Edit Unit
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   );
 };
 

@@ -4,7 +4,7 @@ const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="mt-auto h-5 bg-[#ECF5E9]/80 backdrop-blur-sm border-t border-gray-200/30 flex items-center justify-center px-4 text-[10px] text-gray-600">
+    <footer className="mt-auto border-t border-gray-200 bg-white px-4 py-4 text-center text-xs text-gray-500">
       <span>© {currentYear} Fuhr Enterprise • Designed by AS • Information subject to change</span>
     </footer>
   );

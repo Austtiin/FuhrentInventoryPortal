@@ -57,13 +57,13 @@ const InventoryContent: React.FC<InventoryListProps> = ({
             </h1>
             {isLoading && (
               <div className="animate-spin">
-                <ArrowPathIcon className="w-5 h-5 text-emerald-500" />
+                <ArrowPathIcon className="w-5 h-5 text-slate-500" />
               </div>
             )}
           </div>
           <button 
             onClick={onAdd}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white border border-emerald-600 rounded-lg text-sm font-medium transition-colors hover:bg-emerald-700 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 text-white border border-slate-700 rounded text-sm font-medium transition-colors hover:bg-slate-800 cursor-pointer"
           >
             <PlusIcon className="w-4 h-4" />
             Add Vehicle
@@ -111,7 +111,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
         {isLoading && filteredVehicles.length === 0 ? (
           <div className="col-span-full flex items-center justify-center py-16">
             <div className="text-center">
-              <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-600 font-medium">Loading inventory...</p>
             </div>
           </div>
@@ -119,7 +119,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
           <div className="col-span-full text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
             <p className="text-base text-gray-600 mb-6">No vehicles found matching your criteria.</p>
             <button 
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white border border-emerald-600 rounded-lg text-sm font-medium transition-colors hover:bg-emerald-700"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 text-white border border-slate-700 rounded text-sm font-medium transition-colors hover:bg-slate-800"
               onClick={() => setFilters({ search: '', status: 'all' })}
             >
               Clear Filters
@@ -145,7 +145,7 @@ const InventoryContent: React.FC<InventoryListProps> = ({
         <div className="mt-8 flex items-center justify-center">
           <button
             onClick={() => setCurrentPage(currentPage + 1)}
-            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700"
+            className="px-4 py-2 text-sm font-medium text-white bg-slate-700 rounded hover:bg-slate-800"
           >
             Show 5 more
           </button>

@@ -1,18 +1,17 @@
 import { createTheme } from '@mui/material/styles';
 
-// Create a custom theme matching the current design
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#2563eb', // blue-600
-      light: '#3b82f6', // blue-500
-      dark: '#1d4ed8', // blue-700
+      main: '#334155',
+      light: '#64748b',
+      dark: '#1e293b',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#10b981', // emerald-600
-      light: '#34d399', // emerald-500
-      dark: '#059669', // emerald-700
+      main: '#475569',
+      light: '#94a3b8',
+      dark: '#334155',
       contrastText: '#ffffff',
     },
     error: {
@@ -22,21 +21,21 @@ export const theme = createTheme({
       contrastText: '#ffffff',
     },
     warning: {
-      main: '#d97706', // amber-600
+      main: '#92400e',
       light: '#f59e0b', // amber-500
       dark: '#b45309', // amber-700
       contrastText: '#ffffff',
     },
     info: {
-      main: '#0ea5e9', // sky-600
+      main: '#0369a1',
       light: '#38bdf8', // sky-500
       dark: '#0284c7', // sky-700
       contrastText: '#ffffff',
     },
     success: {
-      main: '#10b981', // emerald-600
-      light: '#34d399', // emerald-500
-      dark: '#059669', // emerald-700
+      main: '#166534',
+      light: '#22c55e',
+      dark: '#14532d',
       contrastText: '#ffffff',
     },
     grey: {
@@ -63,11 +62,7 @@ export const theme = createTheme({
   },
   typography: {
     fontFamily: [
-      '-apple-system',
-      'BlinkMacSystemFont',
       '"Segoe UI"',
-      'Roboto',
-      '"Helvetica Neue"',
       'Arial',
       'sans-serif',
       '"Apple Color Emoji"',
@@ -118,7 +113,7 @@ export const theme = createTheme({
     },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 4,
   },
   shadows: [
     'none',
@@ -151,7 +146,7 @@ export const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '0.5rem',
+          borderRadius: '0.25rem',
           padding: '0.5rem 1rem',
           boxShadow: 'none',
           '&:hover': {
@@ -169,8 +164,9 @@ export const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: '0.75rem',
-          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+          borderRadius: '0.25rem',
+          border: '1px solid #e5e7eb',
+          boxShadow: 'none',
         },
       },
     },
@@ -181,7 +177,7 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: '0.5rem',
+            borderRadius: '0.25rem',
           },
         },
       },
@@ -189,7 +185,7 @@ export const theme = createTheme({
     MuiDialog: {
       styleOverrides: {
         paper: {
-          borderRadius: '0.75rem',
+          borderRadius: '0.375rem',
         },
       },
     },
@@ -209,4 +205,3 @@ export const theme = createTheme({
     },
   },
 });
-

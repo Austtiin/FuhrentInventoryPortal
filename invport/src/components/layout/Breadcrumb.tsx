@@ -10,6 +10,8 @@ const breadcrumbNameMap: Record<string, string> = {
   '/inventory': 'Inventory',
   '/inventory/add': 'Add Item',
   '/inventory/edit': 'Edit Item',
+  '/inventory/item': 'Unit Details',
+  '/inventory/vehicle': 'Vehicle Details',
   '/reports': 'Reports',
   '/users': 'Users',
   '/settings': 'Settings',
@@ -33,13 +35,13 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ inHeader = false }) => {
 
   // When inHeader is true, only show the title
   if (inHeader) {
-    return <h1 className="text-2xl font-bold text-gray-900">{currentPageName}</h1>;
+    return <h1 className="text-2xl font-semibold text-gray-900">{currentPageName}</h1>;
   }
 
   // When inHeader is false, only show the breadcrumb trail
   if (pathname === '/') {
     return (
-      <nav>
+      <nav aria-label="Breadcrumb">
         <ol className="flex items-center list-none m-0 p-0 flex-wrap gap-2">
           <li className="flex items-center">
             <span className="flex items-center gap-2 text-slate-600 text-xs">
@@ -53,12 +55,12 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ inHeader = false }) => {
   }
 
   return (
-      <nav>
+      <nav aria-label="Breadcrumb">
         <ol className="flex items-center list-none m-0 p-0 flex-wrap gap-2">
           <li className="flex items-center">
             <Link 
               href="/" 
-              className="flex items-center gap-1 text-slate-600 no-underline text-xs hover:text-[#1C4840] transition-colors"
+              className="flex items-center gap-1 text-slate-600 no-underline text-xs hover:text-slate-900 transition-colors"
             >
               <HomeIcon className="w-3 h-3" />
               Dashboard
@@ -76,13 +78,13 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ inHeader = false }) => {
                 </li>
                 <li className="flex items-center">
                   {isLast ? (
-                    <span className="text-[#1C4840] text-xs font-semibold">
+                    <span aria-current="page" className="text-slate-800 text-xs font-semibold">
                       {getBreadcrumbName(routeTo)}
                     </span>
                   ) : (
                     <Link 
                       href={routeTo} 
-                      className="text-slate-600 no-underline text-xs hover:text-[#1C4840] transition-colors"
+                      className="text-slate-600 no-underline text-xs hover:text-slate-900 transition-colors"
                     >
                       {getBreadcrumbName(routeTo)}
                     </Link>

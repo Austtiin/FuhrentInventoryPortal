@@ -611,7 +611,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
           
           {/* Thumbnail Indicator for image number 1 */}
           {currentImage.number === 1 && (
-            <div className="absolute top-2 left-2 bg-emerald-600 text-white px-2 py-1 rounded-md text-xs font-semibold shadow-lg border border-emerald-700">
+            <div className="absolute top-2 left-2 bg-slate-700 text-white px-2 py-1 rounded text-xs font-semibold border border-slate-800">
               Thumbnail
             </div>
           )}
@@ -653,7 +653,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   onClick={() => setCurrentImageIndex(index)}
                   className={`relative shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
                     index === currentImageIndex 
-                      ? 'border-emerald-500 shadow-md' 
+                      ? 'border-slate-600'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -666,7 +666,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   />
                   {/* Thumbnail Indicator for image number 1 */}
                   {image.number === 1 && (
-                    <div className="absolute top-0 left-0 bg-emerald-600 text-white px-1 text-xs font-bold rounded-br-md">
+                    <div className="absolute top-0 left-0 bg-slate-700 text-white px-1 text-xs font-bold rounded-br">
                       T
                     </div>
                   )}
@@ -823,7 +823,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                         : isBeingDragged
                         ? 'border-blue-400 opacity-30 scale-95 shadow-xl'
                         : isDropTarget
-                        ? 'border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50/50 scale-[1.02]'
+                        ? 'border-slate-500 ring-2 ring-slate-300 bg-slate-50'
                         : isDragging && !isBeingDragged
                         ? 'border-gray-300 transform'
                         : 'border-gray-200 hover:shadow-md hover:border-gray-300'
@@ -855,7 +855,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
 
                   {/* Thumbnail Indicator for image number 1 */}
                   {image.number === 1 && (
-                    <div className="absolute top-2 right-2 bg-emerald-600 text-white px-2 py-1 rounded text-xs font-semibold shadow-lg border border-emerald-700">
+                    <div className="absolute top-2 right-2 bg-slate-700 text-white px-2 py-1 rounded text-xs font-semibold border border-slate-800">
                       Thumbnail
                     </div>
                   )}
@@ -872,7 +872,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                             handleMoveUp(originalIndex);
                           }}
                           disabled={isReordering || isDragging}
-                          className={`p-2 rounded-md transition-colors text-white ${isReordering || isDragging ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                          className={`p-2 rounded transition-colors text-white ${isReordering || isDragging ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-800'}`}
                           title="Move up one position"
                         >
                           <ArrowUpIcon className="w-4 h-4" />
@@ -888,7 +888,7 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                             handleMoveDown(originalIndex);
                           }}
                           disabled={isReordering || isDragging}
-                          className={`p-2 rounded-md transition-colors text-white ${isReordering || isDragging ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                          className={`p-2 rounded transition-colors text-white ${isReordering || isDragging ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-800'}`}
                           title="Move down one position"
                         >
                           <ArrowDownIcon className="w-4 h-4" />
@@ -920,8 +920,8 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
                   
                   {/* Drop Target Indicator */}
                   {isDropTarget && (
-                    <div className="absolute inset-0 bg-emerald-500/10 rounded-lg flex items-center justify-center pointer-events-none">
-                      <div className="bg-emerald-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg animate-pulse">
+                    <div className="absolute inset-0 bg-slate-500/10 rounded flex items-center justify-center pointer-events-none">
+                      <div className="bg-slate-700 text-white px-3 py-1.5 rounded text-xs font-semibold">
                         Drop here
                       </div>
                     </div>
@@ -1006,5 +1006,4 @@ export const VehicleImageGallery: React.FC<VehicleImageGalleryProps> = ({
     </div>
   );
 };
-
 

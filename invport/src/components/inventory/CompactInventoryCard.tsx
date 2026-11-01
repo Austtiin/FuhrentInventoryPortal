@@ -107,7 +107,7 @@ export default function CompactInventoryCard({
       flexDirection: 'column',
       transition: 'all 0.2s',
       '&:hover': {
-        boxShadow: 6,
+        boxShadow: 1,
         borderColor: 'grey.300',
       },
     }}
@@ -149,7 +149,8 @@ export default function CompactInventoryCard({
       {/* Content Section */}
   <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Vehicle Title */}
-        <Typography variant="h6" component="h3" fontWeight={700} gutterBottom sx={{ 
+        <Typography variant="h6" component="h3" gutterBottom sx={{
+          fontWeight: 600,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           display: '-webkit-box',
@@ -163,7 +164,7 @@ export default function CompactInventoryCard({
         {/* Vehicle Details */}
         <Box sx={{ mb: 2, flexGrow: 1 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            <Box component="span" fontWeight={500}>VIN:</Box>{' '}
+            <Box component="span" sx={{ fontWeight: 500 }}>VIN:</Box>{' '}
             <Box component="span" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
               {item.vin}
             </Box>
@@ -171,14 +172,14 @@ export default function CompactInventoryCard({
           
           {typeof item.mileage === 'number' && (
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              <Box component="span" fontWeight={500}>Mileage:</Box>{' '}
+              <Box component="span" sx={{ fontWeight: 500 }}>Mileage:</Box>{' '}
               {formatMileage(item.mileage)}
             </Typography>
           )}
           
           {item.color && (
             <Typography variant="body2" color="text.secondary">
-              <Box component="span" fontWeight={500}>Color:</Box>{' '}
+              <Box component="span" sx={{ fontWeight: 500 }}>Color:</Box>{' '}
               {item.color}
             </Typography>
           )}
@@ -187,11 +188,11 @@ export default function CompactInventoryCard({
         {/* Price + MSRP */}
         <Box sx={{ mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap' }}>
-            <Typography variant="h5" component="p" color="success.main" fontWeight={700} sx={{ m: 0 }}>
+            <Typography variant="h5" component="p" color="text.primary" sx={{ m: 0, fontWeight: 600 }}>
               {formatPrice(item.price)}
             </Typography>
             {typeof item.msrp === 'number' && !Number.isNaN(item.msrp) && (
-              <Typography variant="caption" color="text.secondary" fontWeight={500}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
                 MSRP: {formatPrice(item.msrp)}
               </Typography>
             )}
@@ -306,4 +307,3 @@ export default function CompactInventoryCard({
     </Card>
   );
 }
-

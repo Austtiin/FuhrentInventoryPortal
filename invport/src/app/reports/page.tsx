@@ -11,7 +11,7 @@ import {
   ArrowTrendingUpIcon,
   BuildingStorefrontIcon
 } from '@heroicons/react/24/outline';
-import * as XLSX from 'xlsx';
+import { exportInventoryExcel, toInventoryCsv } from '@/lib/inventoryExport';
 import { apiFetchJson } from '@/lib/apiClient';
 
 const ReportsPage: React.FC = () => {
@@ -85,6 +85,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const fetchInventoryAll = async (): Promise<InvItem[]> => {
     const res = await apiFetchJson<unknown>('/GrabInventoryAll');
@@ -93,19 +94,6 @@ const ReportsPage: React.FC = () => {
     if (Array.isArray(r.data)) return r.data as InvItem[];
     if (Array.isArray(r.vehicles)) return r.vehicles as InvItem[];
     return [];
-  };
-
-  const toCsv = (rows: Record<string, unknown>[]) => {
-    if (!rows.length) return '';
-    const headers = Object.keys(rows[0]);
-    const esc = (v: unknown) => {
-      if (v === null || v === undefined) return '';
-      const s = String(v);
-      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    };
-    const lines = [headers.join(',')];
-  for (const row of rows) lines.push(headers.map(h => esc((row as Record<string, unknown>)[h])).join(','));
-    return lines.join('\n');
   };
 
   const saveBlob = (content: BlobPart, filename: string, type = 'application/octet-stream') => {
@@ -132,6 +120,7 @@ const ReportsPage: React.FC = () => {
     if (reportType !== 'Inventory Summary Report') return;
     try {
       setIsExporting(true);
+      setExportError(null);
       const items = await fetchInventoryAll();
       const rows = items.map(i => ({
         UnitID: i.UnitID,
@@ -151,30 +140,13 @@ const ReportsPage: React.FC = () => {
           : '';
 
       if (format === 'CSV') {
-        const csv = toCsv(rows.map(r => ({ ...r, Price: typeof r.Price === 'number' ? r.Price : '' })));
+        const csv = toInventoryCsv(rows);
         saveBlob(csv, 'inventory-summary.csv', 'text/csv;charset=utf-8');
         return;
       }
 
       if (format === 'Excel') {
-        const ws = XLSX.utils.json_to_sheet(rows.map(r => ({ ...r, Price: typeof r.Price === 'number' ? r.Price : '' })));
-        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-        const cells = ws as unknown as Record<string, XLSX.CellObject>;
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
-          const header = cells[headerCell]?.v as string | number | undefined;
-          if (header === 'Price') {
-            for (let R = 1; R <= range.e.r; ++R) {
-              const addr = XLSX.utils.encode_cell({ r: R, c: C });
-              const cell = cells[addr];
-              if (cell && typeof cell.v === 'number') cell.z = '"$"#,##0';
-            }
-          }
-        }
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        saveBlob(wbout, 'inventory-summary.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        await exportInventoryExcel(rows);
         return;
       }
 
@@ -306,6 +278,9 @@ const ReportsPage: React.FC = () => {
         }
         return;
       }
+    } catch (error) {
+      console.error('Inventory export failed:', error);
+      setExportError(error instanceof Error ? error.message : 'Export failed. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -313,6 +288,11 @@ const ReportsPage: React.FC = () => {
 
   return (
       <div className="space-y-6">
+        {exportError && (
+          <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            Could not export inventory: {exportError}
+          </div>
+        )}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -329,7 +309,7 @@ const ReportsPage: React.FC = () => {
             <button
               onClick={() => refresh()}
               disabled={isLoading}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-md transition-colors cursor-pointer disabled:cursor-not-allowed"
+              className="flex items-center gap-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white px-4 py-2 rounded transition-colors cursor-pointer disabled:cursor-not-allowed"
             >
               <ArrowTrendingUpIcon className="w-5 h-5" />
               <span className="text-white">{isLoading ? 'Loading...' : 'Refresh Data'}</span>
@@ -494,7 +474,7 @@ const ReportsPage: React.FC = () => {
                         key={format}
                         onClick={() => generateReport(report.title, format)}
                         disabled={isLoading || isExporting}
-                        className="px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer text-white disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-700"
+                        className="px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer text-white disabled:opacity-50 disabled:cursor-not-allowed bg-slate-700 hover:bg-slate-800"
                       >
                         Generate {format}
                       </button>
@@ -510,4 +490,3 @@ const ReportsPage: React.FC = () => {
 };
 
 export default ReportsPage;
-

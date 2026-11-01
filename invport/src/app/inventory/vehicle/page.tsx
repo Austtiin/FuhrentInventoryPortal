@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, ClockIcon, TruckIcon, TagIcon } from '@heroicons/react/24/outline';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 import { Vehicle } from '@/types';
-import { apiFetch } from '@/lib/apiClient';
+import { apiFetchJson } from '@/lib/apiClient';
+import { inventoryRecords, normalizeInventoryVehicle } from '@/lib/inventoryResponse';
 
 // Simple vehicle detail page using search params instead of dynamic routes
 export default function VehicleDetailPage() {
@@ -47,48 +48,14 @@ export default function VehicleDetailPage() {
         console.log(`🔍 Fetching vehicle details for ID: ${vehicleId}`);
         
         // Fetch all inventory from GrabInventoryAll (includes all types)
-        const response = await apiFetch('/GrabInventoryAll');
+        const response = inventoryRecords(await apiFetchJson<unknown>('/GrabInventoryAll'));
         
         if (response && Array.isArray(response)) {
           // Find the specific vehicle by UnitId
-          const foundVehicle = response.find((item: Record<string, unknown>) => 
-            item.unitId?.toString() === vehicleId || 
-            item.UnitId?.toString() === vehicleId ||
-            item.id?.toString() === vehicleId
-          );
+          const foundVehicle = response.map(normalizeInventoryVehicle).find(unit => unit.id === vehicleId);
 
           if (foundVehicle) {
-            // Normalize the vehicle data structure
-            const normalizedVehicle: Vehicle = {
-              id: foundVehicle.unitId || foundVehicle.UnitId || foundVehicle.id,
-              unitId: foundVehicle.unitId || foundVehicle.UnitId,
-              stock: foundVehicle.stockNo || foundVehicle.StockNo,
-              typeId: foundVehicle.typeId || foundVehicle.TypeId || 2,
-              year: foundVehicle.year || foundVehicle.Year,
-              make: foundVehicle.make || foundVehicle.Make,
-              model: foundVehicle.model || foundVehicle.Model,
-              vin: foundVehicle.vin || foundVehicle.VIN,
-              price: foundVehicle.price || foundVehicle.Price,
-              status: foundVehicle.status || foundVehicle.Status || 'available',
-              mileage: foundVehicle.mileage || foundVehicle.Mileage || 0,
-              color: foundVehicle.color || foundVehicle.Color || '',
-              description: foundVehicle.description || foundVehicle.Description,
-              engine: foundVehicle.engine || foundVehicle.Engine,
-              transmission: foundVehicle.transmission || foundVehicle.Transmission || 'Automatic',
-              fuelType: foundVehicle.fuelType || foundVehicle.FuelType || 'Gasoline',
-              drivetrain: foundVehicle.drivetrain || foundVehicle.Drivetrain,
-              bodyStyle: foundVehicle.bodyStyle || foundVehicle.BodyStyle,
-              // Standard Vehicle interface properties
-              name: `${foundVehicle.year} ${foundVehicle.make} ${foundVehicle.model}`,
-              category: 'SUV', // Default category, you can map this based on bodyStyle
-              images: [], // Will be loaded by VehicleImageGallery
-              dateAdded: foundVehicle.createdAt || foundVehicle.CreatedAt || new Date().toISOString(),
-              lastUpdated: foundVehicle.updatedAt || foundVehicle.UpdatedAt || new Date().toISOString(),
-              location: 'Main Lot', // Default location
-              dealer: 'Flatt Motors' // Default dealer
-            };
-            
-            setVehicle(normalizedVehicle);
+            setVehicle(foundVehicle);
           } else {
             setError(`Vehicle with ID ${vehicleId} not found`);
           }
@@ -168,7 +135,7 @@ export default function VehicleDetailPage() {
                 <p className="text-gray-600 mb-6">{error}</p>
                 <button
                   onClick={() => router.push('/inventory')}
-                  className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  className="px-6 py-3 bg-slate-700 text-white rounded hover:bg-slate-800 transition-colors"
                 >
                   View All Inventory
                 </button>
@@ -190,7 +157,7 @@ export default function VehicleDetailPage() {
                 <p className="text-gray-600 mb-6">The requested vehicle could not be found.</p>
                 <button
                   onClick={() => router.push('/inventory')}
-                  className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  className="px-6 py-3 bg-slate-700 text-white rounded hover:bg-slate-800 transition-colors"
                 >
                   View All Inventory
                 </button>
@@ -324,4 +291,3 @@ export default function VehicleDetailPage() {
       </div>
   );
 }
-

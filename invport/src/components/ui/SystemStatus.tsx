@@ -37,9 +37,9 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200/50 p-4 sm:p-6">
+    <div className="bg-white rounded border border-gray-200 p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-slate-900">System Status</h3>
+        <h2 className="text-lg font-semibold text-slate-900">System Status</h2>
         {onRefresh && (
           <button
             onClick={onRefresh}
@@ -61,11 +61,11 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({
         </div>
         
         {message && (
-          <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-md border-l-2 border-slate-200">
+          <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded border border-slate-200">
             <p className="font-medium text-slate-600 mb-1">Details:</p>
             <p>{message}</p>
             {lastChecked && (
-              <p className="mt-2 text-slate-400">
+              <p className="mt-2 text-slate-600">
                 Last checked: {lastChecked.toLocaleTimeString()}
               </p>
             )}

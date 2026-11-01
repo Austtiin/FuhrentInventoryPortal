@@ -31,7 +31,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
       title: 'Total Items',
       value: isLoading ? '-' : (stats?.totalInventory?.toString() || '-'),
       icon: CubeIcon,
-      iconColor: 'bg-blue-500',
+      iconColor: 'bg-slate-100',
       route: '/inventory'
     },
     {
@@ -39,7 +39,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
       title: 'Total Value',
       value: isLoading ? '-' : (stats?.totalValue || '-'),
       icon: CurrencyDollarIcon,
-      iconColor: 'bg-green-500',
+      iconColor: 'bg-slate-100',
       route: '/reports'
     },
     {
@@ -47,7 +47,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
       title: 'Available Items',
       value: isLoading ? '-' : (stats?.availableUnits?.toString() || '-'),
       icon: ChartBarIcon,
-      iconColor: 'bg-indigo-500',
+      iconColor: 'bg-slate-100',
       route: '/inventory?filter=available'
     }
   ];

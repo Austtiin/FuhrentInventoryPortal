@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 import { Vehicle } from '@/types';
-import { apiFetch } from '@/lib/apiClient';
+import { apiFetchJson } from '@/lib/apiClient';
+import { inventoryRecords, normalizeInventoryVehicle } from '@/lib/inventoryResponse';
 
 export default function InventoryItemPage() {
   const router = useRouter();
@@ -42,30 +43,8 @@ export default function InventoryItemPage() {
           return;
         }
 
-  // Fetch from GrabInventoryAll as requested (returns an array)
-  const resp = await apiFetch('/GrabInventoryAll');
-
-        if (!resp || !Array.isArray(resp)) {
-          setError('Failed to load inventory');
-          setIsLoading(false);
-          return;
-        }
-
-        // Helper: normalize an object's keys to lowercase for resilient lookups
-        const normalizeKeys = (obj: Record<string, unknown> | null | undefined) => {
-          const out: Record<string, unknown> = {};
-          if (!obj) return out;
-          Object.keys(obj).forEach(k => {
-            out[k.toLowerCase()] = (obj as Record<string, unknown>)[k];
-          });
-          return out;
-        };
-
-        const found = resp.find((it: Record<string, unknown>) => {
-          const l = normalizeKeys(it);
-          const uid = l['unitid'] ?? l['unitid'] ?? l['id'] ?? l['unitid'];
-          return uid?.toString() === id;
-        });
+        const result = await apiFetchJson<unknown>('/GrabInventoryAll');
+        const found = inventoryRecords(result).map(normalizeInventoryVehicle).find(unit => unit.id === id);
 
         if (!found) {
           setError(`Vehicle with ID ${id} not found`);
@@ -73,32 +52,7 @@ export default function InventoryItemPage() {
           return;
         }
 
-        // Normalize into our Vehicle shape robustly (handles UnitID / UnitId / id and mixed-case keys)
-        const l = normalizeKeys(found as Record<string, unknown>);
-        const normalized: Vehicle = {
-          id: String(l['unitid'] ?? l['id'] ?? id),
-          name: `${l['year'] ?? ''} ${l['make'] ?? ''} ${l['model'] ?? ''}`.trim(),
-          model: String(l['model'] ?? ''),
-          year: Number(l['year'] ?? 0) || 0,
-          make: String(l['make'] ?? ''),
-          vin: String(l['vin'] ?? l['vin'] ?? ''),
-          mileage: Number(l['mileage'] ?? l['miles'] ?? 0) || 0,
-          price: Number(l['price'] ?? l['msrp'] ?? 0) || 0,
-          status: (String(l['status'] ?? 'available').toLowerCase() as Vehicle['status']) || 'available',
-          color: String(l['color'] ?? ''),
-          stock: (l['stockno'] ?? l['stock'] ?? l['stocknum']) ? String(l['stockno'] ?? l['stock'] ?? l['stocknum']) : undefined,
-          fuelType: (String(l['fueltype'] ?? 'Gasoline') as Vehicle['fuelType']),
-          transmission: (String(l['transmission'] ?? 'Automatic') as Vehicle['transmission']),
-          category: 'SUV',
-          description: String(l['description'] ?? l['notes'] ?? ''),
-          images: Array.isArray(l['images']) ? (l['images'] as unknown[]).map(i => String(i)) : (Array.isArray(l['photos']) ? (l['photos'] as unknown[]).map(i => String(i)) : []),
-          dateAdded: String(l['createdat'] ?? l['created_at'] ?? new Date().toISOString()),
-          lastUpdated: String(l['updatedat'] ?? l['updated_at'] ?? new Date().toISOString()),
-          location: String(l['location'] ?? 'Main Lot'),
-          dealer: String(l['dealer'] ?? 'Flatt Motors')
-        };
-
-        setVehicle(normalized);
+        setVehicle(found);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load vehicle');
       } finally {
@@ -122,7 +76,7 @@ export default function InventoryItemPage() {
         <div className="max-w-4xl mx-auto bg-white p-8 rounded shadow">
           <h2 className="text-xl font-bold">Error</h2>
           <p className="text-sm text-red-600 mt-2">{error}</p>
-          <button onClick={() => router.push('/inventory')} className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded">Back to inventory</button>
+          <button onClick={() => router.push('/inventory')} className="mt-4 px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800">Back to inventory</button>
         </div>
       </div>
   );
@@ -166,4 +120,3 @@ export default function InventoryItemPage() {
       </div>
   );
 }
-

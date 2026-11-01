@@ -120,7 +120,7 @@ export const NotificationContainer: React.FC<NotificationContainerProps> = ({
           key={notification.id}
           open={true}
           anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          TransitionComponent={SlideTransition}
+          slots={{ transition: SlideTransition }}
           sx={{ 
             top: { xs: 80 + (index * 90), sm: 80 + (index * 90) },
           }}
@@ -139,4 +139,3 @@ export const NotificationContainer: React.FC<NotificationContainerProps> = ({
     </>
   );
 };
-

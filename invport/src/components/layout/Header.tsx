@@ -1,50 +1,45 @@
-"use client";
+'use client';
 
 import React from 'react';
-import { Bars3Icon } from '@heroicons/react/24/outline';
-import Breadcrumb from './Breadcrumb';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface HeaderProps {
   onMenuClick: () => void;
-  sidebarWidth: number;
-  isDesktop: boolean;
+  menuOpen: boolean;
+  menuButtonRef: React.RefObject<HTMLButtonElement | null>;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarWidth, isDesktop }) => {
-  return (
-    <header className="bg-transparent sticky top-0 z-30 transition-all duration-300">
-      <div className="flex flex-col h-full px-3 sm:px-6 pt-2 sm:pt-3 pb-2 sm:pb-3 max-w-full">
-        <div className="flex items-center justify-between mb-1 sm:mb-2 gap-2">
-          <div className="flex items-center gap-4 flex-1">
-            <button 
-              className="flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 border-none rounded-md cursor-pointer transition-all duration-200 lg:hidden backdrop-blur-sm"
-              onClick={onMenuClick}
-              aria-label="Toggle menu"
-            >
-              <Bars3Icon className="w-6 h-6 text-black" />
-            </button>
-            <Breadcrumb inHeader={true} />
-          </div>
-
-          {/* Auth controls */}
-          <div className="flex items-center gap-3">
-            <a
-              href="/.auth/logout?post_logout_redirect_uri=/loggedout"
-              className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-md bg-[#1C4840] text-white hover:bg-teal-700 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-400"
-              aria-label="Sign out"
-            >
-              Sign out
-            </a>
-          </div>
-        </div>
-        
-        <div className="hidden sm:block">
-          <Breadcrumb inHeader={false} />
-        </div>
+const Header: React.FC<HeaderProps> = ({ onMenuClick, menuOpen, menuButtonRef }) => (
+  <header className="border-b border-gray-200 bg-white">
+    <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <Link href="/" className="flex min-w-0 items-center gap-3" aria-label="Fuhr Enterprise home">
+        <Image src="/logo/FELogo.png" alt="" width={112} height={56} className="h-12 w-24 object-contain" />
+        <span className="hidden border-l border-gray-200 pl-3 text-sm font-medium text-gray-600 sm:block">
+          Dealer inventory
+        </span>
+      </Link>
+      <div className="flex shrink-0 items-center gap-3">
+        <a
+          href="/.auth/logout?post_logout_redirect_uri=/loggedout"
+          className="rounded border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Sign out
+        </a>
+        <button
+          ref={menuButtonRef}
+          onClick={onMenuClick}
+          aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+          aria-expanded={menuOpen}
+          aria-controls="site-navigation"
+          className="rounded border border-gray-300 p-2 text-gray-700 hover:bg-gray-50 lg:hidden"
+        >
+          {menuOpen ? <XMarkIcon className="h-5 w-5" /> : <Bars3Icon className="h-5 w-5" />}
+        </button>
       </div>
-    </header>
-  );
-};
+    </div>
+  </header>
+);
 
 export default Header;
-

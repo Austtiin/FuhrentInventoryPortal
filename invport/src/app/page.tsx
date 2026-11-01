@@ -36,16 +36,16 @@ export default function Dashboard() {
 
   return (
       <ErrorBoundary>
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Dashboard Header with Refresh Button */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-gray-600">Welcome to your inventory management system</p>
             </div>
             <button
               onClick={refreshData}
               disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="Refresh all dashboard data"
             >
               <ArrowPathIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -72,9 +72,9 @@ export default function Dashboard() {
           </ErrorBoundary>
 
           {/* Main Content Grid - Improved responsive layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column - Quick Actions */}
-            <div className="lg:col-span-3 space-y-4">
+            <div className="lg:col-span-2 space-y-4">
               <ErrorBoundary>
                 <QuickActions />
               </ErrorBoundary>
@@ -97,4 +97,3 @@ export default function Dashboard() {
       </ErrorBoundary>
   );
 }
-

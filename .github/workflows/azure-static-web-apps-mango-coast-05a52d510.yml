@@ -22,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
           cache-dependency-path: './invport/package-lock.json'
       - name: Build And Deploy
@@ -57,4 +57,3 @@ jobs:
           api_location: "" # No managed functions - using external Function App
           output_location: "out" # Built app content directory
           ###### End of Repository/Build Configurations ######
-

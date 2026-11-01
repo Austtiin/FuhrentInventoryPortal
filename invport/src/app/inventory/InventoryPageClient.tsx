@@ -124,7 +124,7 @@ function InventoryPageClientInner() {
         </Box>
 
         {/* Search Bar */}
-        <Box sx={{ bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1, p: 3, mb: 3 }}>
+        <Box sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', p: { xs: 2, sm: 3 }, mb: 3 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr 1fr' }, gap: 2 }}>
             {/* Search Input */}
             <TextField
@@ -294,4 +294,3 @@ export default function InventoryPageClient() {
   if (!mounted) return null;
   return <InventoryPageClientInner />;
 }
-

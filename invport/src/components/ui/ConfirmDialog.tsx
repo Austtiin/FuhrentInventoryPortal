@@ -56,13 +56,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     <Dialog
       open={isOpen}
       onClose={onCancel}
-      TransitionComponent={Transition}
+      slots={{ transition: Transition }}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        elevation: 24,
-        sx: { borderRadius: 3 }
-      }}
+      slotProps={{ paper: { elevation: 8, sx: { borderRadius: 1 } } }}
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -80,7 +77,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           >
             <WarningAmberIcon sx={{ color: 'warning.dark', fontSize: 28 }} />
           </Box>
-          <Typography variant="h6" component="div" fontWeight={700}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
         </Box>
@@ -112,4 +109,3 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     </Dialog>
   );
 };
-

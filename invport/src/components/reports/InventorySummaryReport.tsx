@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { apiFetchJson } from '@/lib/apiClient';
-import * as XLSX from 'xlsx';
+import { exportInventoryExcel, toInventoryCsv } from '@/lib/inventoryExport';
 
 export interface InventoryItem {
   UnitID: number;
@@ -56,22 +56,6 @@ function formatCurrency(n?: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 }
 
-function toCsv(rows: Record<string, unknown>[]) {
-  if (!rows.length) return '';
-  const headers = Object.keys(rows[0]);
-  const escape = (v: unknown) => {
-    if (v === null || v === undefined) return '';
-    const s = String(v);
-    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-    return s;
-  };
-  const lines = [headers.join(',')];
-  for (const row of rows) {
-    lines.push(headers.map(h => escape(row[h])).join(','));
-  }
-  return lines.join('\n');
-}
-
 function saveBlob(content: BlobPart, filename: string, type = 'application/octet-stream') {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -86,6 +70,8 @@ function saveBlob(content: BlobPart, filename: string, type = 'application/octet
 
 export const InventorySummaryReport: React.FC = () => {
   const { items, loading, error, refresh } = useInventoryAll();
+  const [exportError, setExportError] = React.useState<string | null>(null);
+  const [isExporting, setIsExporting] = React.useState(false);
   type Row = {
     UnitID: number;
     StockNo: string;
@@ -127,32 +113,21 @@ export const InventorySummaryReport: React.FC = () => {
 
   const exportCSV = () => {
     const csvRows = rows.map(r => ({ ...r, Price: typeof r.Price === 'number' ? r.Price : '' }));
-    const csv = toCsv(csvRows);
+    const csv = toInventoryCsv(csvRows);
     saveBlob(csv, `inventory-summary.csv`, 'text/csv;charset=utf-8');
   };
 
-  const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(rows.map(r => ({ ...r, Price: typeof r.Price === 'number' ? r.Price : '' })));
-    // Format price column as currency via cell format
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    const wsCells = ws as unknown as Record<string, XLSX.CellObject>;
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
-      const header = wsCells[headerCell]?.v as string | number | undefined;
-      if (header === 'Price') {
-        for (let R = 1; R <= range.e.r; ++R) {
-          const addr = XLSX.utils.encode_cell({ r: R, c: C });
-          const cell = wsCells[addr];
-          if (cell && typeof cell.v === 'number') {
-            (cell as XLSX.CellObject).z = '"$"#,##0';
-          }
-        }
-      }
+  const exportExcel = async () => {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      await exportInventoryExcel(rows);
+    } catch (error) {
+      console.error('Inventory export failed:', error);
+      setExportError(error instanceof Error ? error.message : 'Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
     }
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    saveBlob(wbout, 'inventory-summary.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   };
 
   const exportPDF = async () => {
@@ -236,14 +211,19 @@ export const InventorySummaryReport: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={refresh} disabled={loading} className="px-3 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 disabled:opacity-50">{loading ? 'Loading…' : 'Refresh'}</button>
-          <button onClick={exportCSV} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">CSV</button>
-          <button onClick={exportExcel} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">Excel</button>
+          <button onClick={exportCSV} disabled={loading} className="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-50">CSV</button>
+          <button onClick={() => { void exportExcel(); }} disabled={loading || isExporting} className="px-3 py-2 text-sm rounded-md bg-slate-700 text-white hover:bg-slate-800 disabled:opacity-50">{isExporting ? 'Exporting...' : 'Excel'}</button>
           <button onClick={() => { void exportPDF(); }} disabled={loading} className="px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">PDF</button>
         </div>
       </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm">{error}</div>
+      )}
+      {exportError && (
+        <div role="alert" className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm">
+          Could not export inventory: {exportError}
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">

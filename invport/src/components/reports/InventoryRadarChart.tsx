@@ -19,23 +19,23 @@ export const InventoryRadarChart: React.FC<InventoryRadarChartProps> = ({
 
   return (
     <Box sx={{ p: 2, height: '100%' }}>
-      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary' }}>
+      <Typography variant="h6" component="h2" sx={{ mb: 2, fontWeight: 600, color: 'text.primary' }}>
         Inventory Type Comparison
       </Typography>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', width: '100%', minWidth: 0 }}>
         <RadarChart
           height={350}
           series={[
             {
               label: 'Inventory Count',
               data: [totalVehicles, totalFishHouses, totalTrailers],
-              color: '#3b82f6',
+              color: '#475569',
               highlightScope: { highlight: 'item', fade: 'global' },
             },
           ]}
           radar={{
-            max: total,
+            max: Math.max(1, total),
             metrics: ['Vehicles', 'Fish Houses', 'Trailers'],
           }}
           sx={{

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
+import Breadcrumb from './Breadcrumb';
 import { PageTransitionLoader } from '@/components/ui/PageTransitionLoader';
 
 interface LayoutProps {
@@ -11,83 +12,41 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(true); // true = 280px (full), false = 72px (icons only)
-  const [isDesktop, setIsDesktop] = useState(false);
-  
-  const sidebarWidth = sidebarExpanded ? 280 : 72;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setSidebarOpen(false);
-  };
-
-  const toggleSidebarWidth = () => {
-    setSidebarExpanded(!sidebarExpanded);
-  };
-
-  // Detect desktop/mobile on mount and resize
   useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024);
-    };
-    
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
-
-
-  // Allow Esc to close the mobile sidebar for convenience
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setSidebarOpen(false);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && menuOpen) {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [menuOpen]);
 
   return (
-    <div className="min-h-screen bg-[#ECF5E9] flex flex-col p-0 sm:p-2 overflow-x-hidden">
-      <div className="flex flex-1 bg-[#ECF5E9] rounded-none sm:rounded-[2.5rem]">
-        <Sidebar 
-          isOpen={sidebarOpen} 
-          onClose={closeSidebar}
-          width={sidebarWidth}
-          isExpanded={sidebarExpanded}
-          onToggleWidth={toggleSidebarWidth}
-          isDesktop={isDesktop}
-        />
-        <div className="flex-1 flex flex-col min-h-0">
-          <main 
-            className="flex-1 flex flex-col min-h-0 transition-all duration-300 ease-in-out bg-[#FDFDFD] p-2 sm:p-4 rounded-none sm:rounded-tl-[2.5rem] sm:rounded-tr-[2.5rem]"
-          >
-          <div className="flex-1 flex flex-col max-w-none bg-[#FCFBFC] rounded-none sm:rounded-tl-[2.5rem] sm:rounded-tr-[2.5rem] min-h-full shadow-lg overflow-hidden">
-            <Header 
-              onMenuClick={toggleSidebar} 
-              sidebarWidth={sidebarWidth}
-              isDesktop={isDesktop}
-            />
-            <PageTransitionLoader>
-              <div className="px-4 py-3 lg:px-6 lg:py-4">
-                <div className="mt-1">
-                  {children}
-                </div>
-              </div>
-            </PageTransitionLoader>
-            <Footer />
-          </div>
-        </main>
+    <div className="flex min-h-screen flex-col bg-gray-50">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:bg-white focus:px-6 focus:py-3">
+        Skip to content
+      </a>
+      <Header
+        onMenuClick={() => setMenuOpen(open => !open)}
+        menuOpen={menuOpen}
+        menuButtonRef={menuButtonRef}
+      />
+      <Sidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 outline-none sm:px-6 lg:py-8">
+        <div className="mb-6 space-y-2">
+          <Breadcrumb />
+          <Breadcrumb inHeader />
         </div>
-      </div>
+        <PageTransitionLoader>{children}</PageTransitionLoader>
+      </main>
+      <Footer />
     </div>
   );
 };
 
 export default Layout;
-
