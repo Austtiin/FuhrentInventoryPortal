@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -21,6 +21,14 @@ import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
 import EmptyState from '@/components/ui/EmptyState';
+import UnitViewStatsBar from '@/components/inventory/UnitViewStatsBar';
+import { useUnitViewSummary } from '@/hooks/useUnitViewStats';
+import { pickViewLeaders } from '@/lib/unitViewStats';
+
+const vehicleUnitId = (vehicle: Vehicle): number | null => {
+  const id = vehicle.unitId ?? Number(vehicle.id);
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
 
 function InventoryPageClientInner() {
   const router = useRouter();
@@ -39,6 +47,25 @@ function InventoryPageClientInner() {
     markAsPending,
     markAsAvailable
   } = useInventoryDirect();
+
+  const viewSummary = useUnitViewSummary();
+  const vehiclesByUnitId = useMemo(() => {
+    const map = new Map<number, Vehicle>();
+    for (const v of vehicles) {
+      const id = vehicleUnitId(v);
+      if (id !== null) map.set(id, v);
+    }
+    return map;
+  }, [vehicles]);
+  const viewLeaders = useMemo(
+    () => pickViewLeaders(viewSummary.data?.units ?? [], new Set(vehiclesByUnitId.keys())),
+    [viewSummary.data, vehiclesByUnitId],
+  );
+
+  const handleRefreshAll = () => {
+    void refreshData();
+    void viewSummary.refresh();
+  };
 
   const handleEditVehicle = (vehicle: Vehicle) => {
     router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
@@ -113,7 +140,7 @@ function InventoryPageClientInner() {
               : `Showing ${Math.min(currentPage * itemsPerPage, filteredVehicles.length)} of ${filteredVehicles.length} vehicles`}
           </Typography>
           <Button 
-            onClick={() => refreshData()}
+            onClick={handleRefreshAll}
             disabled={isLoading}
             variant="contained"
             startIcon={<RefreshIcon />}
@@ -122,6 +149,18 @@ function InventoryPageClientInner() {
             Refresh
           </Button>
         </Box>
+
+        <UnitViewStatsBar
+          summary={viewSummary.data}
+          leaders={viewLeaders}
+          vehiclesByUnitId={vehiclesByUnitId}
+          isLoading={viewSummary.isLoading || isLoading}
+          isRefreshing={viewSummary.isRefreshing}
+          error={viewSummary.error}
+          lastUpdated={viewSummary.lastUpdated}
+          onRefresh={() => void viewSummary.refresh()}
+          onSelectVehicle={handleViewVehicle}
+        />
 
         {/* Search Bar */}
         <Box sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', p: { xs: 2, sm: 3 }, mb: 3 }}>
@@ -233,7 +272,9 @@ function InventoryPageClientInner() {
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
               gap: 2 
             }}>
-              {filteredVehicles.slice(0, currentPage * itemsPerPage).map((vehicle) => (
+              {filteredVehicles.slice(0, currentPage * itemsPerPage).map((vehicle) => {
+                const unitId = vehicleUnitId(vehicle);
+                return (
                 <CompactInventoryCard
                   key={vehicle.id}
                   item={vehicle}
@@ -242,8 +283,15 @@ function InventoryPageClientInner() {
                   onMarkAsPending={() => handleMarkAsPending(vehicle)}
                   onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
                   onMarkAsSold={() => handleMarkAsSold(vehicle)}
+                  viewStats={viewSummary.data && unitId !== null ? (viewSummary.byUnitId.get(unitId) ?? null) : undefined}
+                  viewStatsLoading={viewSummary.isLoading}
+                  viewBadges={{
+                    hottest: unitId !== null && viewLeaders.hottest?.unitId === unitId,
+                    mostPopular: unitId !== null && viewLeaders.mostPopular?.unitId === unitId,
+                  }}
                 />
-              ))}
+                );
+              })}
             </Box>
           )}
 

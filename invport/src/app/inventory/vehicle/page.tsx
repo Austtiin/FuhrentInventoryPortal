@@ -7,6 +7,7 @@ import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery'
 import { Vehicle } from '@/types';
 import { apiFetchJson } from '@/lib/apiClient';
 import { inventoryRecords, normalizeInventoryVehicle } from '@/lib/inventoryResponse';
+import UnitViewMetricsPanel from '@/components/inventory/UnitViewMetricsPanel';
 
 // Simple vehicle detail page using search params instead of dynamic routes
 export default function VehicleDetailPage() {
@@ -208,6 +209,11 @@ export default function VehicleDetailPage() {
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Website views */}
+            <div className="px-6 pt-6">
+              <UnitViewMetricsPanel unitId={vehicle.unitId ?? (Number(vehicle.id) || null)} />
             </div>
 
             {/* Content Grid */}

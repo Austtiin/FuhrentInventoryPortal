@@ -7,6 +7,7 @@ import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery'
 import { Vehicle } from '@/types';
 import { apiFetchJson } from '@/lib/apiClient';
 import { inventoryRecords, normalizeInventoryVehicle } from '@/lib/inventoryResponse';
+import UnitViewMetricsPanel from '@/components/inventory/UnitViewMetricsPanel';
 
 export default function InventoryItemPage() {
   const router = useRouter();
@@ -95,6 +96,9 @@ export default function InventoryItemPage() {
               <h1 className="text-2xl font-bold">{vehicle.name || `${vehicle.make} ${vehicle.model}`}</h1>
               <div className="mt-2 text-gray-600">Stock: {vehicle.stock || 'N/A'} • VIN: {vehicle.vin || 'N/A'}</div>
               <div className="mt-4 text-3xl font-bold">{formatPrice(vehicle.price)}</div>
+              <div className="mt-4">
+                <UnitViewMetricsPanel unitId={vehicle.unitId ?? (Number(vehicle.id) || null)} />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">

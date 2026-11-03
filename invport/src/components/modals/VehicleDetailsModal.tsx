@@ -6,6 +6,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Vehicle } from '@/types';
 import { VehicleImageGallery } from '@/components/inventory/VehicleImageGallery';
 import Dialog from '@mui/material/Dialog';
+import UnitViewMetricsPanel from '@/components/inventory/UnitViewMetricsPanel';
 
 interface VehicleDetailsModalProps {
   vehicle: Vehicle;
@@ -66,6 +67,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                   className="w-full h-full"
                 />
               </div>
+            </div>
+
+            <div className="mb-8">
+              <UnitViewMetricsPanel unitId={vehicle.unitId ?? (Number(vehicle.id) || null)} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

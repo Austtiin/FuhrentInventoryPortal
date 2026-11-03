@@ -15,10 +15,16 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import Skeleton from '@mui/material/Skeleton';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { SingleVehicleImage } from '@/components/inventory/SingleVehicleImage';
+import ViewTrendIndicator from '@/components/inventory/ViewTrendIndicator';
 import { Vehicle } from '@/types';
 import { formatMileage, formatPrice } from '@/lib/format';
+import type { UnitViewStats } from '@/lib/unitViewStats';
 
 interface CompactInventoryCardProps {
   item: Vehicle;
@@ -28,6 +34,10 @@ interface CompactInventoryCardProps {
   onMarkAsAvailable: (item: Vehicle) => void;
   onMarkAsSold: (item: Vehicle) => void;
   onShowNotification?: (type: 'success' | 'error' | 'warning', title: string, message: string) => void;
+  /** Website view stats; omit to hide the views row. null = loaded with no views. */
+  viewStats?: UnitViewStats | null;
+  viewStatsLoading?: boolean;
+  viewBadges?: { hottest?: boolean; mostPopular?: boolean };
 }
 
 const getStatusConfig = (status: string) => {
@@ -62,7 +72,10 @@ export default function CompactInventoryCard({
   onMarkAsPending,
   onMarkAsAvailable,
   onMarkAsSold,
-  onShowNotification
+  onShowNotification,
+  viewStats,
+  viewStatsLoading = false,
+  viewBadges,
 }: CompactInventoryCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const statusConfig = getStatusConfig(item.status);
@@ -144,6 +157,27 @@ export default function CompactInventoryCard({
             }}
           />
         </Box>
+
+        {(viewBadges?.hottest || viewBadges?.mostPopular) && (
+          <Box sx={{ position: 'absolute', bottom: 12, left: 12, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+            {viewBadges.hottest && (
+              <Chip
+                icon={<LocalFireDepartmentIcon sx={{ color: 'inherit !important' }} />}
+                label="Hottest right now"
+                size="small"
+                sx={{ bgcolor: 'error.main', color: 'white', fontWeight: 600, boxShadow: 2 }}
+              />
+            )}
+            {viewBadges.mostPopular && (
+              <Chip
+                icon={<EmojiEventsIcon sx={{ color: 'inherit !important' }} />}
+                label="Most popular this month"
+                size="small"
+                sx={{ bgcolor: 'warning.main', color: 'white', fontWeight: 600, boxShadow: 2 }}
+              />
+            )}
+          </Box>
+        )}
       </Box>
 
       {/* Content Section */}
@@ -198,6 +232,27 @@ export default function CompactInventoryCard({
             )}
           </Box>
         </Box>
+
+        {/* Website views */}
+        {(viewStats !== undefined || viewStatsLoading) && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.secondary', minHeight: 20 }}>
+            <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+            {viewStatsLoading && viewStats === undefined ? (
+              <Skeleton width={140} />
+            ) : (
+              <>
+                <Typography variant="body2" color="text.secondary" title={`${(viewStats?.lifetimeViews ?? 0).toLocaleString()} lifetime views`}>
+                  {(viewStats?.monthViews ?? 0).toLocaleString()} view{viewStats?.monthViews === 1 ? '' : 's'} this month
+                </Typography>
+                <ViewTrendIndicator
+                  current={viewStats?.monthViews ?? 0}
+                  previous={viewStats?.previousMonthViews ?? 0}
+                  comparisonLabel="at this point last month"
+                />
+              </>
+            )}
+          </Box>
+        )}
 
         {/* Action Buttons Row (View + Status) */}
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
