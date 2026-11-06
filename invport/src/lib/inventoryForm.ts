@@ -98,8 +98,8 @@ export const validateDimensions = (
         error: 'For Aluma-Lite, length must be a whole number followed by V or S (e.g., 21V or 17S)',
       };
     }
-    if (width && width.trim() && !['8', '6.5', '6'].includes(width.trim())) {
-      return { valid: false, error: 'For Aluma-Lite, width must be 8, 6.5, or 6' };
+    if (width && width.trim() && !['8', '6.5', '6', '5'].includes(width.trim())) {
+      return { valid: false, error: 'For Aluma-Lite, width must be 8, 6.5, 6, or 5' };
     }
   }
 

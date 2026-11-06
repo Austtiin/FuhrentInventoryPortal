@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { memo, useState } from 'react';
 import Link from 'next/link';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -38,6 +38,8 @@ interface CompactInventoryCardProps {
   viewStats?: UnitViewStats | null;
   viewStatsLoading?: boolean;
   viewBadges?: { hottest?: boolean; mostPopular?: boolean };
+  hottest?: boolean;
+  mostPopular?: boolean;
 }
 
 const getStatusConfig = (status: string) => {
@@ -65,7 +67,7 @@ const getStatusConfig = (status: string) => {
   }
 };
 
-export default function CompactInventoryCard({
+function CompactInventoryCard({
   item,
   onView,
   onEdit,
@@ -76,6 +78,8 @@ export default function CompactInventoryCard({
   viewStats,
   viewStatsLoading = false,
   viewBadges,
+  hottest = false,
+  mostPopular = false,
 }: CompactInventoryCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const statusConfig = getStatusConfig(item.status);
@@ -118,7 +122,7 @@ export default function CompactInventoryCard({
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      transition: 'all 0.2s',
+      transition: 'box-shadow 0.2s, border-color 0.2s',
       '&:hover': {
         boxShadow: 1,
         borderColor: 'grey.300',
@@ -131,7 +135,7 @@ export default function CompactInventoryCard({
           unitId={item.unitId ?? (Number.isFinite(Number(item.id)) ? Number(item.id) : undefined)}
           preloadedImages={item.images}
           className="w-full h-full"
-          lazy={false}
+          lazy
           onClickImage={() => onEdit(item)}
         />
         
@@ -158,9 +162,9 @@ export default function CompactInventoryCard({
           />
         </Box>
 
-        {(viewBadges?.hottest || viewBadges?.mostPopular) && (
+        {(hottest || mostPopular || viewBadges?.hottest || viewBadges?.mostPopular) && (
           <Box sx={{ position: 'absolute', bottom: 12, left: 12, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-            {viewBadges.hottest && (
+            {(hottest || viewBadges?.hottest) && (
               <Chip
                 icon={<LocalFireDepartmentIcon sx={{ color: 'inherit !important' }} />}
                 label="Hottest right now"
@@ -168,7 +172,7 @@ export default function CompactInventoryCard({
                 sx={{ bgcolor: 'error.main', color: 'white', fontWeight: 600, boxShadow: 2 }}
               />
             )}
-            {viewBadges.mostPopular && (
+            {(mostPopular || viewBadges?.mostPopular) && (
               <Chip
                 icon={<EmojiEventsIcon sx={{ color: 'inherit !important' }} />}
                 label="Most popular this month"
@@ -362,3 +366,5 @@ export default function CompactInventoryCard({
     </Card>
   );
 }
+
+export default memo(CompactInventoryCard);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { 
@@ -28,12 +28,10 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
   unitId,
   preloadedImages,
   className = '',
-  lazy = false,
+  lazy = true,
   onClickImage,
   onImageLoaded
 }) => {
-  const [firstImage, setFirstImage] = useState<UnitImage | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<UnitImage | null>(null);
   const [isInView, setIsInView] = useState(!lazy);
   const imageRef = useRef<HTMLDivElement>(null);
@@ -44,17 +42,12 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
   const api = useUnitImages(effectiveUnitId);
   const unitImages = api.images;
   const notifiedRef = useRef(false);
-
-  // Debug logging for this specific unit
-  useEffect(() => {
-    if (effectiveUnitId) {
-      console.log(`🎬 [SingleVehicleImage UnitID=${effectiveUnitId}] State: isLoading=${api.isLoading}, error=${api.error}, images=${unitImages.length}`);
-    }
-  }, [effectiveUnitId, api.isLoading, api.error, unitImages.length]);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
   // Intersection Observer for lazy loading
   useEffect(() => {
-    if (!lazy || !imageRef.current) return;
+    if (!lazy || isInView || !imageRef.current) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -63,78 +56,22 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
           observer.disconnect();
         }
       },
-      { threshold: 0.1 }
+      { rootMargin: '600px 0px', threshold: 0 }
     );
 
     observer.observe(imageRef.current);
     return () => observer.disconnect();
   }, [lazy, isInView]);
 
-  // Select the lowest-numbered image from preloaded or API response
-  useEffect(() => {
-    let cancelled = false;
-    
-    // If using lazy mode and not in view, skip
-    if (lazy && !isInView) {
-      setError(null);
-      setFirstImage(null);
-      return;
-    }
-
-    // Priority 1: Use preloaded images if available
-    if (preloadedImages && preloadedImages.length > 0) {
-      if (!cancelled) {
-        // Use first preloaded image (assumed to be lowest-numbered)
-        setFirstImage({ url: preloadedImages[0], number: 1 });
-        setError(null);
-      }
-      return;
-    }
-
-    // Priority 2: No preloaded images, need to fetch from API
-    if (!effectiveUnitId) {
-      setError(null);
-      setFirstImage(null);
-      return;
-    }
-
-    // If still loading API, don't change state yet
-    if (api.isLoading) {
-      return;
-    }
-
-    // API finished loading - check for errors or images
-    if (api.error) {
-      if (!cancelled) {
-        setError('Failed to load image');
-        setFirstImage(null);
-      }
-      return;
-    }
-
-    // API succeeded - check if we have images
-    if (Array.isArray(unitImages) && unitImages.length > 0) {
-      // Find the image with the smallest numeric index (e.g., 1.webp)
-      const lowest = unitImages.reduce((min, cur) => {
-        if (cur.number <= 0) return min;
-        if (!min) return cur;
-        return cur.number < min.number ? cur : min;
-      }, undefined as typeof unitImages[number] | undefined) || unitImages[0];
-
-      if (!cancelled) {
-        setFirstImage({ url: lowest.url, number: lowest.number });
-        setError(null);
-      }
-    } else {
-      // API succeeded but returned no images
-      if (!cancelled) {
-        setError('No image found');
-        setFirstImage(null);
-      }
-    }
-
-    return () => { cancelled = true; };
-  }, [preloadedImages, effectiveUnitId, unitImages, lazy, isInView, api.isLoading, api.error]);
+  const firstImage = useMemo<UnitImage | null>(() => {
+    if (lazy && !isInView) return null;
+    if (preloadedImages?.length) return { url: preloadedImages[0], number: 1 };
+    if (!effectiveUnitId || !unitImages.length) return null;
+    return unitImages[0];
+  }, [preloadedImages, effectiveUnitId, unitImages, lazy, isInView]);
+  const error = !firstImage && isInView && !api.isLoading
+    ? (api.error ? 'Failed to load image' : (effectiveUnitId || !unitId ? 'No image found' : null))
+    : null;
 
   // Show loading state only when actively loading from API (not for preloaded images)
   if (shouldFetchFromApi && api.isLoading && (!lazy || isInView)) {
@@ -148,12 +85,18 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
     );
   }
 
-  if (error) {
+  if (error || (firstImage && failedUrl === firstImage.url)) {
     return (
       <div className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>
         <div className="flex flex-col items-center justify-center p-4">
           <PhotoIcon className="w-8 h-8 text-gray-400 mb-2" />
-          <div className="text-xs text-gray-500 text-center">No Image Available</div>
+          <div className="text-xs text-gray-500 text-center">{error === 'No image found' ? 'No Image Available' : 'Unable to load image'}</div>
+          {error !== 'No image found' && (
+            <button type="button" className="mt-2 text-xs text-blue-700 underline" onClick={() => {
+              setFailedUrl(null);
+              void api.refreshImages();
+            }}>Retry image</button>
+          )}
         </div>
       </div>
     );
@@ -163,8 +106,8 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
     return (
       <div ref={lazy ? imageRef : undefined} className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}>
         <div className="flex flex-col items-center justify-center p-4">
-          <PhotoIcon className="w-8 h-8 text-gray-400 mb-2" />
-          <div className="text-xs text-gray-500">No image</div>
+          {isInView ? <LoadingSpinner size="md" /> : <PhotoIcon className="w-8 h-8 text-gray-400" />}
+          <div className="text-xs text-gray-500 mt-2" role="status">Loading image...</div>
         </div>
       </div>
     );
@@ -178,6 +121,8 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
             src={firstImage.url}
             alt={`Vehicle image ${firstImage.number}`}
             fill
+            loading="eager"
+            decoding="async"
             className="object-cover hover:scale-105 transition-transform duration-200"
             onClick={() => {
               if (onClickImage) {
@@ -187,13 +132,28 @@ export const SingleVehicleImage: React.FC<SingleVehicleImageProps> = ({
               }
             }}
             onLoad={() => {
+              setLoadedUrl(firstImage.url);
               if (!notifiedRef.current) {
                 notifiedRef.current = true;
                 onImageLoaded?.();
               }
             }}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onError={() => {
+              console.error('Failed to load vehicle image', firstImage.url);
+              setFailedUrl(firstImage.url);
+            }}
+            sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 25vw"
           />
+        )}
+        {loadedUrl !== firstImage.url && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 pointer-events-none" role="status" aria-label="Loading image">
+            <LoadingSpinner size="md" />
+          </div>
+        )}
+        {api.error && firstImage && (
+          <div role="alert" className="absolute bottom-0 inset-x-0 bg-white p-2 text-xs text-red-700">
+            Could not refresh image. <button type="button" className="underline" onClick={() => void api.refreshImages()}>Retry</button>
+          </div>
         )}
         {lazy && !isInView && (
           <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">

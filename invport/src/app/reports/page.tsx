@@ -13,10 +13,15 @@ import {
 } from '@heroicons/react/24/outline';
 import { exportInventoryExcel, toInventoryCsv } from '@/lib/inventoryExport';
 import { apiFetchJson } from '@/lib/apiClient';
+import { useUnitViewSummary } from '@/hooks/useUnitViewStats';
+import UnitViewsReport from '@/components/reports/UnitViewsReport';
+import { buildUnitViewsReport, VIEW_METRIC_LABELS, type ViewMetric } from '@/lib/unitViewsReport';
 
 const ReportsPage: React.FC = () => {
   // const [dateRange, setDateRange] = useState('7');
-  const { data: reportsData, isLoading, error, lastUpdated, refresh } = useReportsData();
+  const { data: reportsData, isLoading, error, lastUpdated, refresh, inventory, inventoryError } = useReportsData();
+  const views = useUnitViewSummary();
+  const [viewMetric, setViewMetric] = useState<ViewMetric>('monthViews');
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -114,13 +119,25 @@ const ReportsPage: React.FC = () => {
       description: 'Comprehensive overview of all inventory items with current values and status',
       format: ['PDF', 'Excel', 'CSV'],
     },
+    {
+      title: 'Inventory Website Views Report',
+      description: 'Top-unit views graph and all current inventory, with monthly, last-7-days and lifetime views. Uses the selected view period.',
+      format: ['PDF'],
+    },
   ];
 
   const generateReport = async (reportType: string, format: string) => {
-    if (reportType !== 'Inventory Summary Report') return;
     try {
       setIsExporting(true);
       setExportError(null);
+      if (reportType === 'Inventory Website Views Report') {
+        if (!views.data || !inventory) throw new Error('Views report data is not loaded. Refresh Data and try again.');
+        const rows = buildUnitViewsReport(inventory, views.data, viewMetric);
+        const { createUnitViewsPdf } = await import('@/lib/unitViewsReportPdf');
+        const doc = createUnitViewsPdf(rows, views.data, viewMetric, VIEW_METRIC_LABELS[viewMetric]);
+        doc.save('inventory-website-views.pdf');
+        return;
+      }
       const items = await fetchInventoryAll();
       const rows = items.map(i => ({
         UnitID: i.UnitID,
@@ -290,7 +307,7 @@ const ReportsPage: React.FC = () => {
       <div className="space-y-6">
         {exportError && (
           <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-            Could not export inventory: {exportError}
+            Could not export report: {exportError}
           </div>
         )}
         {/* Header */}
@@ -307,8 +324,8 @@ const ReportsPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => refresh()}
-              disabled={isLoading}
+              onClick={() => { void refresh(); void views.refresh(); }}
+              disabled={isLoading || views.isRefreshing}
               className="flex items-center gap-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white px-4 py-2 rounded transition-colors cursor-pointer disabled:cursor-not-allowed"
             >
               <ArrowTrendingUpIcon className="w-5 h-5" />
@@ -449,6 +466,16 @@ const ReportsPage: React.FC = () => {
           </>
         )}
 
+        <UnitViewsReport
+          inventory={inventory}
+          summary={views.data}
+          metric={viewMetric}
+          onMetricChange={setViewMetric}
+          isLoading={isLoading || views.isLoading}
+          isRefreshing={views.isRefreshing}
+          error={views.error || inventoryError || (error ? error.message : null)}
+        />
+
   {/* Available Reports Section - shortcuts */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -473,10 +500,10 @@ const ReportsPage: React.FC = () => {
                       <button
                         key={format}
                         onClick={() => generateReport(report.title, format)}
-                        disabled={isLoading || isExporting}
+                        disabled={isExporting || (report.title === 'Inventory Website Views Report' ? !views.data || !inventory : isLoading)}
                         className="px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer text-white disabled:opacity-50 disabled:cursor-not-allowed bg-slate-700 hover:bg-slate-800"
                       >
-                        Generate {format}
+                        {isExporting ? 'Generating report...' : `Generate ${format}`}
                       </button>
                     ))}
                   </div>

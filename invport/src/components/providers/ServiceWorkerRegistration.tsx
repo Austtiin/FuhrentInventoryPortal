@@ -9,21 +9,16 @@ import { useEffect } from 'react';
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      const register = () => {
         navigator.serviceWorker
           .register('/sw.js')
-          .then(() => navigator.serviceWorker.ready)
-          .then((reg) => {
-            // On full page load, request SW to clear image cache
-            // so subsequent image requests fetch fresh copies.
-            if (reg && reg.active) {
-              reg.active.postMessage({ type: 'refresh-images' });
-            }
-          })
-          .catch(() => {
-            // Silent fail - service worker not critical
+          .catch((error) => {
+            console.warn('Image cache service worker registration failed:', error);
           });
-      });
+      };
+      if (document.readyState === 'complete') register();
+      else window.addEventListener('load', register, { once: true });
+      return () => window.removeEventListener('load', register);
     }
   }, []);
 

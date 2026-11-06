@@ -6,6 +6,34 @@ This document provides a comprehensive list of all API endpoints with expected i
 
 ---
 
+## Portal Website Views and Image Loading
+
+The inventory portal uses `GET /unit-views/summary` to load website detail-page
+views for all units in one request. Its response contains `generatedAt`,
+`timeZone`, `totals`, and `units`. Each unit supplies `unitId`, `monthViews`,
+`previousMonthViews`, `last7DaysViews`, `previous7DaysViews`, `lifetimeViews`,
+and `lastViewedAt`. These are page views, not unique visitors; month counts
+are month-to-date in the dealership time zone.
+
+- Inventory supports highest/lowest monthly and lifetime views. Selecting a
+  views sort starts highest-first. View sorting is unavailable until the summary
+  loads successfully; units absent from a successful summary have zero views.
+- Reports shows the top 10 current inventory units for the selected monthly,
+  last-7-days, or lifetime period. **Available Reports > Inventory Website Views
+  Report > Generate PDF** downloads a printable graph plus a paginated table of
+  every current unit. Non-inventory units are excluded from this report's totals.
+  The selected period ranks the graph/table; all three counts remain in the table.
+- View summaries and visible inventory refresh every five minutes. Inventory refresh preserves loaded
+  cards instead of replacing them with skeletons.
+- Card images start loading within 600 px of the viewport. Image-list requests
+  are shared, cached for five minutes (up to 200 units), and limited to four
+  simultaneous requests. Blob URLs remain stable for browser reuse; explicit
+  refreshes and image mutations version URLs to avoid showing an old image.
+  The service worker retains up to 200 blob images and serves cached images while
+  revalidating in the background. Image failures show a retry control.
+
+---
+
 ## Table of Contents
 1. [Health & Status Endpoints](#health--status-endpoints)
 2. [Inventory Retrieval Endpoints](#inventory-retrieval-endpoints)

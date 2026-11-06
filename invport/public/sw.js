@@ -1,12 +1,16 @@
-// Simple service worker to cache blob images. No auto-refresh.
-const CACHE_NAME = 'blob-image-cache-v2';
+// Serve loaded blob images immediately while refreshing them in the background.
+const CACHE_NAME = 'blob-image-cache-v3';
+const MAX_IMAGES = 200;
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil((async () => {
+    await caches.delete('blob-image-cache-v2');
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
@@ -19,27 +23,29 @@ self.addEventListener('fetch', (event) => {
     return; // don't intercept non-blob images
   }
 
-  event.respondWith((async () => {
+  const response = (async () => {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(req);
+    const update = async () => {
+      const fresh = await fetch(req, { cache: 'no-cache' });
+      if (fresh.ok || fresh.type === 'opaque') {
+        await cache.put(req, fresh.clone());
+        const keys = await cache.keys();
+        for (const key of keys.slice(0, Math.max(0, keys.length - MAX_IMAGES))) {
+          await cache.delete(key);
+        }
+      }
+      return fresh;
+    };
     if (cached) {
-      // Serve cached without background refresh
+      event.waitUntil(update().catch((error) => {
+        console.warn('Background image refresh failed:', error);
+      }));
       return cached;
     }
-
-    // Not cached yet: fetch and store
-    try {
-      const resp = await fetch(req);
-      if (resp && resp.ok) {
-        const cloned = resp.clone();
-        await cache.put(req, cloned);
-        return resp;
-      }
-    } catch (e) {
-      // network error: fall back to network default behavior
-    }
-    return fetch(req);
-  })());
+    return update();
+  })();
+  event.respondWith(response);
 });
 
 // Listen for messages to clear cache on demand (e.g., page refresh)
@@ -48,9 +54,7 @@ self.addEventListener('message', (event) => {
   if (type === 'refresh-images') {
     event.waitUntil(
       (async () => {
-        try {
-          await caches.delete(CACHE_NAME);
-        } catch {}
+        await caches.delete(CACHE_NAME);
       })()
     );
   }

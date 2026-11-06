@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Vehicle, VehicleStatus, InventoryFilters } from '@/types';
 import { apiFetch } from '@/lib/apiClient';
 import type { InventoryApiResponse } from '@/types/apiResponses';
 // Rate limiter not required for the simplified approach
 import { safeJsonParse } from '@/lib/safeJson';
+import { sortByUnitViews, type UnitViewStats } from '@/lib/unitViewStats';
+
+const EMPTY_VIEW_STATS = new Map<number, UnitViewStats>();
 
 interface UseInventoryDirectReturn {
   vehicles: Vehicle[];
@@ -34,14 +37,18 @@ const defaultFilters: InventoryFilters = {
   sortOrder: 'desc'
 };
 
-export const useInventoryDirect = (): UseInventoryDirectReturn => {
+export const useInventoryDirect = (
+  viewStats: ReadonlyMap<number, UnitViewStats> = EMPTY_VIEW_STATS,
+): UseInventoryDirectReturn => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debug, setDebug] = useState<UseInventoryDirectReturn['debug']>(null);
   const [filters, setFiltersState] = useState<InventoryFilters>(defaultFilters);
+  const requestId = useRef(0);
 
   const fetchAllVehicles = useCallback(async () => {
+    const request = ++requestId.current;
     setIsLoading(true);
     setError(null);
     try {
@@ -58,6 +65,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
 
       // Tolerant parsing: accept text/plain JSON bodies and strip BOM/whitespace
       const rawText = await response.text();
+      if (request !== requestId.current) return;
       const contentType = response.headers.get('content-type');
       const normalized = rawText.replace(/^\uFEFF/, '').trim();
       // Pre-populate debug basic metadata
@@ -71,12 +79,7 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       });
       const parsed = safeJsonParse<InventoryApiResponse | Array<Record<string, unknown>>>(normalized, null);
       if (!parsed) {
-        console.warn('[inventory] Empty or unparsable JSON. Body preview:', normalized.substring(0, 300));
-        // Do not hard-fail UI in PRD; treat as empty inventory and exit gracefully
-        setVehicles([]);
-        setDebug((d) => d ? { ...d, rawShape: 'unknown', vehiclesExtracted: 0 } : d);
-        setIsLoading(false);
-        return;
+        throw new Error('Inventory returned empty or invalid JSON');
       }
 
       let vehiclesData: Array<Record<string, unknown>> = [];
@@ -180,14 +183,14 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       setVehicles(transformedVehicles);
       console.log(`✅ Loaded ${transformedVehicles.length} vehicles`);
     } catch (err) {
+      if (request !== requestId.current) return;
       console.error('❌ Failed to fetch vehicles:', err);
       // Only surface "error" for true network/HTTP failures. For parse/shape cases we already returned gracefully.
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch vehicles';
       setError(errorMessage);
-      setVehicles([]);
       setDebug((d) => d ? { ...d } : d);
     } finally {
-      setIsLoading(false);
+      if (request === requestId.current) setIsLoading(false);
     }
   }, []);
 
@@ -370,10 +373,15 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
       );
     }
 
+    if (filters.sortBy === 'monthViews' || filters.sortBy === 'lifetimeViews') {
+      return sortByUnitViews(filtered, viewStats, filters.sortBy, filters.sortOrder);
+    }
+
     // Apply sorting
+    const sortBy = filters.sortBy;
     filtered.sort((a, b) => {
-      const aValue = a[filters.sortBy];
-      const bValue = b[filters.sortBy];
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
 
       if (filters.sortBy === 'price' || filters.sortBy === 'year') {
         const aNum = Number(aValue) || 0;
@@ -395,11 +403,20 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
     });
 
     return filtered;
-  }, [vehicles, filters]);
+  }, [vehicles, filters, viewStats]);
 
   // Fetch data on mount
   useEffect(() => {
-    fetchAllVehicles();
+    const requests = requestId;
+    const kickoff = window.setTimeout(() => void fetchAllVehicles(), 0);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void fetchAllVehicles();
+    }, 5 * 60 * 1000);
+    return () => {
+      window.clearTimeout(kickoff);
+      window.clearInterval(timer);
+      requests.current++;
+    };
   }, [fetchAllVehicles]);
 
   const setFilters = useCallback((newFilters: Partial<InventoryFilters>) => {
@@ -427,4 +444,3 @@ export const useInventoryDirect = (): UseInventoryDirectReturn => {
     markAsAvailable
   };
 };
-

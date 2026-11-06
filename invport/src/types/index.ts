@@ -131,6 +131,6 @@ export interface SystemStatus {
 export interface InventoryFilters {
   search: string;
   status: VehicleStatus | 'all';
-  sortBy: keyof Vehicle;
+  sortBy: keyof Vehicle | 'monthViews' | 'lifetimeViews';
   sortOrder: 'asc' | 'desc';
 }

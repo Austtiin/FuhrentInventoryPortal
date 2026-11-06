@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeResponseJson } from '@/lib/safeJson';
 import { apiFetch } from '@/lib/apiClient';
-// no-op
+import { createUnitImageCache, parseUnitImages, type UnitImage } from '@/lib/unitImageCache';
+export type { UnitImage } from '@/lib/unitImageCache';
 
-export interface UnitImage {
-  name: string; // e.g., "1.png"
-  url: string;  // full public URL
-  number: number; // parsed from name
-}
+const imageCache = createUnitImageCache(async (id, version) => {
+  const response = await apiFetch(`units/${encodeURIComponent(id)}/images`);
+  if (!response.ok) throw new Error(`List images failed ${response.status}: ${await response.text()}`);
+  return parseUnitImages(await safeResponseJson<unknown>(response), version);
+});
 
 interface UseUnitImagesResult {
   images: UnitImage[];
@@ -19,76 +20,61 @@ interface UseUnitImagesResult {
   refreshImages: () => Promise<void>;
 }
 
-function parseNumberFromName(name: string): number {
-  const m = name.match(/^(\d+)\.(png|jpg|jpeg|webp|gif)$/i);
-  return m ? parseInt(m[1], 10) : 0;
-}
-
 export function useUnitImages(unitId: string | number | undefined): UseUnitImagesResult {
   const [images, setImages] = useState<UnitImage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const idStr = unitId != null ? String(unitId) : undefined;
+  const requestId = useRef(0);
+  const [loadedId, setLoadedId] = useState<string | undefined>(undefined);
 
-  const fetchImages = useCallback(async () => {
+  const fetchImages = useCallback(async (force = false) => {
+    const request = ++requestId.current;
     if (!idStr) {
       setImages([]);
+      setLoadedId(undefined);
+      setIsLoading(false);
+      setError(null);
       return;
     }
-    setIsLoading(true);
+    const cached = imageCache.peek(idStr);
+    if (cached) {
+      setImages(cached);
+      setLoadedId(idStr);
+    }
+    setIsLoading(!cached);
     setError(null);
     try {
-      console.log(`📥 [useUnitImages] Fetching images for UnitID=${idStr}`);
-      // Add timestamp to API URL to bust any proxy/CDN caching
-      const timestamp = Date.now();
-      const response = await apiFetch(`units/${encodeURIComponent(idStr)}/images?_t=${timestamp}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        }
-      });
-      console.log(`📥 [useUnitImages] Response status: ${response.status} ${response.statusText}`);
-      if (!response.ok) {
-        const txt = await response.text();
-        console.error('❌ [useUnitImages] Error body:', txt);
-        throw new Error(`List images failed ${response.status}: ${txt}`);
-      }
-      const list = await safeResponseJson<Array<{ name: string; url: string }>>(response);
-      console.log('📦 [useUnitImages] Raw API response:', list);
-      
-      // API returns array of { name, url } - parse number from name and add cache buster to URLs
-      const mapped = (Array.isArray(list) ? list : [])
-        .map(item => {
-          // Add timestamp cache buster to blob URL to prevent browser caching
-          const cacheBustedUrl = item.url + (item.url.includes('?') ? '&' : '?') + `_cb=${timestamp}`;
-          return {
-            name: item.name,
-            url: cacheBustedUrl,
-            number: parseNumberFromName(item.name),
-          };
-        })
-        .filter(x => x.number > 0)
-        .sort((a, b) => a.number - b.number);
-      
-      console.log('🧮 [useUnitImages] Processed images:', mapped);
-      console.log(`✅ [useUnitImages] Found ${mapped.length} valid images, lowest number: ${mapped[0]?.number || 'none'}`);
+      const mapped = await imageCache.get(idStr, force);
+      if (request !== requestId.current) return;
       setImages(mapped);
+      setLoadedId(idStr);
       setError(null);
     } catch (e) {
+      if (request !== requestId.current) return;
       console.error('❌ [useUnitImages] Failed to fetch images:', e);
       const errorMsg = e instanceof Error ? e.message : 'Failed to load images';
       setError(errorMsg);
-      setImages([]);
+      setImages(cached ?? []);
+      setLoadedId(idStr);
     } finally {
-      setIsLoading(false);
+      if (request === requestId.current) setIsLoading(false);
     }
   }, [idStr]);
 
   useEffect(() => {
-    fetchImages();
-  }, [fetchImages]);
+    const requests = requestId;
+    void fetchImages();
+    const timer = idStr ? window.setInterval(() => {
+      if (document.visibilityState === 'visible') void fetchImages();
+    }, 5 * 60 * 1000) : undefined;
+    return () => {
+      window.clearInterval(timer);
+      requests.current++;
+    };
+  }, [fetchImages, idStr]);
+  const refreshImages = useCallback(() => fetchImages(true), [fetchImages]);
 
   const uploadImage = useCallback(async (file: File): Promise<boolean> => {
     if (!idStr) {
@@ -135,6 +121,7 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
       }
       
       console.log(`✅ Upload confirmed by API: ${result.name} at ${result.url}`);
+      imageCache.invalidate(idStr);
       
       // No need to refresh immediately - let the caller handle batch refresh
       return true;
@@ -175,7 +162,8 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
         throw new Error(`Delete failed ${res.status}: ${txt}`);
       }
       // If body is not a standard envelope, consider HTTP 2xx as success
-      await fetchImages();
+      imageCache.invalidate(idStr);
+      await refreshImages();
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete image');
@@ -183,7 +171,7 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     } finally {
       setIsLoading(false);
     }
-  }, [idStr, images, fetchImages]);
+  }, [idStr, images, refreshImages]);
 
   const renameImage = useCallback(async (oldNumber: number, newNumber: number, options?: { skipRefresh?: boolean }): Promise<boolean> => {
     if (!idStr) {
@@ -215,8 +203,9 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
         const txt = await res.text();
         throw new Error(`Rename failed ${res.status}: ${txt}`);
       }
+      imageCache.invalidate(idStr);
       if (!options?.skipRefresh) {
-        await fetchImages();
+        await refreshImages();
       }
       return true;
     } catch (e) {
@@ -225,16 +214,15 @@ export function useUnitImages(unitId: string | number | undefined): UseUnitImage
     } finally {
       setIsLoading(false);
     }
-  }, [idStr, images, fetchImages]);
+  }, [idStr, images, refreshImages]);
 
   return {
-    images,
-    isLoading,
-    error,
+    images: loadedId === idStr ? images : (idStr ? imageCache.peek(idStr) ?? [] : []),
+    isLoading: isLoading || (!!idStr && loadedId !== idStr && !imageCache.peek(idStr)),
+    error: loadedId === idStr ? error : null,
     uploadImage,
     deleteImage,
     renameImage,
-    refreshImages: fetchImages,
+    refreshImages,
   };
 }
-

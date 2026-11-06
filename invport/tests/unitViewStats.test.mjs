@@ -5,11 +5,27 @@ import {
   parseUnitViewSummary,
   pickViewLeaders,
   viewTrend,
+  sortByUnitViews,
 } from '../src/lib/unitViewStats.ts';
 
 const unit = (unitId, monthViews, last7DaysViews, extra = {}) => ({
   unitId, lifetimeViews: monthViews + 10, monthViews, previousMonthViews: 0,
   last7DaysViews, previous7DaysViews: 0, lastViewedAt: '2026-11-02T12:00:00Z', ...extra,
+});
+
+test('sorts month and lifetime views in both directions, including zero-view units and stable ties', () => {
+  const vehicles = [{ id: '3' }, { id: '1', unitId: 1 }, { id: '2' }, { id: '4' }];
+  const stats = new Map([
+    [1, unit(1, 30, 5, { lifetimeViews: 40 })],
+    [2, unit(2, 10, 5, { lifetimeViews: 90 })],
+    [3, unit(3, 10, 5, { lifetimeViews: 10 })],
+  ]);
+  const ids = (metric, order) => sortByUnitViews(vehicles, stats, metric, order).map((v) => v.id);
+  assert.deepEqual(ids('monthViews', 'desc'), ['1', '2', '3', '4']);
+  assert.deepEqual(ids('monthViews', 'asc'), ['4', '2', '3', '1']);
+  assert.deepEqual(ids('lifetimeViews', 'desc'), ['2', '1', '3', '4']);
+  assert.deepEqual(ids('lifetimeViews', 'asc'), ['4', '3', '1', '2']);
+  assert.deepEqual(vehicles.map((v) => v.id), ['3', '1', '2', '4'], 'does not mutate inventory');
 });
 
 test('trend arrows: up, down, flat and new', () => {

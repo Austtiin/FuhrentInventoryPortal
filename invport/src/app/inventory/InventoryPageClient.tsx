@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -10,13 +10,14 @@ import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
+import CircularProgress from '@mui/material/CircularProgress';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useInventoryDirect } from '@/hooks/useInventoryAPI';
 import CompactInventoryCard from '@/components/inventory/CompactInventoryCard';
 import SkeletonCard from '@/components/ui/SkeletonCard';
-import { Vehicle } from '@/types';
+import { Vehicle, InventoryFilters } from '@/types';
 import { ErrorBoundary } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 import VehicleDetailsModal from '@/components/modals/VehicleDetailsModal';
@@ -34,6 +35,7 @@ function InventoryPageClientInner() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+  const viewSummary = useUnitViewSummary();
   
   const { 
     vehicles,
@@ -46,9 +48,14 @@ function InventoryPageClientInner() {
     markAsSold,
     markAsPending,
     markAsAvailable
-  } = useInventoryDirect();
+  } = useInventoryDirect(viewSummary.byUnitId);
 
-  const viewSummary = useUnitViewSummary();
+  const changeFilters = (next: Partial<InventoryFilters>) => {
+    setCurrentPage(1);
+    setFilters(next);
+  };
+  const sortingByViews = filters.sortBy === 'monthViews' || filters.sortBy === 'lifetimeViews';
+  const waitingForViews = sortingByViews && !viewSummary.data && viewSummary.isLoading;
   const vehiclesByUnitId = useMemo(() => {
     const map = new Map<number, Vehicle>();
     for (const v of vehicles) {
@@ -67,50 +74,50 @@ function InventoryPageClientInner() {
     void viewSummary.refresh();
   };
 
-  const handleEditVehicle = (vehicle: Vehicle) => {
+  const handleEditVehicle = useCallback((vehicle: Vehicle) => {
     router.push(`/inventory/edit?id=${vehicle.unitId || vehicle.id}`);
-  };
+  }, [router]);
 
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleViewVehicle = (vehicle: Vehicle) => {
+  const handleViewVehicle = useCallback((vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setIsModalOpen(true);
-  };
+  }, []);
 
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedVehicle(null);
   };
 
-  const handleMarkAsSold = async (vehicle: Vehicle) => {
+  const handleMarkAsSold = useCallback(async (vehicle: Vehicle) => {
     try {
       await markAsSold(vehicle.id);
     } catch (error) {
       console.error('Error marking vehicle as sold:', error);
     }
-  };
+  }, [markAsSold]);
 
-  const handleMarkAsPending = async (vehicle: Vehicle) => {
+  const handleMarkAsPending = useCallback(async (vehicle: Vehicle) => {
     try {
       await markAsPending(vehicle.id);
     } catch (error) {
       console.error('Error marking vehicle as pending:', error);
     }
-  };
+  }, [markAsPending]);
 
-  const handleMarkAsAvailable = async (vehicle: Vehicle) => {
+  const handleMarkAsAvailable = useCallback(async (vehicle: Vehicle) => {
     try {
       await markAsAvailable(vehicle.id);
     } catch (error) {
       console.error('Error marking vehicle as available:', error);
     }
-  };
+  }, [markAsAvailable]);
 
   // Debug panel removed per request
 
-  if (error) {
+  if (error && vehicles.length === 0) {
     return (
         <Alert severity="error" variant="filled" sx={{ mb: 2 }}>
           <AlertTitle>Error Loading Inventory</AlertTitle>
@@ -132,12 +139,19 @@ function InventoryPageClientInner() {
   return (
       <ErrorBoundary>
         <Box>
+        {error && vehicles.length > 0 && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Could not refresh inventory. Showing previously loaded items. {error}
+          </Alert>
+        )}
         {/* Actions and Count */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-          <Typography variant="body2" color="text.secondary">
-            {isLoading
-              ? 'Loading...'
+          <Typography variant="body2" color="text.secondary" role="status" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {isLoading && <CircularProgress size={16} aria-label="Loading inventory" />}
+            {isLoading && vehicles.length === 0
+              ? 'Loading inventory...'
               : `Showing ${Math.min(currentPage * itemsPerPage, filteredVehicles.length)} of ${filteredVehicles.length} vehicles`}
+            {isLoading && vehicles.length > 0 && ' - refreshing in background'}
           </Typography>
           <Button 
             onClick={handleRefreshAll}
@@ -171,7 +185,7 @@ function InventoryPageClientInner() {
               label="Search Inventory"
               placeholder="Search by VIN, stock #, year, make, model, color, trim, price..."
               value={filters.search}
-              onChange={(e) => setFilters({ search: e.target.value })}
+              onChange={(e) => changeFilters({ search: e.target.value })}
               variant="outlined"
               size="medium"
             />
@@ -182,7 +196,7 @@ function InventoryPageClientInner() {
               select
               label="Status Filter"
               value={filters.status}
-              onChange={(e) => setFilters({ status: e.target.value as 'all' | 'available' | 'pending' | 'sold' })}
+              onChange={(e) => changeFilters({ status: e.target.value as InventoryFilters['status'] })}
               variant="outlined"
               size="medium"
             >
@@ -199,7 +213,10 @@ function InventoryPageClientInner() {
                 select
                 label="Sort By"
                 value={filters.sortBy}
-                onChange={(e) => setFilters({ sortBy: e.target.value as 'year' | 'price' | 'make' | 'status' | 'dateAdded' })}
+                onChange={(e) => changeFilters({
+                  sortBy: e.target.value as InventoryFilters['sortBy'],
+                  ...(['monthViews', 'lifetimeViews'].includes(e.target.value) ? { sortOrder: 'desc' as const } : {}),
+                })}
                 variant="outlined"
                 size="medium"
               >
@@ -208,15 +225,24 @@ function InventoryPageClientInner() {
                 <MenuItem value="price">Price</MenuItem>
                 <MenuItem value="make">Make</MenuItem>
                 <MenuItem value="status">Status</MenuItem>
+                <MenuItem value="monthViews" disabled={!viewSummary.data}>Views this month</MenuItem>
+                <MenuItem value="lifetimeViews" disabled={!viewSummary.data}>Lifetime views</MenuItem>
               </TextField>
               <IconButton
-                onClick={() => setFilters({ sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc' })}
-                title={filters.sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                onClick={() => changeFilters({ sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc' })}
+                aria-label={filters.sortOrder === 'asc' ? 'Sort descending' : 'Sort ascending'}
+                title={sortingByViews ? (filters.sortOrder === 'asc' ? 'Lowest views first' : 'Highest views first') : (filters.sortOrder === 'asc' ? 'Ascending' : 'Descending')}
                 sx={{ bgcolor: 'action.hover' }}
               >
                 {filters.sortOrder === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
               </IconButton>
             </Box>
+            {sortingByViews && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {filters.sortOrder === 'desc' ? 'Highest views first' : 'Lowest views first'}.
+                {' '}Website detail-page views, not unique visitors.
+              </Typography>
+            )}
           </Box>
 
           {/* Active Filters Display */}
@@ -256,7 +282,7 @@ function InventoryPageClientInner() {
 
         {/* Content */}
         <Box>
-          {isLoading ? (
+          {(isLoading && vehicles.length === 0) || waitingForViews ? (
             <Box sx={{ 
               display: 'grid', 
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
@@ -279,16 +305,14 @@ function InventoryPageClientInner() {
                   key={vehicle.id}
                   item={vehicle}
                   onView={handleViewVehicle}
-                  onEdit={() => handleEditVehicle(vehicle)}
-                  onMarkAsPending={() => handleMarkAsPending(vehicle)}
-                  onMarkAsAvailable={() => handleMarkAsAvailable(vehicle)}
-                  onMarkAsSold={() => handleMarkAsSold(vehicle)}
+                  onEdit={handleEditVehicle}
+                  onMarkAsPending={handleMarkAsPending}
+                  onMarkAsAvailable={handleMarkAsAvailable}
+                  onMarkAsSold={handleMarkAsSold}
                   viewStats={viewSummary.data && unitId !== null ? (viewSummary.byUnitId.get(unitId) ?? null) : undefined}
                   viewStatsLoading={viewSummary.isLoading}
-                  viewBadges={{
-                    hottest: unitId !== null && viewLeaders.hottest?.unitId === unitId,
-                    mostPopular: unitId !== null && viewLeaders.mostPopular?.unitId === unitId,
-                  }}
+                  hottest={unitId !== null && viewLeaders.hottest?.unitId === unitId}
+                  mostPopular={unitId !== null && viewLeaders.mostPopular?.unitId === unitId}
                 />
                 );
               })}
@@ -318,7 +342,7 @@ function InventoryPageClientInner() {
                 variant="contained"
                 onClick={() => setCurrentPage((p) => p + 1)}
               >
-                Show 5 more
+                Show {Math.min(itemsPerPage, filteredVehicles.length - currentPage * itemsPerPage)} more
               </Button>
             </Box>
           )}
@@ -339,6 +363,6 @@ export default function InventoryPageClient() {
   // Hydration guard to avoid SSR vs CSR markup differences in SWA
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
+  if (!mounted) return <Box role="status" sx={{ p: 3 }}><CircularProgress size={20} /> Loading inventory...</Box>;
   return <InventoryPageClientInner />;
 }

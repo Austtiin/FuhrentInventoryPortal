@@ -84,6 +84,20 @@ export function emptyUnitViewStats(unitId: number): UnitViewStats {
   return { unitId, lifetimeViews: 0, monthViews: 0, previousMonthViews: 0, last7DaysViews: 0, previous7DaysViews: 0, lastViewedAt: null };
 }
 
+export function sortByUnitViews<T extends { id: string; unitId?: number }>(
+  units: readonly T[],
+  stats: ReadonlyMap<number, UnitViewStats>,
+  metric: 'monthViews' | 'lifetimeViews',
+  order: 'asc' | 'desc',
+): T[] {
+  const views = (unit: T) => stats.get(unit.unitId ?? Number(unit.id))?.[metric] ?? 0;
+  return [...units].sort((a, b) => {
+    const difference = views(a) - views(b);
+    return (order === 'asc' ? difference : -difference) ||
+      (Number(a.unitId ?? a.id) - Number(b.unitId ?? b.id)) || a.id.localeCompare(b.id);
+  });
+}
+
 export function viewTrend(current: number, previous: number): ViewTrend {
   const change = current - previous;
   if (previous === 0) return { direction: current > 0 ? 'new' : 'flat', change, percent: null };

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/apiClient';
 import { safeResponseJson } from '@/lib/safeJson';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rateLimiter';
+import { inventoryRecords, normalizeInventoryVehicle } from '@/lib/inventoryResponse';
+import type { Vehicle } from '@/types';
 
 export interface ReportsData {
   totalStats: {
@@ -64,6 +66,8 @@ export function useReportsData() {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [inventory, setInventory] = useState<Vehicle[] | null>(null);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -126,6 +130,9 @@ export function useReportsData() {
         const inventoryResponse = await apiFetch('/GrabInventoryAll');
         if (inventoryResponse.ok) {
           const inventoryResult = await safeResponseJson<unknown>(inventoryResponse);
+          const records = inventoryRecords(inventoryResult);
+          setInventory(records.map(normalizeInventoryVehicle));
+          setInventoryError(null);
           let inventory: Array<{Price?: number; Year?: number}> = [];
           
           // Handle different response structures
@@ -167,9 +174,10 @@ export function useReportsData() {
           console.log('%c✅ [Reports] Statistics calculated:', 'color: #4CAF50; font-weight: bold', {
             avgPrice, minPrice, maxPrice, avgYear, oldestYear, newestYear
           });
-        }
+        } else throw new Error(`Inventory request failed (${inventoryResponse.status})`);
       } catch (invErr) {
         console.warn('[Reports] Could not fetch inventory for detailed statistics:', invErr);
+        setInventoryError(invErr instanceof Error ? invErr.message : 'Unable to load report inventory');
       }
       
       // Adapt the Azure Function response to match our expected format
@@ -237,5 +245,7 @@ export function useReportsData() {
     isLoading,
     isValidating,
     refresh,
+    inventory,
+    inventoryError,
   };
 }
